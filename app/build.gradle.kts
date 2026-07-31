@@ -1,8 +1,13 @@
+import java.text.SimpleDateFormat
+import java.util.Date
+
 plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.compose.compiler)
   alias(libs.plugins.kotlin.serialization)
 }
+
+val buildStamp: String = SimpleDateFormat("yyyyMMdd-HHmm").format(Date())
 
 android {
     namespace = "dev.verso.limen"
@@ -22,6 +27,13 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Every debug APK carries the minute it was built, so the phone can say which
+            // one it is running: Settings > Apps > Limen shows the version. Without this
+            // every build reads "1.0" and a stale copy on a device is indistinguishable
+            // from a fresh one, which is exactly the confusion it costs an evening to find.
+            versionNameSuffix = " " + buildStamp
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
