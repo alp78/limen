@@ -43,7 +43,7 @@ object PdfExport {
     val doc = PdfDocument()
     val sheet = Sheet(doc, s)
     try {
-      title(sheet, p, s)
+      title(sheet, p, s, context)
       header(sheet, p, s)
       parties(sheet, p, s)
       deposit(sheet, p, s)
@@ -184,8 +184,24 @@ object PdfExport {
 
   // ── Sections ─────────────────────────────────────────────────────────────────────────
 
-  private fun title(sheet: Sheet, p: Protocol, s: Str) {
+  private fun title(sheet: Sheet, p: Protocol, s: Str, context: Context) {
     sheet.newPage()
+    // The badge, top right of the first page. A protocol that ends in a conciliation hearing
+    // should look like it came from somewhere: the same seal as the launcher and the header,
+    // drawn from the same resource so the three can never drift apart.
+    val badge = 64f
+    runCatching {
+      BitmapFactory.decodeResource(context.resources, dev.verso.limen.R.drawable.limen_mark)
+    }.getOrNull()?.let { bmp ->
+      val paint = Paint(Paint.FILTER_BITMAP_FLAG)
+      sheet.canvas.drawBitmap(
+        bmp,
+        null,
+        android.graphics.RectF(W - MARGIN - badge, sheet.y, W - MARGIN, sheet.y + badge),
+        paint,
+      )
+      bmp.recycle()
+    }
     val kind = if (p.kind == Kind.Entry) s.entry else s.exit
     sheet.canvas.drawText(
       "${s.protocolKind.uppercase()} · ${kind.uppercase()}",
@@ -193,7 +209,8 @@ object PdfExport {
       sheet.y + sheet.titlePaint.textSize,
       sheet.titlePaint,
     )
-    sheet.y += sheet.titlePaint.textSize + 12f
+    // The rule clears the badge as well as the text, whichever is taller.
+    sheet.y = maxOf(sheet.y + sheet.titlePaint.textSize + 12f, sheet.y + badge + 10f)
     sheet.canvas.drawLine(MARGIN, sheet.y, W - MARGIN, sheet.y, sheet.ink.apply { strokeWidth = 3f })
     sheet.gap(8f)
   }
