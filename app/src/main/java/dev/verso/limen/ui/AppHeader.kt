@@ -46,6 +46,8 @@ fun AppHeader(vm: LimenViewModel, s: Str) {
     Spacer(Modifier.width(4.dp))
     ModePill(s.faceLink, vm.appMode == AppMode.Link) { vm.selectMode(AppMode.Link) }
     Spacer(Modifier.weight(1f))
+    LangMenu(vm.lang, vm::selectLang)
+    Spacer(Modifier.width(4.dp))
     ThemeToggle(vm.darkTheme, vm::toggleTheme)
   }
 }

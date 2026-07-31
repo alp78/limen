@@ -143,18 +143,27 @@ private val DocumentTypography =
     titleMedium = TextStyle(
       fontFamily = FontFamily.Monospace,
       fontWeight = FontWeight.SemiBold,
-      fontSize = 17.sp,
+      fontSize = 18.sp,
     ),
-    bodyMedium = TextStyle(fontFamily = FontFamily.SansSerif, fontSize = 14.sp),
+    bodyLarge = TextStyle(
+      fontFamily = FontFamily.SansSerif,
+      fontSize = 17.sp,
+      lineHeight = 24.sp,
+    ),
+    bodyMedium = TextStyle(
+      fontFamily = FontFamily.SansSerif,
+      fontSize = 16.sp,
+      lineHeight = 22.sp,
+    ),
     labelLarge = TextStyle(
       fontFamily = FontFamily.SansSerif,
       fontWeight = FontWeight.SemiBold,
-      fontSize = 12.sp,
+      fontSize = 13.sp,
       letterSpacing = 0.6.sp,
     ),
     labelSmall = TextStyle(
       fontFamily = FontFamily.SansSerif,
-      fontSize = 11.sp,
+      fontSize = 12.5.sp,
       letterSpacing = 0.4.sp,
     ),
   )

@@ -1061,6 +1061,106 @@ class Str(val lang: Lang) {
     ),
   )
 
+  // ── Profile, welcome and guidance ─────────────────────────────────────────────────────
+  val profileKey = pick("Profile", "Profil", "Profil", "Profilo", "Profil")
+  val resetProfile = pick(
+    "RESET PROFILE",
+    "RÉINITIALISER LE PROFIL",
+    "PROFIL ZURÜCKSETZEN",
+    "AZZERA PROFILO",
+    "REINIZIALISAR IL PROFIL",
+  )
+  val doneKey = pick("DONE", "TERMINÉ", "FERTIG", "FATTO", "FATG")
+  val toolsLabel = pick("Tools", "Outils", "Werkzeuge", "Strumenti", "Utensils")
+  val protocolsLabel = pick(
+    "Your protocols",
+    "Vos états des lieux",
+    "Ihre Protokolle",
+    "I vostri verbali",
+    "Voss protocols",
+  )
+  val welcomeLead = pick(
+    "Limen records the apartment handover, from the first meter reading to the sealed PDF.",
+    "Limen consigne l'état des lieux, du premier relevé au PDF scellé.",
+    "Limen hält die Wohnungsübergabe fest, vom ersten Zählerstand bis zum versiegelten PDF.",
+    "Limen registra la consegna dell'alloggio, dalla prima lettura al PDF sigillato.",
+    "Limen documentescha la surdada da l'abitaziun, da l'emprima letga fin al PDF sigillà.",
+  )
+  val howItWorks = pick(
+    "How it works",
+    "Comment ça marche",
+    "So funktioniert es",
+    "Come funziona",
+    "Co quai funcziuna",
+  )
+  val guideSteps = listOf(
+    pick(
+      "Prepare the protocol together",
+      "Préparez le protocole ensemble",
+      "Bereitet das Protokoll gemeinsam vor",
+      "Preparate il verbale insieme",
+      "Preparai il protocol ensemen",
+    ),
+    pick(
+      "Walk the rooms and note each item",
+      "Parcourez les pièces et notez chaque point",
+      "Geht die Räume durch und haltet jeden Punkt fest",
+      "Percorrete i locali e annotate ogni punto",
+      "Giai tras ils locals e notai mintga punct",
+    ),
+    pick(
+      "Sign on this phone, both of you",
+      "Signez sur ce téléphone, tous les deux",
+      "Unterschreibt beide auf diesem Telefon",
+      "Firmate entrambi su questo telefono",
+      "Suttascrivai tuts dus sin quest telefon",
+    ),
+    pick(
+      "Export the sealed PDF and share it",
+      "Exportez le PDF scellé et partagez-le",
+      "Exportiert das versiegelte PDF und teilt es",
+      "Esportate il PDF sigillato e condividetelo",
+      "Exportai il PDF sigillà e tramettai el",
+    ),
+  )
+  fun stepLead(step: FlowStep) = when (step) {
+    FlowStep.Setup -> pick(
+      "Fill in the frame together before the walk: the object, the people, the deposit, the meters, the keys.",
+      "Remplissez le cadre ensemble avant la visite : l'objet, les personnes, la garantie, les compteurs, les clés.",
+      "Füllt den Rahmen gemeinsam aus, bevor ihr durch die Wohnung geht: Objekt, Personen, Kaution, Zähler, Schlüssel.",
+      "Compilate il quadro insieme prima del giro: l'oggetto, le persone, il deposito, i contatori, le chiavi.",
+      "Emplenì il rom ensemen avant il gir: l'object, las persunas, la cauziun, ils dumbraders, las clavs.",
+    )
+    FlowStep.Rooms -> pick(
+      "Walk the flat room by room. Tap the state on each line; the + records a defect with photos.",
+      "Parcourez le logement pièce par pièce. Touchez l'état sur chaque ligne ; le + enregistre un défaut avec photos.",
+      "Geht Raum für Raum durch. Tippt den Zustand auf jeder Zeile an; das + erfasst einen Mangel mit Fotos.",
+      "Percorrete l'alloggio locale per locale. Toccate lo stato su ogni riga; il + registra un difetto con foto.",
+      "Giai tras l'abitaziun local per local. Tutgai il stadi sin mintga lingia; il + registrescha in defect cun fotos.",
+    )
+    FlowStep.Review -> pick(
+      "Read the findings aloud together. Mark who carries each defect before anyone signs.",
+      "Relisez les constats ensemble. Indiquez qui assume chaque défaut avant de signer.",
+      "Geht die Befunde gemeinsam durch. Haltet fest, wer welchen Mangel trägt, bevor unterschrieben wird.",
+      "Rileggete i rilievi insieme. Indicate chi si assume ogni difetto prima di firmare.",
+      "Legì ils resultats ensemen. Notai tgi che surpiglia mintga defect avant che suttascriver.",
+    )
+    FlowStep.Sign -> pick(
+      "Two signatures with two meanings: first the record, then, only if agreed, the costs.",
+      "Deux signatures, deux sens : d'abord le constat, puis, seulement si accepté, les coûts.",
+      "Zwei Unterschriften mit zwei Bedeutungen: zuerst das Protokoll, dann, nur wenn einverstanden, die Kosten.",
+      "Due firme con due significati: prima il verbale, poi, solo se accettati, i costi.",
+      "Duas suttascripziuns cun dus muments: l'emprim il protocol, lura, mo sche acceptà, ils custs.",
+    )
+    FlowStep.Export -> pick(
+      "Export the PDF, sealed by this phone, and hand it to both sides right now.",
+      "Exportez le PDF, scellé par ce téléphone, et remettez-le aux deux parties immédiatement.",
+      "Exportiert das PDF, versiegelt von diesem Telefon, und übergebt es sofort beiden Seiten.",
+      "Esportate il PDF, sigillato da questo telefono, e consegnatelo subito a entrambe le parti.",
+      "Exportai il PDF, sigillà da quest telefon, e surdatti el immediat ad omaduas varts.",
+    )
+  }
+
   // ── The link face: handshake, locked features, audit ──────────────────────────────────
   val faceLink = pick("LINK", "LIAISON", "VERBINDUNG", "LEGAME", "COLLIAZIUN")
   val linkTitle = pick("Linked dossier", "Dossier lié", "Verbundenes Dossier", "Dossier collegato", "Dossier collià")

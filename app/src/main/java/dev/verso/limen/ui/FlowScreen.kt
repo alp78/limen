@@ -54,7 +54,10 @@ fun FlowScreen(modifier: Modifier = Modifier, vm: LimenViewModel, s: Str) {
   Box(modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
       FlowMast(vm, s, p)
-      Spacer(Modifier.height(10.dp))
+      Spacer(Modifier.height(8.dp))
+      // The step's one instruction, at reading size, before any control.
+      StepLead(s.stepLead(vm.flowStep))
+      Spacer(Modifier.height(8.dp))
       when (vm.flowStep) {
         FlowStep.Setup -> SetupStep(vm, s, p)
         FlowStep.Rooms -> RoomsStep(vm, s, p)
@@ -114,8 +117,8 @@ private fun FlowMast(vm: LimenViewModel, s: Str, p: Protocol) {
     Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
     horizontalArrangement = Arrangement.spacedBy(5.dp),
   ) {
-    stations.forEach { (step, label) ->
-      Chip(label, active = vm.flowStep == step) { vm.goTo(step) }
+    stations.forEachIndexed { i, (step, label) ->
+      Chip("${i + 1} · $label", active = vm.flowStep == step) { vm.goTo(step) }
     }
   }
 }

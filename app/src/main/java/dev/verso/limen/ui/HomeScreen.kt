@@ -28,98 +28,158 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.verso.limen.data.Kind
 import dev.verso.limen.data.Protocol
+import dev.verso.limen.data.Role
 import dev.verso.limen.theme.Limen
 
 /**
- * The case: the mark, the whole-instrument switches, the protocol dossiers, and the way
- * into a new one. The two reference faces (Zeitwert, deadlines) sit beside the language.
+ * The case, ordered the way the handover actually goes: who you are, how it works, the
+ * dossier you are in the middle of, the way into a new one, and only then the side tools.
+ * The first thing a lost user reads is the four steps, at full body size.
  */
 @Composable
 fun HomeScreen(modifier: Modifier = Modifier, vm: LimenViewModel = viewModel(), s: Str = Str(vm.lang)) {
-  Column(modifier.fillMaxSize()) {
-    Row(
-      Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-      verticalAlignment = Alignment.CenterVertically,
-    ) {
-      LimenMark(size = 40.dp)
-      Spacer(Modifier.weight(1f))
-      ThemeToggle(vm.darkTheme, vm::toggleTheme)
-    }
+  var showProfile by remember { mutableStateOf(false) }
 
-    Spacer(Modifier.height(8.dp))
-    Row(
-      Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-      verticalAlignment = Alignment.CenterVertically,
-    ) {
-      SmallKey(s.faceValue, Modifier.weight(1f)) { vm.selectMode(AppMode.Value) }
-      Spacer(Modifier.width(6.dp))
-      SmallKey(s.faceClocks, Modifier.weight(1f)) { vm.selectMode(AppMode.Clocks) }
-      Spacer(Modifier.weight(0.1f))
-      PillRow(
-        Lang.entries.map { it to it.name.uppercase() },
-        vm.lang,
-        dense = true,
-        onSelect = vm::selectLang,
-      )
-    }
-
-    Spacer(Modifier.height(6.dp))
-    Row(
-      Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-      verticalAlignment = Alignment.CenterVertically,
-    ) {
-      // The linked dossier and the other phone's half of the seal exchange, one key away.
-      SmallKey(s.faceLink, Modifier.weight(0.6f)) { vm.selectMode(AppMode.Link) }
-      Spacer(Modifier.width(6.dp))
-      SmallKey(s.counterSignKey, Modifier.weight(1f)) { vm.openCounterSign() }
-      InfoTip(s.tipCounterSign())
-    }
-
-    Spacer(Modifier.height(14.dp))
-    Column(
-      Modifier.fillMaxWidth().weight(1f).padding(horizontal = 20.dp),
-      verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-      if (vm.protocols.isEmpty()) {
-        Box(
-          Modifier
-            .fillMaxWidth()
-            .weight(1f)
-            .clip(RoundedCornerShape(16.dp))
-            .background(Limen.colors.plateRaised)
-            .border(1.dp, Limen.colors.plateEdge, RoundedCornerShape(16.dp))
-            .padding(24.dp),
-          contentAlignment = Alignment.Center,
-        ) {
-          Text(s.emptyCase, style = MaterialTheme.typography.bodyMedium, color = Limen.colors.inkDim)
+  Box(modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize()) {
+      Row(
+        Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+      ) {
+        LimenMark(size = 40.dp)
+        Spacer(Modifier.weight(1f))
+        vm.myRole?.let { role ->
+          Chip(
+            listOf(vm.profileName, s.role(role)).filter { it.isNotBlank() }.joinToString(" · "),
+            dim = false,
+          ) { showProfile = true }
         }
-      } else {
-        LazyColumn(
-          Modifier.fillMaxWidth().weight(1f),
-          verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-          items(vm.protocols, key = { it.id }) { p ->
-            ProtocolCard(vm, s, p)
+        LangMenu(vm.lang, vm::selectLang)
+        ThemeToggle(vm.darkTheme, vm::toggleTheme)
+      }
+
+      Spacer(Modifier.height(12.dp))
+      Column(
+        Modifier.fillMaxWidth().weight(1f).padding(horizontal = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+      ) {
+        if (vm.protocols.isEmpty()) {
+          // First contact: what this is and how it goes, before any control.
+          Panel(label = s.howItWorks) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+              Text(s.welcomeLead, style = MaterialTheme.typography.bodyLarge, color = Limen.colors.ink)
+              GuideSteps(s)
+            }
+          }
+          Spacer(Modifier.weight(1f))
+        } else {
+          Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+              s.protocolsLabel,
+              style = MaterialTheme.typography.titleMedium,
+              color = Limen.colors.ink,
+              modifier = Modifier.weight(1f),
+            )
+            InfoTip(Tip(s.welcomeLead, s.guideSteps))
+          }
+          LazyColumn(
+            Modifier.fillMaxWidth().weight(1f),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+          ) {
+            items(vm.protocols, key = { it.id }) { p ->
+              ProtocolCard(vm, s, p)
+            }
+          }
+        }
+
+        // Both ways over the threshold, side by side. The exit from a stored entry
+        // protocol has its own key on the entry's card.
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+          BigKey("+ ${s.entry.uppercase()}", active = true, Modifier.weight(1f)) {
+            vm.createProtocol(Kind.Entry)
+          }
+          BigKey("+ ${s.exit.uppercase()}", active = true, Modifier.weight(1f)) {
+            vm.createProtocol(Kind.Exit)
+          }
+        }
+
+        // The side tools, clearly apart from the main way through.
+        Text(
+          s.toolsLabel,
+          style = MaterialTheme.typography.labelSmall,
+          color = Limen.colors.inkDim,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+          SmallKey(s.faceValue, Modifier.weight(1f)) { vm.selectMode(AppMode.Value) }
+          SmallKey(s.faceClocks, Modifier.weight(1f)) { vm.selectMode(AppMode.Clocks) }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+          SmallKey(s.faceLink, Modifier.weight(1f)) { vm.selectMode(AppMode.Link) }
+          SmallKey(s.counterSignKey, Modifier.weight(1f)) { vm.openCounterSign() }
+        }
+      }
+      Spacer(Modifier.height(12.dp))
+    }
+
+    if (showProfile) {
+      ProfileOverlay(vm, s) { showProfile = false }
+    }
+  }
+}
+
+/** The four steps of the handover, numbered, at reading size. */
+@Composable
+fun GuideSteps(s: Str) {
+  Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    s.guideSteps.forEachIndexed { i, step ->
+      Row(verticalAlignment = Alignment.Top) {
+        Text(
+          "${i + 1}",
+          fontFamily = FontFamily.Monospace,
+          style = MaterialTheme.typography.bodyLarge,
+          color = Limen.colors.inkDim,
+          modifier = Modifier.width(24.dp),
+        )
+        Text(step, style = MaterialTheme.typography.bodyLarge, color = Limen.colors.ink)
+      }
+    }
+  }
+}
+
+/**
+ * The profile, one tap from the case: name, side, and the way to hand the phone to
+ * someone else entirely. Nothing else in the app talks about accounts, because there are
+ * none: the profile is this phone's answer to the first question.
+ */
+@Composable
+private fun ProfileOverlay(vm: LimenViewModel, s: Str, onClose: () -> Unit) {
+  Box(
+    Modifier
+      .fillMaxSize()
+      .background(Limen.colors.plate.copy(alpha = 0.94f))
+      .clickable(onClick = onClose),
+    contentAlignment = Alignment.Center,
+  ) {
+    Box(Modifier.padding(20.dp).clickable(enabled = false) {}) {
+      Panel(label = s.profileKey, info = s.tipRole()) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+          Field(s.profileName, vm.profileName) { vm.updateProfileName(it) }
+          PillRow(
+            listOf(Role.Tenant, Role.Landlord).map { it to s.role(it) },
+            vm.myRole ?: Role.Tenant,
+          ) { r -> vm.chooseRole(r, vm.profileName) }
+          BigKey(s.doneKey, active = true, Modifier.fillMaxWidth()) { onClose() }
+          SmallKey(s.resetProfile, Modifier.fillMaxWidth()) {
+            vm.clearProfile()
+            onClose()
           }
         }
       }
-
-      // Both ways over the threshold, side by side. The exit from a stored entry protocol
-      // has its own key on the entry's card.
-      Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        BigKey("+ ${s.entry.uppercase()}", active = true, Modifier.weight(1f)) {
-          vm.createProtocol(Kind.Entry)
-        }
-        BigKey("+ ${s.exit.uppercase()}", active = true, Modifier.weight(1f)) {
-          vm.createProtocol(Kind.Exit)
-        }
-      }
     }
-    Spacer(Modifier.height(12.dp))
   }
 }
 

@@ -75,6 +75,13 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     prefs.edit().putString(KEY_NAME, name).apply()
   }
 
+  /** Forgets who holds the phone: back to the first question, nothing else touched. */
+  fun clearProfile() {
+    myRole = null
+    profileName = ""
+    prefs.edit().remove(KEY_ROLE).remove(KEY_NAME).apply()
+  }
+
   // ── The journal ──────────────────────────────────────────────────────────────────────
 
   /** One signed, chained entry per discrete act; typing is captured by the next state hash. */

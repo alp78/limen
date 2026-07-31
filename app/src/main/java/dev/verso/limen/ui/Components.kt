@@ -33,6 +33,7 @@ import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -255,6 +256,84 @@ fun Chip(
         else -> Limen.colors.ink
       },
       modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+    )
+  }
+}
+
+/**
+ * The language menu: one compact key showing the current language, the five spelled out
+ * behind it. Each name is written in its own language, so it never needs translating and
+ * is findable by someone lost in the wrong one.
+ */
+@Composable
+fun LangMenu(current: Lang, onSelect: (Lang) -> Unit) {
+  var open by remember { androidx.compose.runtime.mutableStateOf(false) }
+  val names = mapOf(
+    Lang.En to "English",
+    Lang.Fr to "Français",
+    Lang.De to "Deutsch",
+    Lang.It to "Italiano",
+    Lang.Rm to "Rumantsch",
+  )
+  Box {
+    KeySurface(shape = RoundedCornerShape(9.dp), onPress = { open = true }) {
+      Text(
+        "${current.name.uppercase()} ▾",
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.Medium,
+        fontSize = 12.sp,
+        letterSpacing = 0.3.sp,
+        maxLines = 1,
+        color = Limen.colors.ink,
+        modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+      )
+    }
+    androidx.compose.material3.DropdownMenu(
+      expanded = open,
+      onDismissRequest = { open = false },
+      containerColor = Limen.colors.plateRaised,
+    ) {
+      Lang.entries.forEach { l ->
+        androidx.compose.material3.DropdownMenuItem(
+          text = {
+            Text(
+              names.getValue(l),
+              fontFamily = FontFamily.SansSerif,
+              fontWeight = if (l == current) FontWeight.SemiBold else FontWeight.Normal,
+              fontSize = 15.sp,
+              color = Limen.colors.ink,
+            )
+          },
+          trailingIcon = if (l == current) {
+            { Text("✓", fontSize = 14.sp, color = Limen.colors.ink) }
+          } else null,
+          onClick = {
+            onSelect(l)
+            open = false
+          },
+        )
+      }
+    }
+  }
+}
+
+/**
+ * The voice that walks the user through a step: one readable sentence at the top, full
+ * body size, never fine print. This is instruction, not decoration, so it gets room.
+ */
+@Composable
+fun StepLead(text: String) {
+  Row(
+    Modifier
+      .fillMaxWidth()
+      .background(Limen.colors.plateRaised, RoundedCornerShape(10.dp))
+      .border(1.dp, Limen.colors.plateEdge, RoundedCornerShape(10.dp))
+      .padding(horizontal = 14.dp, vertical = 12.dp),
+  ) {
+    Text(
+      text,
+      style = MaterialTheme.typography.bodyLarge,
+      color = Limen.colors.ink,
     )
   }
 }
