@@ -51,6 +51,10 @@ data class Protocol(
   /** The id of the entry protocol this exit protocol was seeded from, if any. */
   val seedId: String = "",
   val exportedEpochMs: Long = 0,
+  /** This device's seal over the exported PDF; set by the export, cleared by re-export. */
+  val seal: SealInfo? = null,
+  /** The other phone's verified signature over the same PDF, attached after the exchange. */
+  val counterSeal: CounterSeal? = null,
 ) {
   /** The record plane is signed once anyone has signed it and nobody refused outright. */
   fun isSigned(): Boolean = signatures.any { it.plane == Plane.Record && !it.refused }

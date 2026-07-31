@@ -66,6 +66,9 @@ fun FlowScreen(modifier: Modifier = Modifier, vm: LimenViewModel, s: Str) {
     if (vm.editingDefectId != null) {
       DefectEditor(vm, s, p, vm.editingDefectId!!)
     }
+    if (vm.showDepositCompare) {
+      DepositCompareOverlay(vm, s)
+    }
   }
 }
 
@@ -175,10 +178,14 @@ private fun SetupStep(vm: LimenViewModel, s: Str, p: Protocol) {
 
     Panel(label = s.deposit, info = s.tipDeposit()) {
       Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        PillRow(
-          DepositKind.entries.map { it to s.depositKind(it) },
-          p.deposit.kind,
-        ) { k -> vm.edit { it.copy(deposit = it.deposit.copy(kind = k)) } }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+          PillRow(
+            DepositKind.entries.map { it to s.depositKind(it) },
+            p.deposit.kind,
+          ) { k -> vm.edit { it.copy(deposit = it.deposit.copy(kind = k)) } }
+          Spacer(Modifier.weight(1f))
+          Chip(s.compareKey, dim = false) { vm.setDepositCompare(true) }
+        }
         when (p.deposit.kind) {
           DepositKind.Insurance -> {
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(5.dp)) {

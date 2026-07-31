@@ -67,6 +67,16 @@ fun HomeScreen(modifier: Modifier = Modifier, vm: LimenViewModel = viewModel(), 
       )
     }
 
+    Spacer(Modifier.height(6.dp))
+    Row(
+      Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      // The other phone's half of the seal exchange lives one key away from the case.
+      SmallKey(s.counterSignKey, Modifier.weight(1f)) { vm.openCounterSign() }
+      InfoTip(s.tipCounterSign())
+    }
+
     Spacer(Modifier.height(14.dp))
     Column(
       Modifier.fillMaxWidth().weight(1f).padding(horizontal = 20.dp),

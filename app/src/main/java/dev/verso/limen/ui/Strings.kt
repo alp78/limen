@@ -727,6 +727,296 @@ class Str(val lang: Lang) {
     ),
   )
 
+  // ── The seal: tamper evidence over the exported document ──────────────────────────────
+  val sealTitle = pick("Seal", "Sceau", "Siegel", "Sigillo", "Sigil")
+  val contentFingerprint = pick("Content fingerprint", "Empreinte du contenu", "Inhalts-Fingerabdruck", "Impronta del contenuto", "Impronta dal cuntegn")
+  val pdfFingerprint = pick("PDF fingerprint", "Empreinte du PDF", "PDF-Fingerabdruck", "Impronta del PDF", "Impronta dal PDF")
+  val deviceSeal = pick("Device seal", "Sceau de l'appareil", "Gerätesiegel", "Sigillo del dispositivo", "Sigil da l'apparat")
+  val counterSealLabel = pick("Countersignature", "Contresignature", "Gegenzeichnung", "Controfirma", "Cuntrasuttascripziun")
+  val counterSignKey = pick("COUNTERSIGN", "CONTRESIGNER", "GEGENZEICHNEN", "CONTROFIRMA", "CUNTRASUTTASCRIVER")
+  val attachCounterSeal = pick("ATTACH", "JOINDRE", "ANHÄNGEN", "ALLEGA", "AGIUNTAR")
+  val sealCertificateKey = pick("SEAL CERTIFICATE", "CERTIFICAT DE SCEAU", "SIEGELZERTIFIKAT", "CERTIFICATO DI SIGILLO", "CERTIFICAT DAL SIGIL")
+  val verified = pick("Verified", "Vérifiée", "Geprüft", "Verificata", "Verifitgada")
+  val noMatch = pick(
+    "Does not match this document",
+    "Ne correspond pas à ce document",
+    "Passt nicht zu diesem Dokument",
+    "Non corrisponde a questo documento",
+    "Na correspunda betg a quest document",
+  )
+  val pickPdf = pick("PICK THE PDF", "CHOISIR LE PDF", "PDF WÄHLEN", "SCEGLI IL PDF", "TSCHERNER IL PDF")
+  val signerName = pick(
+    "Name of the signer",
+    "Nom du signataire",
+    "Name der unterzeichnenden Person",
+    "Nome del firmatario",
+    "Num da la persuna che suttascriva",
+  )
+  val pdfSealNote = pick(
+    "Content fingerprint: SHA-256 over the protocol data, its photos and its ink. The device seal and any countersignature over the exported file are verified in the app and printed on the seal certificate. This document carries simple electronic signatures: valid evidence, not a qualified electronic signature.",
+    "Empreinte du contenu : SHA-256 sur les données du protocole, ses photos et son encre. Le sceau de l'appareil et toute contresignature du fichier exporté se vérifient dans l'app et s'impriment sur le certificat de sceau. Ce document porte des signatures électroniques simples : une preuve valable, non une signature électronique qualifiée.",
+    "Inhalts-Fingerabdruck: SHA-256 über die Protokolldaten, die Fotos und die Tinte. Das Gerätesiegel und jede Gegenzeichnung der exportierten Datei werden in der App geprüft und auf dem Siegelzertifikat gedruckt. Dieses Dokument trägt einfache elektronische Signaturen: gültiges Beweismittel, keine qualifizierte elektronische Signatur.",
+    "Impronta del contenuto: SHA-256 sui dati del verbale, le sue foto e il suo inchiostro. Il sigillo del dispositivo e ogni controfirma del file esportato si verificano nell'app e si stampano sul certificato di sigillo. Questo documento porta firme elettroniche semplici: prova valida, non firma elettronica qualificata.",
+    "Impronta dal cuntegn: SHA-256 sur las datas dal protocol, sias fotos e sia tinta. Il sigil da l'apparat e mintga cuntrasuttascripziun vegnan verifitgads en l'app e stampads sin il certificat dal sigil. Quest document porta suttascripziuns electronicas simplas: ina cumprova valaivla, betg ina suttascripziun electronica qualifitgada.",
+  )
+
+  fun tipSeal() = Tip(
+    pick(
+      "The seal proves the document unchanged since export.",
+      "Le sceau prouve que le document n'a pas changé depuis l'export.",
+      "Das Siegel beweist, dass das Dokument seit dem Export unverändert ist.",
+      "Il sigillo prova che il documento è invariato dall'esportazione.",
+      "Il sigil cumprova ch'il document n'è betg midà dapi l'export.",
+    ),
+    listOf(
+      pick(
+        "The content fingerprint covers the data, the photos and the ink",
+        "L'empreinte du contenu couvre les données, les photos et l'encre",
+        "Der Inhalts-Fingerabdruck deckt Daten, Fotos und Tinte",
+        "L'impronta del contenuto copre dati, foto e inchiostro",
+        "L'impronta dal cuntegn cuvra datas, fotos e tinta",
+      ),
+      pick(
+        "This phone's key signs the digest of the exported PDF",
+        "La clé de ce téléphone signe l'empreinte du PDF exporté",
+        "Der Schlüssel dieses Telefons signiert den Hash des exportierten PDF",
+        "La chiave di questo telefono firma l'impronta del PDF esportato",
+        "La clav da quest telefon suttascriva l'impronta dal PDF exportà",
+      ),
+      pick(
+        "The other party's phone can countersign the same digest",
+        "Le téléphone de l'autre partie peut contresigner la même empreinte",
+        "Das Telefon der Gegenpartei kann denselben Hash gegenzeichnen",
+        "Il telefono dell'altra parte può controfirmare la stessa impronta",
+        "Il telefon da l'autra partida po cuntrasuttascriver la medema impronta",
+      ),
+      pick(
+        "Only a qualified e-signature equals handwriting; this seal is evidence of integrity",
+        "Seule une signature électronique qualifiée équivaut à la main ; ce sceau prouve l'intégrité",
+        "Nur eine qualifizierte E-Signatur ersetzt die Handschrift; dieses Siegel beweist die Integrität",
+        "Solo una firma elettronica qualificata equivale alla mano; questo sigillo prova l'integrità",
+        "Mo ina suttascripziun electronica qualifitgada vala sco quella a maun; quest sigil cumprova l'integritad",
+      ),
+    ),
+  )
+
+  fun tipCounterSign() = Tip(
+    pick(
+      "Both phones hold the same document; each signs its digest.",
+      "Les deux téléphones tiennent le même document ; chacun en signe l'empreinte.",
+      "Beide Telefone halten dasselbe Dokument; jedes signiert dessen Hash.",
+      "Entrambi i telefoni tengono lo stesso documento; ognuno ne firma l'impronta.",
+      "Tuts dus telefons tegnan il medem document; mintgin suttascriva sia impronta.",
+    ),
+    listOf(
+      pick(
+        "First receive the exported PDF from the other phone",
+        "Recevez d'abord le PDF exporté de l'autre téléphone",
+        "Zuerst das exportierte PDF vom anderen Telefon empfangen",
+        "Ricevete prima il PDF esportato dall'altro telefono",
+        "L'emprim retschaiver il PDF exportà da l'auter telefon",
+      ),
+      pick(
+        "Read it, then pick it here: the fingerprint binds your signature to that exact file",
+        "Lisez-le, puis choisissez-le ici : l'empreinte lie votre signature à ce fichier précis",
+        "Lesen, dann hier wählen: der Fingerabdruck bindet Ihre Signatur an genau diese Datei",
+        "Leggetelo, poi sceglietelo qui: l'impronta lega la vostra firma a quel preciso file",
+        "Legiai el, lura tscherni el qua: l'impronta liia Vossa suttascripziun a quella datoteca precisa",
+      ),
+      pick(
+        "Send the small signature file back; the other phone attaches and verifies it",
+        "Renvoyez le petit fichier de signature ; l'autre téléphone le joint et le vérifie",
+        "Die kleine Signaturdatei zurücksenden; das andere Telefon hängt sie an und prüft sie",
+        "Rimandate il piccolo file di firma; l'altro telefono lo allega e lo verifica",
+        "Trametti enavos la pitschna datoteca da suttascripziun; l'auter telefon l'agiunta e la verifitgescha",
+      ),
+      pick(
+        "No account, no network: the files travel by direct share",
+        "Sans compte, sans réseau : les fichiers voyagent par partage direct",
+        "Ohne Konto, ohne Netz: die Dateien reisen per Direktfreigabe",
+        "Senza conto, senza rete: i file viaggiano per condivisione diretta",
+        "Senza conto, senza rait: las datotecas viagian cun cundivisiun directa",
+      ),
+    ),
+  )
+
+  fun tipShareNow() = Tip(
+    pick(
+      "Send the PDF to both parties now, at the door.",
+      "Envoyez le PDF aux deux parties maintenant, sur le pas de porte.",
+      "Senden Sie das PDF beiden Parteien jetzt, an der Türe.",
+      "Inviate il PDF a entrambe le parti adesso, sulla soglia.",
+      "Trametti il PDF ad omaduas partidas ussa, sin la sava.",
+    ),
+    listOf(
+      pick(
+        "Immediate delivery to both is what a court looks at first",
+        "La remise immédiate aux deux est ce qu'un tribunal regarde en premier",
+        "Die sofortige Zustellung an beide ist, was ein Gericht zuerst prüft",
+        "La consegna immediata a entrambi è ciò che un tribunale guarda per primo",
+        "La consegna immediata ad omadus è quai ch'in tribunal guarda l'emprim",
+      ),
+      pick(
+        "Exit defects still need the registered letter within 2 to 3 working days",
+        "Les défauts de sortie exigent toujours le recommandé sous 2 à 3 jours ouvrables",
+        "Auszugsmängel brauchen weiterhin den eingeschriebenen Brief innert 2 bis 3 Werktagen",
+        "I difetti di riconsegna richiedono sempre la raccomandata entro 2 o 3 giorni lavorativi",
+        "Las mancanzas da sortida dovran vinavant la brev recumandada entaifer 2 fin 3 dis da lavur",
+      ),
+      pick(
+        "The countersignature of the other phone completes the seal",
+        "La contresignature de l'autre téléphone complète le sceau",
+        "Die Gegenzeichnung des anderen Telefons vervollständigt das Siegel",
+        "La controfirma dell'altro telefono completa il sigillo",
+        "La cuntrasuttascripziun da l'auter telefon cumplettescha il sigil",
+      ),
+    ),
+  )
+
+  // ── The deposit comparison ────────────────────────────────────────────────────────────
+  val compareKey = pick("COMPARE", "COMPARER", "VERGLEICHEN", "CONFRONTA", "CUMPAREGLIAR")
+  val linkKey = pick("LINK", "LIEN", "LINK", "LINK", "LINK")
+  val perYear = pick("per year", "par an", "pro Jahr", "all'anno", "per onn")
+
+  fun tipCompare() = Tip(
+    pick(
+      "Two legitimate roads; the figures decide, not the brochure.",
+      "Deux voies légitimes ; ce sont les chiffres qui décident, pas la brochure.",
+      "Zwei legitime Wege; die Zahlen entscheiden, nicht der Prospekt.",
+      "Due vie legittime; decidono le cifre, non l'opuscolo.",
+      "Duas vias legitimas; las cifras decidan, betg il prospect.",
+    ),
+    listOf(
+      pick(
+        "Account: the money stays yours and comes back; it is just locked",
+        "Compte : l'argent reste le vôtre et revient ; il est seulement bloqué",
+        "Konto: das Geld bleibt Ihres und kommt zurück; es ist nur gesperrt",
+        "Conto: i soldi restano vostri e tornano; sono solo bloccati",
+        "Conto: ils daners restan Voss e returnan; els èn mo bloccads",
+      ),
+      pick(
+        "Insurance: the capital stays free, the premium is never refunded",
+        "Assurance : le capital reste libre, la prime n'est jamais remboursée",
+        "Versicherung: das Kapital bleibt frei, die Prämie wird nie zurückerstattet",
+        "Assicurazione: il capitale resta libero, il premio non è mai rimborsato",
+        "Assicuranza: il chapital resta liber, la premia na vegn mai restituida",
+      ),
+      pick(
+        "Insurance is no waiver: damages stay owed, the insurer pays and recovers from you",
+        "L'assurance n'exonère pas : les dégâts restent dus, l'assureur paie puis se retourne contre vous",
+        "Die Versicherung befreit nicht: Schäden bleiben geschuldet, der Versicherer zahlt und holt es bei Ihnen",
+        "L'assicurazione non esonera: i danni restano dovuti, l'assicuratore paga e si rivale su di voi",
+        "L'assicuranza na libera betg: donns restan debitads, l'assicuradur paja e sa regressa tar Vus",
+      ),
+      pick(
+        "Yearly premiums as published, July 2026; the application happens on the provider's site",
+        "Primes annuelles publiées, juillet 2026 ; la souscription se fait sur le site du prestataire",
+        "Jahresprämien wie publiziert, Juli 2026; der Abschluss geschieht auf der Website des Anbieters",
+        "Premi annui come pubblicati, luglio 2026; la sottoscrizione avviene sul sito del fornitore",
+        "Premias annualas sco publitgadas, fanadur 2026; la conclusiun ha lieu sin la pagina dal purschider",
+      ),
+    ),
+  )
+
+  // ── The official finding ──────────────────────────────────────────────────────────────
+  val befundTitle = pick(
+    "Official finding",
+    "Constat officiel",
+    "Amtlicher Befund",
+    "Constatazione ufficiale",
+    "Constataziun uffiziala",
+  )
+  val befundKey = pick(
+    "GENERATE THE REQUEST",
+    "GÉNÉRER LA REQUÊTE",
+    "GESUCH ERSTELLEN",
+    "GENERA LA RICHIESTA",
+    "GENERAR LA DUMONDA",
+  )
+  val communeLabel = pick(
+    "Commune / competent office",
+    "Commune / office compétent",
+    "Gemeinde / zuständiges Amt",
+    "Comune / ufficio competente",
+    "Vischnanca / uffizi cumpetent",
+  )
+
+  fun tipBefund() = Tip(
+    pick(
+      "When the parties cannot agree on the facts, a neutral official can record them.",
+      "Quand les parties ne s'accordent pas sur les faits, un officier neutre peut les constater.",
+      "Wenn sich die Parteien über die Fakten nicht einigen, kann eine neutrale Amtsperson sie festhalten.",
+      "Quando le parti non concordano sui fatti, un pubblico ufficiale neutrale può constatarli.",
+      "Sche las partidas na s'accordan betg sur dals fatgs, po ina persuna uffiziala neutrala als constatar.",
+    ),
+    listOf(
+      pick(
+        "Zurich: the Gemeindeammann's official finding, about 180 CHF per hour, request it early",
+        "Zurich : le constat du Gemeindeammann, env. 180 CHF l'heure, à demander tôt",
+        "Zürich: der amtliche Befund des Gemeindeammanns, ca. 180 CHF pro Stunde, früh beantragen",
+        "Zurigo: la constatazione del Gemeindeammann, ca. 180 CHF l'ora, da chiedere per tempo",
+        "Turitg: la constataziun dal Gemeindeammann, ca. 180 CHF l'ura, da dumandar baud",
+      ),
+      pick(
+        "Elsewhere: precautionary taking of evidence through the court, Art. 182 CPC",
+        "Ailleurs : preuve à futur par le tribunal, art. 182 CPC",
+        "Anderswo: vorsorgliche Beweisführung über das Gericht, Art. 182 ZPO",
+        "Altrove: assunzione cautelare delle prove tramite il giudice, art. 182 CPC",
+        "Autrur: registraziun precauziunala da cumprovas tras il tribunal, art. 182 CPC",
+      ),
+      pick(
+        "The letter carries the protocol's fingerprint and photo annex as the factual base",
+        "La lettre porte l'empreinte du protocole et l'annexe photos comme base factuelle",
+        "Der Brief trägt den Fingerabdruck des Protokolls und den Fotoanhang als Faktenbasis",
+        "La lettera porta l'impronta del verbale e l'allegato foto come base fattuale",
+        "La brev porta l'impronta dal protocol e l'agiunta da fotos sco basa dals fatgs",
+      ),
+      pick(
+        "Conciliation stays free everywhere and comes first in every dispute",
+        "La conciliation reste gratuite partout et précède tout procès",
+        "Die Schlichtung bleibt überall kostenlos und kommt vor jedem Prozess",
+        "La conciliazione resta gratuita ovunque e precede ogni processo",
+        "La mediaziun resta gratuita dapertut e vegn avant mintga process",
+      ),
+    ),
+  )
+
+  val befundSubject = pick(
+    "Request for an official finding of the condition of the rented object",
+    "Requête de constat officiel de l'état de l'objet loué",
+    "Gesuch um amtlichen Befund über den Zustand des Mietobjekts",
+    "Richiesta di constatazione ufficiale dello stato dell'ente locato",
+    "Dumonda d'ina constataziun uffiziala dal stadi da l'object da locaziun",
+  )
+  val befundBody = pick(
+    "The undersigned requests an official finding of the present condition of the rented object named below. The handover protocol drawn up on site, with its photo annex, is enclosed as the factual record; its content fingerprint is stated beneath. The parties named in the protocol are to be invited to the finding.",
+    "La partie soussignée requiert le constat officiel de l'état actuel de l'objet loué désigné ci-dessous. L'état des lieux dressé sur place, avec son annexe photos, est joint comme pièce ; son empreinte de contenu figure ci-dessous. Les parties nommées dans le protocole sont à convoquer au constat.",
+    "Die unterzeichnende Partei ersucht um den amtlichen Befund über den gegenwärtigen Zustand des nachstehend bezeichneten Mietobjekts. Das vor Ort erstellte Übergabeprotokoll mit Fotoanhang liegt als Beleg bei; sein Inhalts-Fingerabdruck steht darunter. Die im Protokoll genannten Parteien sind zum Befund einzuladen.",
+    "La parte sottoscritta chiede la constatazione ufficiale dello stato attuale dell'ente locato sotto indicato. Il verbale di consegna redatto sul posto, con il suo allegato foto, è accluso come documento; la sua impronta del contenuto figura sotto. Le parti nominate nel verbale sono da invitare alla constatazione.",
+    "La partida suttascrivada dumonda la constataziun uffiziala dal stadi actual da l'object da locaziun inditgà sutvart. Il protocol da surdada fatg sin plaz, cun sia agiunta da fotos, è agiuntà sco document; sia impronta dal cuntegn stat sutvart. Las partidas numnadas en il protocol èn d'envidar a la constataziun.",
+  )
+  val befundLegal = pick(
+    "Canton of Zurich: official finding by the Gemeindeammann, § 143 GOG ZH. Other cantons: precautionary taking of evidence, Art. 182 of the Civil Procedure Code, through the competent court.",
+    "Canton de Zurich : constat officiel du Gemeindeammann, § 143 GOG ZH. Autres cantons : preuve à futur, art. 182 CPC, par le tribunal compétent.",
+    "Kanton Zürich: amtlicher Befund durch den Gemeindeammann, § 143 GOG ZH. Übrige Kantone: vorsorgliche Beweisführung, Art. 182 ZPO, über das zuständige Gericht.",
+    "Canton Zurigo: constatazione ufficiale del Gemeindeammann, § 143 GOG ZH. Altri cantoni: assunzione cautelare delle prove, art. 182 CPC, tramite il giudice competente.",
+    "Chantun Turitg: constataziun uffiziala dal Gemeindeammann, § 143 GOG ZH. Auters chantuns: registraziun precauziunala da cumprovas, art. 182 CPC, tras il tribunal cumpetent.",
+  )
+  val befundDesiredDate = pick(
+    "Desired date of the finding",
+    "Date souhaitée du constat",
+    "Gewünschter Termin des Befunds",
+    "Data desiderata della constatazione",
+    "Data giavischada da la constataziun",
+  )
+  val placeDateSignature = pick(
+    "Place, date and signature",
+    "Lieu, date et signature",
+    "Ort, Datum und Unterschrift",
+    "Luogo, data e firma",
+    "Lieu, data e suttascripziun",
+  )
+
   val notAdvice = pick(
     "Practice values with their sources; not legal advice. In a dispute, the conciliation authority is free of charge everywhere in Switzerland.",
     "Valeurs de pratique avec leurs sources ; pas un conseil juridique. En cas de litige, l'autorité de conciliation est gratuite dans toute la Suisse.",

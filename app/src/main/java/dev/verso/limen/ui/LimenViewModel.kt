@@ -393,24 +393,121 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     viewModelScope.launch {
       val result = withContext(Dispatchers.IO) {
         runCatching {
-          dev.verso.limen.data.PdfExport.export(
+          // The seal pipeline: fingerprint the content, print it inside the PDF, hash the
+          // PDF as it streams out, then sign both digests with this device's key.
+          val contentHash =
+            dev.verso.limen.data.Seal.contentHash(p, store.photoDir(p.id), store.signatureDir(p.id))
+          val out = dev.verso.limen.data.PdfExport.export(
             getApplication(),
             p,
             Str(docLang),
             store.photoDir(p.id),
             store.signatureDir(p.id),
+            contentHash,
           )
+          val seal = dev.verso.limen.data.Seal.makeSeal(
+            dev.verso.limen.data.DeviceKey, contentHash, out.pdfSha256, System.currentTimeMillis(),
+          )
+          out to seal
         }
       }
       exporting = false
       result.fold(
-        onSuccess = {
-          exported = it
-          edit { q -> q.copy(exportedEpochMs = System.currentTimeMillis()) }
+        onSuccess = { (out, seal) ->
+          exported = out.file
+          // A re-export is a new document: the old counterseal no longer matches it.
+          edit { q ->
+            q.copy(exportedEpochMs = System.currentTimeMillis(), seal = seal, counterSeal = null)
+          }
         },
         onFailure = { exportError = true },
       )
     }
+  }
+
+  // ── The seal exchange ────────────────────────────────────────────────────────────────
+
+  /** The countersign face open over the case: this phone signing the OTHER phone's PDF. */
+  var counterSigning by mutableStateOf(false)
+    private set
+
+  fun openCounterSign() {
+    counterSigning = true
+  }
+
+  fun closeCounterSign() {
+    counterSigning = false
+  }
+
+  /** Whether the last counterseal file failed: null quiet, false mismatch, true attached. */
+  var counterSealResult by mutableStateOf<Boolean?>(null)
+    private set
+
+  /** Reads a .limensig the other phone produced, verifies it against the seal, keeps it. */
+  fun attachCounterSeal(uri: android.net.Uri) {
+    val p = working ?: return
+    val seal = p.seal ?: return
+    viewModelScope.launch {
+      val attached = withContext(Dispatchers.IO) {
+        runCatching {
+          val text = getApplication<Application>().contentResolver.openInputStream(uri)
+            ?.use { it.readBytes().toString(Charsets.UTF_8) } ?: return@runCatching null
+          val c = dev.verso.limen.data.Seal.decodeCounterSeal(text) ?: return@runCatching null
+          val matches = c.forPdfHash == seal.pdfHash &&
+            dev.verso.limen.data.Seal.verifyCounterSeal(c)
+          if (matches) c else null
+        }.getOrNull()
+      }
+      if (attached != null) {
+        edit { q -> q.copy(counterSeal = attached) }
+        counterSealResult = true
+      } else {
+        counterSealResult = false
+      }
+    }
+  }
+
+  /** The one-page certificate naming both digests, both keys and both signatures. */
+  fun exportCertificate() {
+    val p = working ?: return
+    if (exporting) return
+    exporting = true
+    val docLang = pdfLang ?: lang
+    viewModelScope.launch {
+      val result = withContext(Dispatchers.IO) {
+        runCatching {
+          dev.verso.limen.data.SealCertificate.export(getApplication(), p, Str(docLang))
+        }
+      }
+      exporting = false
+      result.fold(onSuccess = { exported = it }, onFailure = { exportError = true })
+    }
+  }
+
+  /** The letter asking a neutral official to record the facts, for the dispute that came. */
+  fun exportBefund(commune: String) {
+    val p = working ?: return
+    if (exporting) return
+    exporting = true
+    val docLang = pdfLang ?: lang
+    viewModelScope.launch {
+      val result = withContext(Dispatchers.IO) {
+        runCatching {
+          dev.verso.limen.data.Befund.export(getApplication(), p, Str(docLang), commune)
+        }
+      }
+      exporting = false
+      result.fold(onSuccess = { exported = it }, onFailure = { exportError = true })
+    }
+  }
+
+  // ── The deposit comparison ───────────────────────────────────────────────────────────
+
+  var showDepositCompare by mutableStateOf(false)
+    private set
+
+  fun setDepositCompare(open: Boolean) {
+    showDepositCompare = open
   }
 
   // ── Controls ─────────────────────────────────────────────────────────────────────────

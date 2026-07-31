@@ -29,13 +29,17 @@ object PdfExport {
   private const val MARGIN = 90f
   private const val FOOT = 60f
 
+  /** The export plus the digest of its own bytes, the thing the device seal signs. */
+  data class Result(val file: ExportedFile, val pdfSha256: String)
+
   fun export(
     context: Context,
     p: Protocol,
     s: Str,
     photoDir: File,
     signatureDir: File,
-  ): ExportedFile {
+    contentHash: String = "",
+  ): Result {
     val doc = PdfDocument()
     val sheet = Sheet(doc, s)
     try {
@@ -49,11 +53,17 @@ object PdfExport {
       remarks(sheet, p, s)
       signatures(sheet, p, s, signatureDir)
       release(sheet, p, s)
+      sealBlock(sheet, s, contentHash)
       annex(sheet, p, s, photoDir)
       sheet.close()
       val kind = if (p.kind == Kind.Entry) s.entry else s.exit
       val name = "limen-${kind.lowercase().replace(' ', '-')}-${exportStamp()}.pdf"
-      return writeToDownloads(context, name, "application/pdf") { doc.writeTo(it) }
+      // The PDF is hashed while it streams out, so the seal signs exactly what was written.
+      val digest = java.security.MessageDigest.getInstance("SHA-256")
+      val file = writeToDownloads(context, name, "application/pdf") { out ->
+        doc.writeTo(java.security.DigestOutputStream(out, digest))
+      }
+      return Result(file, digest.digest().joinToString("") { "%02x".format(it) })
     } finally {
       doc.close()
     }
@@ -447,6 +457,18 @@ object PdfExport {
       }
       DepositKind.None -> Unit
     }
+  }
+
+  /** The document names its own data: the fingerprint printed where a stamp would sit. */
+  private fun sealBlock(sheet: Sheet, s: Str, contentHash: String) {
+    if (contentHash.isBlank()) return
+    sheet.sectionTitle(s.sealTitle)
+    sheet.ensure(60f)
+    sheet.canvas.drawText(s.contentFingerprint, MARGIN, sheet.y + sheet.label.textSize, sheet.label)
+    sheet.y += sheet.label.textSize + 8f
+    sheet.wrapped(Seal.grouped(contentHash), sheet.value)
+    sheet.gap(6f)
+    sheet.wrapped(s.pdfSealNote, sheet.small)
   }
 
   private fun annex(sheet: Sheet, p: Protocol, s: Str, photoDir: File) {
