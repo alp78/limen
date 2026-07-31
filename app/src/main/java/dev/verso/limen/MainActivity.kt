@@ -51,7 +51,10 @@ class MainActivity : ComponentActivity() {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
           val screenModifier = Modifier.safeDrawingPadding().padding(vertical = 8.dp)
           val s = remember(vm.lang) { Str(vm.lang) }
-          if (vm.working != null) {
+          if (vm.myRole == null) {
+            // The first question, before anything else: who holds this phone.
+            dev.verso.limen.ui.RoleGate(vm = vm, s = s)
+          } else if (vm.working != null) {
             // The flow owns the screen until it is closed; back walks its stations.
             BackHandler { vm.flowBack() }
             FlowScreen(modifier = screenModifier, vm = vm, s = s)
@@ -66,6 +69,7 @@ class MainActivity : ComponentActivity() {
               AppMode.Home -> HomeScreen(modifier = screenModifier, vm = vm, s = s)
               AppMode.Value -> ValueScreen(modifier = screenModifier, vm = vm, s = s)
               AppMode.Clocks -> ClocksScreen(modifier = screenModifier, vm = vm, s = s)
+              AppMode.Link -> dev.verso.limen.ui.LinkScreen(modifier = screenModifier, vm = vm, s = s)
             }
           }
         }

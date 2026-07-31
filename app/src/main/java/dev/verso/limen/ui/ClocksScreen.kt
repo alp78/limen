@@ -43,6 +43,16 @@ fun ClocksScreen(modifier: Modifier = Modifier, vm: LimenViewModel, s: Str) {
       Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
       verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
+      // The tenant's own clocks come first on a tenant's phone; the landlord's on theirs.
+      if (vm.myRole == dev.verso.limen.data.Role.Tenant) {
+        Panel(label = s.clockEntryTitle) {
+          Text(s.clockEntryBody, style = MaterialTheme.typography.bodyMedium, color = Limen.colors.ink)
+        }
+        Panel(label = s.clockDepositTitle) {
+          Text(s.clockDepositBody, style = MaterialTheme.typography.bodyMedium, color = Limen.colors.ink)
+        }
+      }
+
       Panel(label = s.clockExitTitle, info = s.tipClocks()) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
           Text(s.clockExitBody, style = MaterialTheme.typography.bodyMedium, color = Limen.colors.ink)
@@ -73,14 +83,18 @@ fun ClocksScreen(modifier: Modifier = Modifier, vm: LimenViewModel, s: Str) {
         }
       }
 
-      Panel(label = s.clockEntryTitle) {
-        Text(s.clockEntryBody, style = MaterialTheme.typography.bodyMedium, color = Limen.colors.ink)
+      if (vm.myRole != dev.verso.limen.data.Role.Tenant) {
+        Panel(label = s.clockEntryTitle) {
+          Text(s.clockEntryBody, style = MaterialTheme.typography.bodyMedium, color = Limen.colors.ink)
+        }
       }
       Panel(label = s.clockHiddenTitle) {
         Text(s.clockHiddenBody, style = MaterialTheme.typography.bodyMedium, color = Limen.colors.ink)
       }
-      Panel(label = s.clockDepositTitle) {
-        Text(s.clockDepositBody, style = MaterialTheme.typography.bodyMedium, color = Limen.colors.ink)
+      if (vm.myRole != dev.verso.limen.data.Role.Tenant) {
+        Panel(label = s.clockDepositTitle) {
+          Text(s.clockDepositBody, style = MaterialTheme.typography.bodyMedium, color = Limen.colors.ink)
+        }
       }
       Panel(label = s.clockReturnTitle) {
         Text(s.clockReturnBody, style = MaterialTheme.typography.bodyMedium, color = Limen.colors.ink)

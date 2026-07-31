@@ -32,6 +32,8 @@ import java.time.LocalDate
 private const val KEY_DARK = "darkTheme"
 private const val KEY_LANG = "lang"
 private const val KEY_OPEN = "openProtocol"
+private const val KEY_ROLE = "myRole"
+private const val KEY_NAME = "profileName"
 
 /**
  * Where the instrument is. [Home] is the case: the list of protocols and the way into a
@@ -40,7 +42,7 @@ private const val KEY_OPEN = "openProtocol"
  * it is closed, and it is restored after a process death, because the camera app kills
  * this process routinely mid-handover.
  */
-enum class AppMode { Home, Value, Clocks }
+enum class AppMode { Home, Value, Clocks, Link }
 
 /** The stepper's stations, in walking order. */
 enum class FlowStep { Setup, Rooms, Review, Sign, Export }
@@ -49,6 +51,48 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
 
   private val prefs = app.getSharedPreferences("limen", Context.MODE_PRIVATE)
   private val store = Store(app.filesDir)
+  private val ledger = dev.verso.limen.data.Ledger(app.filesDir)
+
+  // ── Who holds this phone ─────────────────────────────────────────────────────────────
+
+  /** The side of the threshold this install belongs to; null until the first-run answer. */
+  var myRole by mutableStateOf(
+    prefs.getString(KEY_ROLE, null)?.let { r -> runCatching { Role.valueOf(r) }.getOrNull() }
+  )
+    private set
+
+  var profileName by mutableStateOf(prefs.getString(KEY_NAME, "") ?: "")
+    private set
+
+  fun chooseRole(role: Role, name: String) {
+    myRole = role
+    profileName = name.trim()
+    prefs.edit().putString(KEY_ROLE, role.name).putString(KEY_NAME, profileName).apply()
+  }
+
+  fun updateProfileName(name: String) {
+    profileName = name
+    prefs.edit().putString(KEY_NAME, name).apply()
+  }
+
+  // ── The journal ──────────────────────────────────────────────────────────────────────
+
+  /** One signed, chained entry per discrete act; typing is captured by the next state hash. */
+  private fun log(kind: dev.verso.limen.data.EventKind, summary: String) {
+    val p = working
+    runCatching {
+      ledger.append(
+        dossierId = p?.id ?: "link",
+        kind = kind,
+        summary = summary,
+        stateHash = p?.let { dev.verso.limen.data.Seal.contentHash(it, null, null) } ?: "",
+        signer = dev.verso.limen.data.DeviceKey,
+        actorName = profileName,
+        actorRole = myRole ?: Role.Tenant,
+        epochMs = System.currentTimeMillis(),
+      )
+    }
+  }
 
   var darkTheme by mutableStateOf(prefs.getBoolean(KEY_DARK, false))
     private set
@@ -128,6 +172,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     flowStep = FlowStep.Setup
     roomIndex = 0
     prefs.edit().putString(KEY_OPEN, p.id).apply()
+    log(dev.verso.limen.data.EventKind.DossierOpened, kind.name)
   }
 
   /**
@@ -159,6 +204,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     flowStep = FlowStep.Setup
     roomIndex = 0
     prefs.edit().putString(KEY_OPEN, p.id).apply()
+    log(dev.verso.limen.data.EventKind.DossierOpened, "Exit · seed ${entry.id}")
   }
 
   fun openProtocol(id: String) {
@@ -171,6 +217,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
 
   fun deleteProtocol(id: String) {
     store.delete(id)
+    ledger.delete(id)
     protocols = store.list()
   }
 
@@ -232,6 +279,17 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
         })
       })
     }
+    val s = Str(lang)
+    val room = working?.rooms?.firstOrNull { it.id == roomId }
+    val item = room?.items?.getOrNull(index)
+    log(
+      dev.verso.limen.data.EventKind.GradeSet,
+      listOfNotNull(
+        room?.let { it.name.ifBlank { s.room(it.kind) } },
+        item?.let { s.item(it.key) },
+        item?.let { s.grade(it.grade) },
+      ).joinToString(" · "),
+    )
   }
 
   fun addRoom(kind: RoomKind, name: String = "") {
@@ -243,9 +301,11 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
       ))
     }
     roomIndex = (working?.rooms?.size ?: 1) - 1
+    log(dev.verso.limen.data.EventKind.RoomAdded, name.ifBlank { Str(lang).room(kind) })
   }
 
   fun removeRoom(roomId: String) {
+    val gone = working?.rooms?.firstOrNull { it.id == roomId }
     edit { p ->
       p.copy(
         rooms = p.rooms.filterNot { it.id == roomId },
@@ -253,6 +313,10 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
       )
     }
     roomIndex = roomIndex.coerceIn(0, ((working?.rooms?.size ?: 1) - 1).coerceAtLeast(0))
+    log(
+      dev.verso.limen.data.EventKind.RoomRemoved,
+      gone?.let { it.name.ifBlank { Str(lang).room(it.kind) } } ?: roomId,
+    )
   }
 
   // ── Defects ──────────────────────────────────────────────────────────────────────────
@@ -268,7 +332,16 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
   }
 
   fun updateDefect(id: String, transform: (Defect) -> Defect) {
+    val before = working?.defects?.firstOrNull { it.id == id }
     edit { p -> p.copy(defects = p.defects.map { if (it.id == id) transform(it) else it }) }
+    val after = working?.defects?.firstOrNull { it.id == id }
+    // The charge is the legally loaded bit of a defect: its flips are journaled by name.
+    if (before != null && after != null && before.chargedToTenant != after.chargedToTenant) {
+      log(
+        dev.verso.limen.data.EventKind.DefectCharged,
+        "${defectWhere(after)} · ${after.chargedToTenant}",
+      )
+    }
   }
 
   /** Closing the editor discards an empty shell rather than keeping a blank finding. */
@@ -277,17 +350,35 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     val d = working?.defects?.firstOrNull { it.id == id }
     if (d != null && d.text.isBlank() && d.photos.isEmpty()) {
       removeDefect(id)
+    } else if (d != null) {
+      log(
+        dev.verso.limen.data.EventKind.DefectAdded,
+        "${defectWhere(d)} · ${d.text.take(60)}",
+      )
     }
     editingDefectId = null
   }
 
   fun removeDefect(id: String) {
     val dir = photoDir()
-    working?.defects?.firstOrNull { it.id == id }?.photos?.forEach { name ->
+    val gone = working?.defects?.firstOrNull { it.id == id }
+    gone?.photos?.forEach { name ->
       if (dir != null) File(dir, name).delete()
     }
     edit { p -> p.copy(defects = p.defects.filterNot { it.id == id }) }
     if (editingDefectId == id) editingDefectId = null
+    if (gone != null && (gone.text.isNotBlank() || gone.photos.isNotEmpty())) {
+      log(dev.verso.limen.data.EventKind.DefectRemoved, defectWhere(gone))
+    }
+  }
+
+  private fun defectWhere(d: Defect): String {
+    val s = Str(lang)
+    val room = working?.rooms?.firstOrNull { it.id == d.roomId }
+    return listOfNotNull(
+      room?.let { it.name.ifBlank { s.room(it.kind) } },
+      d.item?.let { s.item(it) },
+    ).joinToString(" · ")
   }
 
   /** A photo the camera or picker delivered, moved from the cache into the protocol. */
@@ -298,11 +389,13 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     source.copyTo(File(dir, name), overwrite = true)
     source.delete()
     updateDefect(defectId) { it.copy(photos = it.photos + name) }
+    log(dev.verso.limen.data.EventKind.PhotoAdded, name)
   }
 
   fun removePhoto(defectId: String, name: String) {
     photoDir()?.let { File(it, name).delete() }
     updateDefect(defectId) { it.copy(photos = it.photos - name) }
+    log(dev.verso.limen.data.EventKind.PhotoRemoved, name)
   }
 
   // ── Signatures ───────────────────────────────────────────────────────────────────────
@@ -327,6 +420,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
           )
       )
     }
+    log(dev.verso.limen.data.EventKind.SignatureKept, "${Str(lang).role(role)} · ${plane.name}")
   }
 
   /** Refusal is an outcome the record keeps, not an error it recovers from. */
@@ -344,6 +438,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
           )
       )
     }
+    log(dev.verso.limen.data.EventKind.SignatureRefused, "${Str(lang).role(role)} · ${plane.name}")
   }
 
   fun clearSignature(role: Role, plane: dev.verso.limen.data.Plane) {
@@ -419,6 +514,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
           edit { q ->
             q.copy(exportedEpochMs = System.currentTimeMillis(), seal = seal, counterSeal = null)
           }
+          log(dev.verso.limen.data.EventKind.Exported, out.file.displayName)
         },
         onFailure = { exportError = true },
       )
@@ -461,6 +557,10 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
       if (attached != null) {
         edit { q -> q.copy(counterSeal = attached) }
         counterSealResult = true
+        log(
+          dev.verso.limen.data.EventKind.CounterSealed,
+          "${attached.name} · ${Str(lang).role(attached.role)}",
+        )
       } else {
         counterSealResult = false
       }
@@ -508,6 +608,129 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
 
   fun setDepositCompare(open: Boolean) {
     showDepositCompare = open
+  }
+
+  // ── The handshake ────────────────────────────────────────────────────────────────────
+
+  /** The sealed counterparty, or null while the linked features stay locked. */
+  var pair by mutableStateOf(dev.verso.limen.data.Pairing.load(app.filesDir))
+    private set
+
+  /** A received key card awaiting the spoken fingerprint check. */
+  var importedCard by mutableStateOf<dev.verso.limen.data.KeyCard?>(null)
+    private set
+
+  var importCardError by mutableStateOf(false)
+    private set
+
+  var keyCardFile by mutableStateOf<dev.verso.limen.data.ExportedFile?>(null)
+    private set
+
+  fun myKeyFingerprint(): String =
+    dev.verso.limen.data.Seal.keyFingerprint(dev.verso.limen.data.DeviceKey.publicKeyBase64)
+
+  fun jointFingerprint(): String? {
+    val other = importedCard?.publicKey ?: pair?.publicKey ?: return null
+    return dev.verso.limen.data.Pairing.jointFingerprint(
+      dev.verso.limen.data.DeviceKey.publicKeyBase64, other,
+    )
+  }
+
+  fun exportKeyCard() {
+    viewModelScope.launch {
+      keyCardFile = withContext(Dispatchers.IO) {
+        runCatching {
+          val card = dev.verso.limen.data.Pairing.makeCard(
+            dev.verso.limen.data.DeviceKey,
+            profileName,
+            myRole ?: Role.Tenant,
+            System.currentTimeMillis(),
+          )
+          dev.verso.limen.data.writeToDownloads(
+            getApplication(),
+            "limen-key-${dev.verso.limen.data.exportStamp()}.limenpair",
+            "application/json",
+          ) { it.write(dev.verso.limen.data.Pairing.encodeCard(card).toByteArray(Charsets.UTF_8)) }
+        }.getOrNull()
+      }
+    }
+  }
+
+  fun importKeyCard(uri: android.net.Uri) {
+    viewModelScope.launch {
+      val card = withContext(Dispatchers.IO) {
+        runCatching {
+          getApplication<Application>().contentResolver.openInputStream(uri)
+            ?.use { it.readBytes().toString(Charsets.UTF_8) }
+            ?.let { dev.verso.limen.data.Pairing.decodeCard(it) }
+        }.getOrNull()
+      }
+      importedCard = card
+      importCardError = card == null
+    }
+  }
+
+  /** Both people compared the joint fingerprint aloud; from here the link is sealed. */
+  fun sealPair() {
+    val card = importedCard ?: return
+    val record = dev.verso.limen.data.PairRecord(
+      name = card.name,
+      role = card.role,
+      publicKey = card.publicKey,
+      sealedEpochMs = System.currentTimeMillis(),
+    )
+    dev.verso.limen.data.Pairing.save(getApplication<Application>().filesDir, record)
+    pair = record
+    importedCard = null
+    log(
+      dev.verso.limen.data.EventKind.PairSealed,
+      "${card.name} · ${Str(lang).role(card.role)} · ${jointFingerprint().orEmpty()}",
+    )
+  }
+
+  fun unpair() {
+    dev.verso.limen.data.Pairing.clear(getApplication<Application>().filesDir)
+    pair = null
+    importedCard = null
+    log(dev.verso.limen.data.EventKind.ProtocolEdit, "link removed")
+  }
+
+  // ── The audit journal ────────────────────────────────────────────────────────────────
+
+  var auditFile by mutableStateOf<dev.verso.limen.data.ExportedFile?>(null)
+    private set
+
+  /** Every chain on this phone, printed and verified: the link's and each protocol's. */
+  fun exportAudit() {
+    val docLang = pdfLang ?: lang
+    viewModelScope.launch {
+      auditFile = withContext(Dispatchers.IO) {
+        runCatching {
+          val s = Str(docLang)
+          val chains = buildList {
+            val linkEvents = ledger.events("link")
+            if (linkEvents.isNotEmpty()) {
+              add(dev.verso.limen.data.AuditExport.Chain(s.linkTitle, linkEvents, ledger.verify("link")))
+            }
+            store.list().forEach { p ->
+              val events = ledger.events(p.id)
+              if (events.isNotEmpty()) {
+                val kind = if (p.kind == Kind.Entry) s.entry else s.exit
+                add(
+                  dev.verso.limen.data.AuditExport.Chain(
+                    "${p.address.ifBlank { p.id }} · $kind",
+                    events,
+                    ledger.verify(p.id),
+                  )
+                )
+              }
+            }
+          }
+          dev.verso.limen.data.AuditExport.export(getApplication(), s, chains)
+        }.getOrNull()
+      }
+      if (auditFile != null) log(dev.verso.limen.data.EventKind.AuditExported, auditFile!!.displayName)
+    }
   }
 
   // ── Controls ─────────────────────────────────────────────────────────────────────────

@@ -72,7 +72,9 @@ fun HomeScreen(modifier: Modifier = Modifier, vm: LimenViewModel = viewModel(), 
       Modifier.fillMaxWidth().padding(horizontal = 20.dp),
       verticalAlignment = Alignment.CenterVertically,
     ) {
-      // The other phone's half of the seal exchange lives one key away from the case.
+      // The linked dossier and the other phone's half of the seal exchange, one key away.
+      SmallKey(s.faceLink, Modifier.weight(0.6f)) { vm.selectMode(AppMode.Link) }
+      Spacer(Modifier.width(6.dp))
       SmallKey(s.counterSignKey, Modifier.weight(1f)) { vm.openCounterSign() }
       InfoTip(s.tipCounterSign())
     }

@@ -43,6 +43,8 @@ fun AppHeader(vm: LimenViewModel, s: Str) {
     ModePill(s.faceValue, vm.appMode == AppMode.Value) { vm.selectMode(AppMode.Value) }
     Spacer(Modifier.width(4.dp))
     ModePill(s.faceClocks, vm.appMode == AppMode.Clocks) { vm.selectMode(AppMode.Clocks) }
+    Spacer(Modifier.width(4.dp))
+    ModePill(s.faceLink, vm.appMode == AppMode.Link) { vm.selectMode(AppMode.Link) }
     Spacer(Modifier.weight(1f))
     ThemeToggle(vm.darkTheme, vm::toggleTheme)
   }

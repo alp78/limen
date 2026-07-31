@@ -1017,6 +1017,183 @@ class Str(val lang: Lang) {
     "Lieu, data e suttascripziun",
   )
 
+  // ── Role: which side of the threshold holds this phone ────────────────────────────────
+  val roleQuestion = pick(
+    "Who holds this phone?",
+    "Qui tient ce téléphone ?",
+    "Wer hält dieses Telefon?",
+    "Chi tiene questo telefono?",
+    "Tgi tegna quest telefon?",
+  )
+  val profileName = pick("Your name", "Votre nom", "Ihr Name", "Il vostro nome", "Voss num")
+  val yourSide = pick("Your side", "Votre côté", "Ihre Seite", "Il vostro lato", "Vossa vart")
+
+  fun tipRole() = Tip(
+    pick(
+      "The instrument adapts to your side of the threshold.",
+      "L'instrument s'adapte à votre côté du seuil.",
+      "Das Instrument passt sich Ihrer Seite der Schwelle an.",
+      "Lo strumento si adatta al vostro lato della soglia.",
+      "L'instrument s'adattescha a Vossa vart da la sava.",
+    ),
+    listOf(
+      pick(
+        "Your deadlines come first on the clocks face",
+        "Vos délais passent en premier sur les échéances",
+        "Ihre Fristen stehen zuerst auf dem Fristenblatt",
+        "I vostri termini vengono per primi sui termini",
+        "Voss termins vegnan l'emprim sin ils termins",
+      ),
+      pick(
+        "The one-phone handover walk stays the same for both",
+        "L'état des lieux à un seul téléphone reste identique pour les deux",
+        "Die Übergabe auf einem Telefon bleibt für beide gleich",
+        "La riconsegna su un solo telefono resta uguale per entrambi",
+        "La surdada sin in sulet telefon resta la medema per omadus",
+      ),
+      pick(
+        "Change side any time on the link face",
+        "Changez de côté à tout moment sur la face liaison",
+        "Die Seite lässt sich jederzeit auf der Verbindungsseite wechseln",
+        "Cambiate lato in ogni momento sulla faccia collegamento",
+        "Midai la vart da tut temp sin la fatschada da colliaziun",
+      ),
+    ),
+  )
+
+  // ── The link face: handshake, locked features, audit ──────────────────────────────────
+  val faceLink = pick("LINK", "LIAISON", "VERBINDUNG", "LEGAME", "COLLIAZIUN")
+  val linkTitle = pick("Linked dossier", "Dossier lié", "Verbundenes Dossier", "Dossier collegato", "Dossier collià")
+  val shareMyKey = pick("SHARE MY KEY CARD", "PARTAGER MA CARTE-CLÉ", "MEINE SCHLÜSSELKARTE TEILEN", "CONDIVIDI LA MIA CARTA-CHIAVE", "CUNDIVIDER MIA CARTA-CLAV")
+  val importTheirKey = pick("IMPORT THEIRS", "IMPORTER LA LEUR", "IHRE IMPORTIEREN", "IMPORTA LA LORO", "IMPORTAR LUR CARTA")
+  val jointFingerprintLabel = pick(
+    "Joint fingerprint",
+    "Empreinte commune",
+    "Gemeinsamer Fingerabdruck",
+    "Impronta comune",
+    "Impronta cuminaivla",
+  )
+  val sealPairKey = pick(
+    "SEAL THE LINK",
+    "SCELLER LE LIEN",
+    "VERBINDUNG SIEGELN",
+    "SIGILLA IL LEGAME",
+    "SIGILLAR LA COLLIAZIUN",
+  )
+  val fingerprintsMatchLead = pick(
+    "Same fingerprint on both screens? Compare it aloud.",
+    "Même empreinte sur les deux écrans ? Comparez-la à voix haute.",
+    "Gleicher Fingerabdruck auf beiden Bildschirmen? Laut vergleichen.",
+    "Stessa impronta su entrambi gli schermi? Confrontatela ad alta voce.",
+    "La medema impronta sin tuts dus visurs? Cumparegliai ad auta vusch.",
+  )
+  val linkedWith = pick("Linked with", "Lié avec", "Verbunden mit", "Collegato con", "Collià cun")
+  val unlink = pick("UNLINK", "DÉLIER", "TRENNEN", "SCOLLEGA", "STACCAR")
+  val lockedUntilPair = pick(
+    "Locked until the keys are exchanged",
+    "Verrouillé avant l'échange des clés",
+    "Gesperrt bis zum Schlüsseltausch",
+    "Bloccato fino allo scambio delle chiavi",
+    "Bloccà fin al barat da las clavs",
+  )
+  val notACard = pick(
+    "Not a valid key card",
+    "Carte-clé invalide",
+    "Keine gültige Schlüsselkarte",
+    "Carta-chiave non valida",
+    "Carta-clav nunvalaivla",
+  )
+  val featureDocuments = pick("Shared documents", "Documents partagés", "Geteilte Dokumente", "Documenti condivisi", "Documents cundivids")
+  val featureReceipts = pick("Signed receipts", "Accusés de réception signés", "Signierte Empfangsbestätigungen", "Ricevute firmate", "Quittanzas suttascrittas")
+  val featureShared = pick("Live shared dossier", "Dossier partagé en direct", "Live geteiltes Dossier", "Dossier condiviso dal vivo", "Dossier cundivis en direct")
+  val comingWithRelay = pick(
+    "Arrives with the relay",
+    "Arrive avec le relais",
+    "Kommt mit dem Relais",
+    "Arriva con il relay",
+    "Vegn cun il relay",
+  )
+
+  fun tipLink() = Tip(
+    pick(
+      "One dossier, two phones, every act signed.",
+      "Un dossier, deux téléphones, chaque acte signé.",
+      "Ein Dossier, zwei Telefone, jede Handlung signiert.",
+      "Un dossier, due telefoni, ogni atto firmato.",
+      "In dossier, dus telefons, mintga act suttascrit.",
+    ),
+    listOf(
+      pick(
+        "Exchange key cards at the handover, in the same room",
+        "Échangez les cartes-clés lors de la remise, dans la même pièce",
+        "Schlüsselkarten bei der Übergabe tauschen, im selben Raum",
+        "Scambiate le carte-chiave alla consegna, nella stessa stanza",
+        "Barattai las cartas-clav tar la surdada, en il medem local",
+      ),
+      pick(
+        "Compare the joint fingerprint aloud, then seal the link",
+        "Comparez l'empreinte commune à voix haute, puis scellez le lien",
+        "Den gemeinsamen Fingerabdruck laut vergleichen, dann die Verbindung siegeln",
+        "Confrontate l'impronta comune ad alta voce, poi sigillate il legame",
+        "Cumparegliai l'impronta cuminaivla a vusch auta, lura sigillai la colliaziun",
+      ),
+      pick(
+        "The linked features unlock only after that",
+        "Les fonctions liées ne se déverrouillent qu'après",
+        "Die verbundenen Funktionen öffnen sich erst danach",
+        "Le funzioni collegate si sbloccano solo dopo",
+        "Las funcziuns colliadas sa deblocheschan pir suenter",
+      ),
+      pick(
+        "Every act enters a signed journal neither side can rewrite",
+        "Chaque acte entre dans un journal signé qu'aucune partie ne peut réécrire",
+        "Jede Handlung steht in einem signierten Journal, das keine Seite umschreiben kann",
+        "Ogni atto entra in un giornale firmato che nessuna parte può riscrivere",
+        "Mintga act entra en in schurnal suttascrit che nagina vart na po rescriver",
+      ),
+    ),
+  )
+
+  // ── The audit journal ─────────────────────────────────────────────────────────────────
+  val auditJournal = pick("Audit journal", "Journal d'audit", "Prüfjournal", "Giornale di audit", "Schurnal d'audit")
+  val exportAudit = pick("EXPORT THE JOURNAL", "EXPORTER LE JOURNAL", "JOURNAL EXPORTIEREN", "ESPORTA IL GIORNALE", "EXPORTAR IL SCHURNAL")
+  val chainOk = pick("Chain verified", "Chaîne vérifiée", "Kette geprüft", "Catena verificata", "Chadaina verifitgada")
+  val chainBrokenAt = pick("Chain broken at entry", "Chaîne rompue à l'entrée", "Kette gebrochen bei Eintrag", "Catena rotta alla voce", "Chadaina rutta tar l'endataziun")
+  val entries = pick("entries", "entrées", "Einträge", "voci", "endataziuns")
+
+  fun tipAudit() = Tip(
+    pick(
+      "The journal is the storage, not a report about it.",
+      "Le journal est le stockage lui-même, pas un rapport à son sujet.",
+      "Das Journal ist der Speicher selbst, kein Bericht darüber.",
+      "Il giornale è l'archivio stesso, non un rapporto su di esso.",
+      "Il schurnal è l'archiv sez, betg in rapport davart el.",
+    ),
+    listOf(
+      pick(
+        "Every discrete act is one signed, chained entry",
+        "Chaque acte distinct est une entrée signée et chaînée",
+        "Jede einzelne Handlung ist ein signierter, verketteter Eintrag",
+        "Ogni atto distinto è una voce firmata e concatenata",
+        "Mintga act è ina endataziun suttascritta ed enchadanada",
+      ),
+      pick(
+        "Each entry countersigns all history before it, both sides included",
+        "Chaque entrée contresigne toute l'histoire qui la précède, deux côtés compris",
+        "Jeder Eintrag gegenzeichnet die ganze Geschichte davor, beide Seiten inbegriffen",
+        "Ogni voce controfirma tutta la storia precedente, entrambe le parti incluse",
+        "Mintga endataziun cuntrasuttascriva tut l'istorgia avant, omaduas varts incluses",
+      ),
+      pick(
+        "Rewriting the past breaks a signature the rewriter does not own",
+        "Réécrire le passé brise une signature que le falsificateur ne possède pas",
+        "Wer die Vergangenheit umschreibt, bricht eine fremde Signatur",
+        "Riscrivere il passato rompe una firma che il falsario non possiede",
+        "Tgi che rescriva il passà rumpa ina suttascripziun ch'el na posseda betg",
+      ),
+    ),
+  )
+
   val notAdvice = pick(
     "Practice values with their sources; not legal advice. In a dispute, the conciliation authority is free of charge everywhere in Switzerland.",
     "Valeurs de pratique avec leurs sources ; pas un conseil juridique. En cas de litige, l'autorité de conciliation est gratuite dans toute la Suisse.",
