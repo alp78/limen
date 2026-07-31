@@ -36,6 +36,12 @@ private const val KEY_ROLE = "myRole"
 private const val KEY_NAME = "profileName"
 
 /**
+ * How long the draft waits before it reaches the disk. Long enough that a burst of typing
+ * writes once, short enough that it is over before a thumb reaches the next control.
+ */
+private const val SAVE_DELAY_MS = 400L
+
+/**
  * Where the instrument is. [Home] is the case: the list of protocols and the way into a
  * new one. [Value] is the Zeitwert calculator, [Clocks] the legal deadlines. The protocol
  * flow is not a face: it opens over whatever face is current and owns the screen until
@@ -47,6 +53,12 @@ enum class AppMode { Home, Value, Clocks }
 /** The stepper's stations, in walking order. */
 enum class FlowStep { Setup, Rooms, Review, Sign, Export }
 
+/**
+ * Marked stable because every piece of state it publishes is Compose state: a reader is
+ * always notified of a change, so a composable that captures this may be skipped when
+ * nothing it reads has moved. Anything added here must keep that promise.
+ */
+@androidx.compose.runtime.Stable
 class LimenViewModel(app: Application) : AndroidViewModel(app) {
 
   private val prefs = app.getSharedPreferences("limen", Context.MODE_PRIVATE)
@@ -128,15 +140,50 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
   fun photoDir(): File? = working?.let { store.photoDir(it.id) }
   fun signatureDir(): File? = working?.let { store.signatureDir(it.id) }
 
-  /** Every edit funnels through here: state and disk stay one thing. */
+  /**
+   * Every edit funnels through here. The draft in the hand changes at once; the draft on
+   * disk follows a moment later, off this thread. Writing it inline made every keystroke
+   * and every graded item wait on serializing the whole protocol and replacing a file,
+   * which is what a slow key feels like. Nothing is risked: [flush] runs on every edge
+   * that can end the process or read the file back.
+   */
   fun edit(transform: (Protocol) -> Protocol) {
     val p = working ?: return
-    val next = transform(p)
-    working = next
-    store.save(next)
+    working = transform(p)
+    scheduleSave()
+  }
+
+  private var saveJob: kotlinx.coroutines.Job? = null
+
+  private fun scheduleSave() {
+    saveJob?.cancel()
+    saveJob = viewModelScope.launch {
+      kotlinx.coroutines.delay(SAVE_DELAY_MS)
+      val p = working ?: return@launch
+      withContext(Dispatchers.IO) { store.save(p) }
+    }
+  }
+
+  /**
+   * The draft on disk, now. Called when the app leaves the foreground, when the flow
+   * closes and before any protocol is read back, so the debounce above can never be the
+   * reason a keystroke was lost. It writes on the calling thread on purpose: these are
+   * lifecycle edges, not typing.
+   */
+  fun flush() {
+    saveJob?.cancel()
+    saveJob = null
+    val p = working ?: return
+    runCatching { store.save(p) }
+  }
+
+  override fun onCleared() {
+    flush()
+    super.onCleared()
   }
 
   fun createProtocol(kind: Kind) {
+    flush()
     val now = System.currentTimeMillis()
     val rooms = Templates.defaultRooms.mapIndexed { i, rk ->
       Room(id = "r$i", kind = rk, items = Templates.itemsFor(rk).map { RoomItem(it) })
@@ -172,6 +219,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
    * do not, because the walk is about to find out.
    */
   fun seedExitFrom(entry: Protocol) {
+    flush()
     val now = System.currentTimeMillis()
     val p = entry.copy(
       id = "p$now",
@@ -198,6 +246,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
   }
 
   fun openProtocol(id: String) {
+    flush()
     val p = store.load(id) ?: return
     working = p
     flowStep = if (p.isSigned() || p.isExported()) FlowStep.Export else FlowStep.Setup
@@ -211,6 +260,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
   }
 
   fun closeFlow() {
+    flush()
     working = null
     editingDefectId = null
     exported = null
@@ -308,12 +358,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
   }
 
   fun updateDefect(id: String, transform: (Defect) -> Defect) {
-    val before = working?.defects?.firstOrNull { it.id == id }
     edit { p -> p.copy(defects = p.defects.map { if (it.id == id) transform(it) else it }) }
-    val after = working?.defects?.firstOrNull { it.id == id }
-    // The charge is the legally loaded bit of a defect: its flips are journaled by name.
-    if (before != null && after != null && before.chargedToTenant != after.chargedToTenant) {
-    }
   }
 
   /** Closing the editor discards an empty shell rather than keeping a blank finding. */

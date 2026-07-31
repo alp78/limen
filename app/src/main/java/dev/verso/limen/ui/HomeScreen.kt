@@ -40,7 +40,7 @@ import dev.verso.limen.theme.Limen
  * The first thing a lost user reads is the four steps, at full body size.
  */
 @Composable
-fun HomeScreen(modifier: Modifier = Modifier, vm: LimenViewModel = viewModel(), s: Str = Str(vm.lang)) {
+fun HomeScreen(modifier: Modifier = Modifier, vm: LimenViewModel = viewModel(), s: Str) {
   var showProfile by remember { mutableStateOf(false) }
 
   Box(modifier.fillMaxSize()) {

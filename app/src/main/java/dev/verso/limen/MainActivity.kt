@@ -11,10 +11,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.verso.limen.theme.LimenTheme
 import dev.verso.limen.ui.AppMode
@@ -32,6 +36,19 @@ class MainActivity : ComponentActivity() {
     enableEdgeToEdge()
     setContent {
       val vm: LimenViewModel = viewModel()
+
+      // The draft reaches the disk whenever this window stops: the camera app kills this
+      // process routinely mid-handover, and the debounced write must never be what a
+      // handover loses. Everything else it protects, a phone call, a swipe away, a flat
+      // battery, arrives through the same edge.
+      val lifecycleOwner = LocalLifecycleOwner.current
+      DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+          if (event == Lifecycle.Event.ON_STOP) vm.flush()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+      }
 
       // The system bars follow the in-app switch rather than the system setting, otherwise
       // the status icons go invisible the moment the plaster inverts.

@@ -29,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -46,6 +47,8 @@ import dev.verso.limen.data.FixBy
 import dev.verso.limen.data.ItemKey
 import dev.verso.limen.data.Protocol
 import dev.verso.limen.theme.Limen
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
@@ -211,21 +214,26 @@ private fun captureDir(context: android.content.Context): File =
 private fun PhotoThumb(vm: LimenViewModel, defectId: String, name: String) {
   val dir = vm.photoDir() ?: return
   val file = File(dir, name)
-  val bitmap = remember(file.absolutePath, file.length()) {
-    if (!file.exists()) null
-    else {
-      val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-      BitmapFactory.decodeFile(file.absolutePath, bounds)
-      val sample = (maxOf(bounds.outWidth, bounds.outHeight) / 320).coerceAtLeast(1)
-      BitmapFactory.decodeFile(
-        file.absolutePath,
-        BitmapFactory.Options().apply { inSampleSize = sample },
-      )
-    }
-  } ?: return
+  // Decoded off this thread. Done inside the composition, as it was, opening a defect that
+  // already carried three photos stalled the frame for as long as three JPEGs take, which
+  // is the editor feeling heavy exactly when a hand is holding the phone up to a wall.
+  val bitmap by produceState<android.graphics.Bitmap?>(null, file.absolutePath, file.length()) {
+    value = withContext(Dispatchers.IO) { decodeThumb(file) }
+  }
+  val shown = bitmap
+  if (shown == null) {
+    // The same square, empty, so nothing jumps when the picture arrives.
+    Box(
+      Modifier
+        .size(84.dp)
+        .clip(RoundedCornerShape(8.dp))
+        .border(1.dp, Limen.colors.plateEdge, RoundedCornerShape(8.dp)),
+    )
+    return
+  }
   Box {
     Image(
-      bitmap = bitmap.asImageBitmap(),
+      bitmap = shown.asImageBitmap(),
       contentDescription = name,
       contentScale = ContentScale.Crop,
       modifier = Modifier
@@ -247,4 +255,17 @@ private fun PhotoThumb(vm: LimenViewModel, defectId: String, name: String) {
         .padding(horizontal = 7.dp, vertical = 1.dp),
     )
   }
+}
+
+/** The thumbnail read: bounds first, then a sample big enough for an 84 dp square. */
+private fun decodeThumb(file: File): android.graphics.Bitmap? {
+  if (!file.exists()) return null
+  val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+  BitmapFactory.decodeFile(file.absolutePath, bounds)
+  if (bounds.outWidth <= 0) return null
+  val sample = (maxOf(bounds.outWidth, bounds.outHeight) / 320).coerceAtLeast(1)
+  return BitmapFactory.decodeFile(
+    file.absolutePath,
+    BitmapFactory.Options().apply { inSampleSize = sample },
+  )
 }

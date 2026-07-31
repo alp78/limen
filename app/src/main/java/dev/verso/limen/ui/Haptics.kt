@@ -15,10 +15,14 @@ import androidx.compose.ui.platform.LocalView
  * something: a signature kept, a document written. [Reject] marks a refusal or a
  * deletion, so a destructive tap never feels the same as an ordinary one.
  *
- * The phone's own touch-feedback setting governs all of it, and nothing here talks around
- * it: the window asks the system to play a feedback, the system decides. That also keeps
- * the manifest's promise, since asking this way needs no VIBRATE permission, while driving
- * the vibrator directly would.
+ * This asks the window to play a feedback rather than driving the vibrator, and that is
+ * not merely the polite choice, it is the only one that buys anything. Measured against
+ * the vibrator service on 2026-07-31: with the phone's touch feedback switched off, a
+ * prebaked CLICK sent straight to the vibrator, a 24 ms one-shot carrying an explicit
+ * USAGE_UNKNOWN, and even a 220 ms buzz were each reclassified to touch usage and dropped
+ * with "ignored_for_settings". An app cannot vibrate on a tap against that switch, so the
+ * VIBRATE permission would cost the manifest's promise and return nothing. When the keys
+ * feel dead, that setting is off, and it is the phone's answer to give.
  */
 enum class Tick { Key, Confirm, Reject }
 

@@ -218,13 +218,17 @@ fun KeySurface(
   val play = rememberTick()
   val interaction = remember { MutableInteractionSource() }
   val pressed by interaction.collectIsPressedAsState()
+  // Stiff and barely bouncy on purpose. The earlier spring took about a third of a second
+  // to settle, and a key still moving when the screen has already changed reads as the app
+  // being slow to answer rather than as the key being springy.
   val scale by animateFloatAsState(
     targetValue = if (pressed) 0.955f else 1f,
-    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+    animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
     label = "keyScale",
   )
   val lift by animateDpAsState(
     targetValue = if (pressed) 0.dp else 2.dp,
+    animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessHigh),
     label = "keyLift",
   )
   val corner = 12f

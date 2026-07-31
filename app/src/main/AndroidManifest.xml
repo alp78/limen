@@ -4,7 +4,12 @@
     <!-- No permissions at all, and above all no INTERNET: a protocol documents the inside
          of someone's home, and "it never leaves the phone" stays provable from this
          manifest. The photos come from the SYSTEM camera app through the provider grant
-         below, so not even the camera permission is needed. -->
+         below, so not even the camera permission is needed.
+
+         Not even VIBRATE: the keys are felt through the window's own haptic feedback,
+         which needs no permission. Holding VIBRATE was tried and measured on 2026-07-31
+         and bought nothing, because the system drops any tap-length vibration from any API
+         while the phone's touch feedback switch is off. -->
 
     <application
         android:allowBackup="false"

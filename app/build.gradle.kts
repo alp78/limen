@@ -7,7 +7,29 @@ plugins {
   alias(libs.plugins.kotlin.serialization)
 }
 
-val buildStamp: String = SimpleDateFormat("yyyyMMdd-HHmm").format(Date())
+/**
+ * The stamp the debug APK wears, so a phone can say which build it runs. It is the newest
+ * moment in the source tree, NOT the clock: read from the clock through a plain call it
+ * would be frozen by the configuration cache and could even go backwards, which is worse
+ * than no stamp because it lies. A ValueSource is re-read on every build, and keying it to
+ * the sources means the stamp moves exactly when the code does.
+ */
+abstract class SourceStamp : ValueSource<String, SourceStamp.Params> {
+  interface Params : ValueSourceParameters {
+    val dir: DirectoryProperty
+  }
+
+  override fun obtain(): String {
+    val newest = parameters.dir.get().asFile.walkTopDown()
+      .filter { it.isFile }
+      .maxOfOrNull { it.lastModified() } ?: 0L
+    return SimpleDateFormat("yyyyMMdd-HHmm").format(Date(newest))
+  }
+}
+
+val buildStamp: String = providers.of(SourceStamp::class.java) {
+  parameters.dir.set(layout.projectDirectory.dir("src"))
+}.get()
 
 android {
     namespace = "dev.verso.limen"

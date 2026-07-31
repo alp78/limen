@@ -394,39 +394,20 @@ private fun RoomsStep(vm: LimenViewModel, s: Str, p: Protocol) {
         }
       }
 
+      // The rows that carry a defect, counted once. Asked per row it was a scan of every
+      // finding for every line, on every recomposition of the walk.
+      val flagged = remember(p.defects, room.id) {
+        p.defects.filter { it.roomId == room.id }.mapNotNull { it.item }.toSet()
+      }
       room.items.forEachIndexed { i, item ->
-        val hasDefect = p.defects.any { it.roomId == room.id && it.item == item.key }
-        Row(
-          Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(Limen.colors.plateRaised)
-            .border(1.dp, Limen.colors.plateEdge, RoundedCornerShape(8.dp))
-            .padding(horizontal = 10.dp, vertical = 6.dp),
-          verticalAlignment = Alignment.CenterVertically,
-        ) {
-          Text(
-            if (item.key == ItemKey.Custom && item.label.isNotBlank()) item.label else s.item(item.key),
-            style = MaterialTheme.typography.bodyMedium,
-            color = Limen.colors.ink,
-            modifier = Modifier.weight(1f),
-          )
-          if (hasDefect) {
-            Text(
-              "!",
-              fontFamily = FontFamily.Monospace,
-              fontSize = 15.sp,
-              color = Limen.colors.ink,
-              modifier = Modifier.padding(end = 8.dp),
-            )
-          }
-          // The state chip: one tap ticks or walks the grade ladder.
-          val g = item.grade
-          Chip(s.gradeShort(g), active = g != Grade.NotChecked) { vm.cycleGrade(room.id, i) }
-          Spacer(Modifier.width(6.dp))
-          // The defect affordance, on every row, because a defect is a first-class record.
-          Chip("+") { vm.openDefect(room.id, item.key) }
-        }
+        ItemRow(
+          label = if (item.key == ItemKey.Custom && item.label.isNotBlank()) item.label else s.item(item.key),
+          state = s.gradeShort(item.grade),
+          graded = item.grade != Grade.NotChecked,
+          flagged = item.key in flagged,
+          onGrade = { vm.cycleGrade(room.id, i) },
+          onDefect = { vm.openDefect(room.id, item.key) },
+        )
       }
 
       // The room's own findings, under its rows.
@@ -463,6 +444,53 @@ private fun RoomsStep(vm: LimenViewModel, s: Str, p: Protocol) {
       }
       Spacer(Modifier.height(12.dp))
     }
+  }
+}
+
+/**
+ * One line of the walk. It takes plain values rather than the item itself, so that grading
+ * one line leaves the other nineteen untouched: Compose can skip a row whose arguments did
+ * not move, and on a room of thirty positions that is the difference between redrawing one
+ * and redrawing all of them.
+ */
+@Composable
+private fun ItemRow(
+  label: String,
+  state: String,
+  graded: Boolean,
+  flagged: Boolean,
+  onGrade: () -> Unit,
+  onDefect: () -> Unit,
+) {
+  Row(
+    Modifier
+      .fillMaxWidth()
+      .clip(RoundedCornerShape(8.dp))
+      .background(Limen.colors.plateRaised)
+      .border(1.dp, Limen.colors.plateEdge, RoundedCornerShape(8.dp))
+      .padding(horizontal = 10.dp, vertical = 6.dp),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    Text(
+      label,
+      style = MaterialTheme.typography.bodyMedium,
+      color = Limen.colors.ink,
+      modifier = Modifier.weight(1f),
+    )
+    if (flagged) {
+      Text(
+        "!",
+        fontFamily = FontFamily.Monospace,
+        fontSize = 15.sp,
+        color = Limen.colors.ink,
+        modifier = Modifier.padding(end = 8.dp),
+      )
+    }
+    // The state chip: one tap ticks or walks the grade ladder.
+    Chip(state, active = graded, onPress = onGrade)
+    Spacer(Modifier.width(6.dp))
+    // The defect affordance, on every row, because a defect is a first-class record.
+    Chip("+", onPress = onDefect)
   }
 }
 

@@ -19,7 +19,6 @@ class Store(private val root: File) {
     // than refusing the user their own protocol.
     ignoreUnknownKeys = true
     encodeDefaults = false
-    prettyPrint = true
   }
 
   private val dir = File(root, "protocols").apply { mkdirs() }
