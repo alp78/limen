@@ -32,7 +32,7 @@ class StringsTest {
     val sample = buildString {
       RoomKind.entries.forEach { append(s.room(it)) }
       ItemKey.entries.forEach { append(s.item(it)) }
-      append(s.emptyCase).append(s.infoCharged).append(s.infoOneSided).append(s.chipNoDebt)
+      append(s.emptyCase).append(s.infoCharged).append(s.infoOneSided).append(s.tipOneSided())
     }
     assertTrue(!sample.contains('ß'))
   }

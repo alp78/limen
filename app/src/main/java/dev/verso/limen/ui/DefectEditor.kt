@@ -189,11 +189,6 @@ fun DefectEditor(vm: LimenViewModel, s: Str, p: Protocol, defectId: String) {
           Field(s.reservationLabel, d.reservation) { v ->
             vm.updateDefect(defectId) { it.copy(reservation = v) }
           }
-          Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-            listOf(s.chipContested, s.chipAlreadyAtEntry, s.chipEstimate).forEach { chip ->
-              Chip(chip) { vm.updateDefect(defectId) { it.copy(reservation = chip) } }
-            }
-          }
         }
       }
 

@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -25,6 +26,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
@@ -38,6 +40,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import dev.verso.limen.theme.Limen
 
 /**
@@ -63,10 +67,38 @@ fun SignPadOverlay(
   var live by remember { mutableStateOf<List<Offset>>(emptyList()) }
   var padSize by remember { mutableStateOf(IntSize.Zero) }
 
-  Box(Modifier.fillMaxSize().background(Limen.colors.plate.copy(alpha = 0.97f))) {
+  // A DIALOG, NOT A BOX IN THE PAGE. This used to be an overlay inside the sign step, which meant
+  // it inherited the step's content box: the masthead, the step bar and the screen's own insets
+  // were already spent before the pad got a say. In portrait that leaves enough and it never
+  // showed. In landscape the step box is about 500px tall on a 1080px screen, so the pad came out
+  // at roughly 190 by 90 and could not be signed on.
+  //
+  // Asking for the whole window is also the honest description of what this is. Signing is modal:
+  // nothing behind it can be touched while it is up, and back means cancel.
+  Dialog(
+    onDismissRequest = onCancel,
+    properties = DialogProperties(
+      usePlatformDefaultWidth = false,
+      dismissOnClickOutside = false,
+      // Edge to edge, so the pad's own ground runs under the bars instead of the dialog leaving
+      // a grey scrim there. The content keeps clear of them with safeDrawingPadding below.
+      decorFitsSystemWindows = false,
+    ),
+  ) {
+  Box(Modifier.fillMaxSize().background(Limen.colors.plate)) {
+    // THE PAD MUST NOT DICTATE THE HEIGHT. It used to be fillMaxWidth().aspectRatio(2.1f) inside a
+    // centred column, which is fine in portrait and unusable in landscape: at that width the pad
+    // alone wants more height than the window has, and centring an overflowing column splits the
+    // overflow between the two ends. The title went off the top and Clear, Cancel and Keep went
+    // off the bottom, with no way to reach them, because the one thing this screen cannot do is
+    // scroll: a vertical drag here is a signature stroke.
+    //
+    // So the header and the keys take what they need and the pad takes what is left. A bare
+    // aspectRatio inside a bounded box resolves to the largest 2.1:1 rectangle that fits, by width
+    // in portrait and by height in landscape, which is why the ratio survives both without a
+    // second layout to keep in step with this one.
     Column(
-      Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 16.dp),
-      verticalArrangement = Arrangement.Center,
+      Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp, vertical = 16.dp),
     ) {
       Text(title, style = MaterialTheme.typography.titleMedium, color = Limen.colors.ink)
       Spacer(Modifier.height(8.dp))
@@ -74,47 +106,44 @@ fun SignPadOverlay(
       Text(meaning, style = MaterialTheme.typography.bodyMedium, color = Limen.colors.ink)
       Spacer(Modifier.height(14.dp))
 
-      Box(
-        Modifier
-          .fillMaxWidth()
-          .aspectRatio(2.1f)
-          .clip(RoundedCornerShape(12.dp))
-          .background(Color.White)
-          .border(1.dp, Limen.colors.plateEdge, RoundedCornerShape(12.dp))
-          .pointerInput(Unit) {
-            detectDragGestures(
-              onDragStart = { start -> live = listOf(start) },
-              onDrag = { change, _ ->
-                change.consume()
-                live = live + change.position
-              },
-              onDragEnd = {
-                if (live.isNotEmpty()) strokes.add(InkStroke(live, INK_WIDTH))
-                live = emptyList()
-              },
-              onDragCancel = { live = emptyList() },
-            )
-          }
-          .pointerInput(Unit) {
-            // Dots: a tap never registers as a drag, and initials have dots.
-            detectTapGestures { p -> strokes.add(InkStroke(listOf(p), INK_WIDTH)) }
-          },
-      ) {
-        Canvas(
+      Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+        Box(
           Modifier
-            .fillMaxSize()
-            .padding(0.dp)
+            .aspectRatio(2.1f)
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color.White)
+            .border(1.dp, Limen.colors.plateEdge, RoundedCornerShape(12.dp))
+            .pointerInput(Unit) {
+              detectDragGestures(
+                onDragStart = { start -> live = listOf(start) },
+                onDrag = { change, _ ->
+                  change.consume()
+                  live = live + change.position
+                },
+                onDragEnd = {
+                  if (live.isNotEmpty()) strokes.add(InkStroke(live, INK_WIDTH))
+                  live = emptyList()
+                },
+                onDragCancel = { live = emptyList() },
+              )
+            }
+            .pointerInput(Unit) {
+              // Dots: a tap never registers as a drag, and initials have dots.
+              detectTapGestures { p -> strokes.add(InkStroke(listOf(p), INK_WIDTH)) }
+            },
         ) {
-          padSize = IntSize(size.width.toInt(), size.height.toInt())
-          // The baseline the hand expects on paper.
-          drawLine(
-            Color(0xFFD9D9D9),
-            Offset(size.width * 0.07f, size.height * 0.72f),
-            Offset(size.width * 0.93f, size.height * 0.72f),
-            strokeWidth = 2f,
-          )
-          strokes.forEach { drawInk(it) }
-          if (live.isNotEmpty()) drawInk(InkStroke(live, INK_WIDTH))
+          Canvas(Modifier.fillMaxSize()) {
+            padSize = IntSize(size.width.toInt(), size.height.toInt())
+            // The baseline the hand expects on paper.
+            drawLine(
+              Color(0xFFD9D9D9),
+              Offset(size.width * 0.07f, size.height * 0.72f),
+              Offset(size.width * 0.93f, size.height * 0.72f),
+              strokeWidth = 2f,
+            )
+            strokes.forEach { drawInk(it) }
+            if (live.isNotEmpty()) drawInk(InkStroke(live, INK_WIDTH))
+          }
         }
       }
 
@@ -133,6 +162,7 @@ fun SignPadOverlay(
         }
       }
     }
+  }
   }
 }
 

@@ -577,18 +577,7 @@ private fun ReviewStep(vm: LimenViewModel, s: Str, p: Protocol) {
     }
 
     Panel(label = s.remarks) {
-      Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Field(s.remarks, p.remarks, singleLine = false) { v -> vm.edit { it.copy(remarks = v) } }
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-          listOf(s.chipNoDebt, s.chipContested, s.chipAlreadyAtEntry, s.chipEstimate).forEach { chip ->
-            Chip(chip) {
-              vm.edit {
-                it.copy(remarks = if (it.remarks.isBlank()) chip else it.remarks + "\n" + chip)
-              }
-            }
-          }
-        }
-      }
+      Field(s.remarks, p.remarks, singleLine = false) { v -> vm.edit { it.copy(remarks = v) } }
     }
 
     Panel(label = s.chargesBy) {

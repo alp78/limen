@@ -345,29 +345,6 @@ class Str(val lang: Lang) {
     "Nagin da l'autra vart: documentai tut cun fotos datadas, laschai suttascriver il protocol d'ina perditga neutrala e trametti las clavs cun brev recumandada.",
   )
 
-  // Reservation chips, per language, in each language's own legal formula.
-  val chipNoDebt = pick(
-    "Signature is not an acknowledgment of debt",
-    "Ne vaut pas reconnaissance de dette",
-    "Gilt nicht als Schuldanerkennung",
-    "Non vale riconoscimento di debito",
-    "Na vala betg sco renconuschientscha da debit",
-  )
-  val chipContested = pick("Contested", "Contesté", "Bestritten", "Contestato", "Contestà")
-  val chipAlreadyAtEntry = pick(
-    "Already in this state at entry",
-    "Déjà dans cet état à l'entrée",
-    "Bereits beim Einzug in diesem Zustand",
-    "Già in questo stato alla consegna",
-    "Gia en quest stadi tar l'entrada",
-  )
-  val chipEstimate = pick(
-    "Subject to a cost estimate",
-    "Sous réserve d'un devis",
-    "Vorbehalt eines Kostenvoranschlags",
-    "Con riserva di un preventivo",
-    "Cun resalva d'in preventiv",
-  )
 
   // The case's cards and the flow's frame.
   val exitFromThis = pick("EXIT FROM THIS", "SORTIE DEPUIS CELUI-CI", "AUSZUG DARAUS", "RICONSEGNA DA QUESTO", "SORTIDA DA QUEST")
