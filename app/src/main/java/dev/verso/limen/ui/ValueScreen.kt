@@ -49,6 +49,7 @@ fun ValueScreen(modifier: Modifier = Modifier, vm: LimenViewModel, s: Str) {
   var age by rememberSaveable { mutableStateOf("") }
   var cost by rememberSaveable { mutableStateOf("") }
   var showTable by rememberSaveable { mutableStateOf(false) }
+  val play = rememberTick()
 
   Column(modifier.fillMaxSize().padding(horizontal = 20.dp)) {
     AppHeader(vm, s)
@@ -68,7 +69,10 @@ fun ValueScreen(modifier: Modifier = Modifier, vm: LimenViewModel, s: Str) {
               .clip(RoundedCornerShape(8.dp))
               .background(Limen.colors.plate)
               .border(1.dp, Limen.colors.plateEdge, RoundedCornerShape(8.dp))
-              .clickable { showTable = !showTable }
+              .clickable {
+                play(Tick.Key)
+                showTable = !showTable
+              }
               .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
           ) {
@@ -81,6 +85,7 @@ fun ValueScreen(modifier: Modifier = Modifier, vm: LimenViewModel, s: Str) {
             Text(if (showTable) "▴" else "▾", color = Limen.colors.inkDim)
           }
           if (showTable) {
+            Revealed(showTable) {
             LazyColumn(Modifier.fillMaxWidth().height(300.dp)) {
               items(Lifespans.table) { row ->
                 Row(
@@ -108,6 +113,7 @@ fun ValueScreen(modifier: Modifier = Modifier, vm: LimenViewModel, s: Str) {
                   )
                 }
               }
+            }
             }
           }
           Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

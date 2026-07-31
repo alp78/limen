@@ -235,7 +235,7 @@ private fun ProtocolCard(vm: LimenViewModel, s: Str, p: Protocol) {
         Chip(s.exitFromThis, dim = false) { vm.seedExitFrom(p) }
       }
       Spacer(Modifier.weight(1f))
-      Chip(if (armed) s.sure else s.delete) {
+      Chip(if (armed) s.sure else s.delete, tick = if (armed) Tick.Reject else Tick.Key) {
         if (armed) vm.deleteProtocol(p.id) else armed = true
       }
     }

@@ -1,9 +1,12 @@
 package dev.verso.limen.ui
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -31,6 +34,7 @@ import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -71,6 +75,7 @@ data class Tip(val lead: String, val bullets: List<String> = emptyList())
 fun InfoTip(tip: Tip, target: androidx.compose.ui.unit.Dp = 40.dp) {
   val state = rememberTooltipState(isPersistent = true)
   val scope = rememberCoroutineScope()
+  val play = rememberTick()
   val tint = Limen.colors.inkDim
   val text = tip.lead
   TooltipBox(
@@ -102,7 +107,10 @@ fun InfoTip(tip: Tip, target: androidx.compose.ui.unit.Dp = 40.dp) {
       Modifier
         .size(target)
         .clip(CircleShape)
-        .clickable { scope.launch { state.show() } }
+        .clickable {
+          play(Tick.Key)
+          scope.launch { state.show() }
+        }
         .semantics { contentDescription = text },
       contentAlignment = Alignment.Center,
     ) {
@@ -120,6 +128,53 @@ fun InfoTip(tip: Tip, target: androidx.compose.ui.unit.Dp = 40.dp) {
         )
       }
     }
+  }
+}
+
+/**
+ * What a key just opened. When a control reveals fields, the fields wash once with a
+ * neutral highlight and a marker runs down their left edge, then both settle: the eye
+ * follows the change to where it landed instead of hunting for what moved.
+ *
+ * Deliberately ONE treatment rather than a colour per option. In this instrument colour
+ * is a statement, and the green means signed; painting the bank fields blue and the
+ * insurance fields amber would say those states differ in kind, which they do not. The
+ * highlight says "this is new", the label says what it is, and the pill above stays lit
+ * to say which choice put it there.
+ *
+ * [key] is what the reveal depends on: pass the chosen value, and every change of it
+ * plays the wash again.
+ */
+@Composable
+fun Revealed(key: Any?, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+  // First composition included: a field that appears with the screen is new to that eye too.
+  val progress = remember(key) { Animatable(1f) }
+  LaunchedEffect(key) {
+    progress.animateTo(0f, animationSpec = tween(durationMillis = 700, easing = LinearOutSlowInEasing))
+  }
+  val wash = Limen.colors.ink.copy(alpha = 0.09f * progress.value)
+  val edge = Limen.colors.ink.copy(alpha = 0.55f * progress.value)
+  Box(
+    modifier
+      .fillMaxWidth()
+      .clip(RoundedCornerShape(8.dp))
+      .background(wash)
+      .drawBehind {
+        // The marker: full height at the start, retracting upward as the wash fades.
+        val h = size.height * progress.value
+        if (h > 0f) {
+          drawLine(
+            edge,
+            Offset(1.2f * density, 0f),
+            Offset(1.2f * density, h),
+            strokeWidth = 2.4f * density,
+            cap = StrokeCap.Round,
+          )
+        }
+      }
+      .padding(horizontal = 6.dp, vertical = 4.dp),
+  ) {
+    content()
   }
 }
 
@@ -156,9 +211,11 @@ fun KeySurface(
   modifier: Modifier = Modifier,
   active: Boolean = false,
   shape: RoundedCornerShape = RoundedCornerShape(12.dp),
+  tick: Tick = Tick.Key,
   onPress: () -> Unit,
   content: @Composable () -> Unit,
 ) {
+  val play = rememberTick()
   val interaction = remember { MutableInteractionSource() }
   val pressed by interaction.collectIsPressedAsState()
   val scale by animateFloatAsState(
@@ -189,7 +246,10 @@ fun KeySurface(
         drawLine(hi, Offset(inset, 1.2f * density), Offset(size.width - inset, 1.2f * density), 2f * density, StrokeCap.Round)
         drawLine(lo, Offset(inset, size.height - 1.2f * density), Offset(size.width - inset, size.height - 1.2f * density), 2f * density, StrokeCap.Round)
       }
-      .clickable(interactionSource = interaction, indication = null, onClick = onPress),
+      .clickable(interactionSource = interaction, indication = null) {
+        play(tick)
+        onPress()
+      },
     contentAlignment = Alignment.Center,
   ) {
     content()
@@ -198,8 +258,14 @@ fun KeySurface(
 
 /** A transport-sized key. Active means engaged: it fills with ink, never with the seal green. */
 @Composable
-fun BigKey(label: String, active: Boolean, modifier: Modifier = Modifier, onPress: () -> Unit) {
-  KeySurface(modifier, active = active, shape = RoundedCornerShape(14.dp), onPress = onPress) {
+fun BigKey(
+  label: String,
+  active: Boolean,
+  modifier: Modifier = Modifier,
+  tick: Tick = Tick.Key,
+  onPress: () -> Unit,
+) {
+  KeySurface(modifier, active = active, shape = RoundedCornerShape(14.dp), tick = tick, onPress = onPress) {
     Text(
       label,
       fontFamily = FontFamily.SansSerif,
@@ -216,8 +282,13 @@ fun BigKey(label: String, active: Boolean, modifier: Modifier = Modifier, onPres
 
 /** The transport keys' smaller sibling: same plate, room for three in a row. */
 @Composable
-fun SmallKey(label: String, modifier: Modifier = Modifier, onPress: () -> Unit) {
-  KeySurface(modifier, shape = RoundedCornerShape(11.dp), onPress = onPress) {
+fun SmallKey(
+  label: String,
+  modifier: Modifier = Modifier,
+  tick: Tick = Tick.Key,
+  onPress: () -> Unit,
+) {
+  KeySurface(modifier, shape = RoundedCornerShape(11.dp), tick = tick, onPress = onPress) {
     Text(
       label,
       fontFamily = FontFamily.SansSerif,
@@ -239,9 +310,10 @@ fun Chip(
   active: Boolean = false,
   modifier: Modifier = Modifier,
   dim: Boolean = true,
+  tick: Tick = Tick.Key,
   onPress: () -> Unit,
 ) {
-  KeySurface(modifier, active = active, shape = RoundedCornerShape(9.dp), onPress = onPress) {
+  KeySurface(modifier, active = active, shape = RoundedCornerShape(9.dp), tick = tick, onPress = onPress) {
     Text(
       label,
       fontFamily = FontFamily.SansSerif,

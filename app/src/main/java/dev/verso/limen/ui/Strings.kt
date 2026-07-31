@@ -109,9 +109,27 @@ class Str(val lang: Lang) {
 
   // Setup.
   val protocolKind = pick("Protocol", "État des lieux", "Protokoll", "Verbale", "Protocol")
-  val styleLabel = pick("Grading", "Notation", "Bewertung", "Valutazione", "Valitaziun")
-  val styleBinary = pick("In order / defect", "Conforme / défaut", "In Ordnung / Mangel", "In ordine / difetto", "En urden / mancanza")
-  val styleGrades = pick("Grades TB B M O", "Notes TB B M O", "Noten TB B M O", "Voti TB B M O", "Notas TB B M O")
+  val styleLabel = pick(
+    "How each item is graded",
+    "Comment chaque poste est noté",
+    "Wie jede Position bewertet wird",
+    "Come si valuta ogni posizione",
+    "Co che mintga posiziun vegn valitada",
+  )
+  val styleBinary = pick(
+    "In order, or a defect",
+    "Conforme, ou un défaut",
+    "In Ordnung, oder ein Mangel",
+    "In ordine, o un difetto",
+    "En urden, u ina mancanza",
+  )
+  val styleGrades = pick(
+    "Four grades TB B M O",
+    "Quatre notes TB B M O",
+    "Vier Noten TB B M O",
+    "Quattro voti TB B M O",
+    "Quatter notas TB B M O",
+  )
   val objectLabel = pick("Object", "Objet loué", "Mietobjekt", "Ente locato", "Object da locaziun")
   val address = pick("Street and number", "Rue et numéro", "Strasse und Nummer", "Via e numero", "Via e numer")
   val place = pick("Postcode and place", "NPA et localité", "PLZ und Ort", "NAP e località", "NPA e lieu")
@@ -1095,6 +1113,39 @@ class Str(val lang: Lang) {
   }
 
 
+
+  fun tipStyle() = Tip(
+    pick(
+      "The two grading canons of the Swiss protocol. Set from your language; change it to match the form the other side brought.",
+      "Les deux manières suisses de noter un état des lieux. Réglée d'après votre langue ; changez-la pour suivre le formulaire apporté par l'autre partie.",
+      "Die zwei Bewertungskanons des Schweizer Protokolls. Nach Ihrer Sprache gesetzt; ändern Sie ihn, wenn die Gegenseite ein anderes Formular bringt.",
+      "I due canoni di valutazione del verbale svizzero. Impostato secondo la vostra lingua; cambiatelo per seguire il modulo portato dall'altra parte.",
+      "Ils dus canons da valitaziun dal protocol svizzer. Fixà tenor Vossa lingua; midai el per suandar il formular da l'autra vart.",
+    ),
+    listOf(
+      pick(
+        "In order or a defect: one tap ticks the item, the Deutschschweiz canon of the MV and HEV forms",
+        "Conforme ou défaut : une pression coche le poste, le canon alémanique des formulaires ASLOCA et HEV",
+        "In Ordnung oder Mangel: ein Tippen hakt die Position ab, der Deutschschweizer Kanon der MV- und HEV-Formulare",
+        "In ordine o difetto: un tocco spunta la posizione, il canone svizzero tedesco dei moduli ASI e HEV",
+        "En urden u mancanza: in tip marchescha la posiziun, il canon tudestg-svizzer dals formulars MV e HEV",
+      ),
+      pick(
+        "Four grades: each tap walks TB, B, M, O, the romand canon of the régie forms",
+        "Quatre notes : chaque pression passe TB, B, M, O, le canon romand des formulaires de régie",
+        "Vier Noten: jedes Tippen geht TB, B, M, O durch, der Westschweizer Kanon der Verwaltungsformulare",
+        "Quattro voti: ogni tocco passa TB, B, M, O, il canone romando dei moduli delle amministrazioni",
+        "Quatter notas: mintga tip va TB, B, M, O, il canon romand dals formulars da las administraziuns",
+      ),
+      pick(
+        "A defect can be written on any item either way; the grade is only the quick state",
+        "Un défaut peut être écrit sur n'importe quel poste dans les deux cas ; la note n'est que l'état rapide",
+        "Ein Mangel lässt sich in beiden Fällen zu jeder Position schreiben; die Note ist nur der schnelle Zustand",
+        "Un difetto si può scrivere su ogni posizione in entrambi i casi; il voto è solo lo stato rapido",
+        "Ina mancanza po vegnir scritta a mintga posiziun en omadus cas; la nota è mo il stadi svelt",
+      ),
+    ),
+  )
 
   /** Said on the paper, because two signed originals are what both parties go home with. */
   val pdfTwoCopies = pick(

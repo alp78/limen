@@ -132,17 +132,20 @@ private fun SetupStep(vm: LimenViewModel, s: Str, p: Protocol) {
     verticalArrangement = Arrangement.spacedBy(10.dp),
   ) {
     Panel(label = s.protocolKind) {
-      Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        PillRow(
-          listOf(Kind.Entry to s.entry, Kind.Exit to s.exit),
-          p.kind,
-        ) { k -> vm.edit { it.copy(kind = k) } }
-        Text(s.styleLabel, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
-        PillRow(
-          listOf(GradeStyle.Binary to s.styleBinary, GradeStyle.Grades to s.styleGrades),
-          p.style,
-        ) { st -> vm.edit { it.copy(style = st) } }
-      }
+      PillRow(
+        listOf(Kind.Entry to s.entry, Kind.Exit to s.exit),
+        p.kind,
+      ) { k -> vm.edit { it.copy(kind = k) } }
+    }
+
+    // The grading canon. It is set from the language when the protocol is created, so this
+    // is a correction and not a question: it decides what one tap on a room item does for
+    // the rest of the walk, and the tip says which region writes which.
+    Panel(label = s.styleLabel, info = s.tipStyle()) {
+      PillRow(
+        listOf(GradeStyle.Binary to s.styleBinary, GradeStyle.Grades to s.styleGrades),
+        p.style,
+      ) { st -> vm.edit { it.copy(style = st) } }
     }
 
     Panel(label = s.objectLabel) {
@@ -164,7 +167,10 @@ private fun SetupStep(vm: LimenViewModel, s: Str, p: Protocol) {
     Panel(label = s.parties) {
       Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         p.parties.forEachIndexed { i, party ->
-          PartyBlock(vm, s, p, i, party)
+          // The two mandatory roles are always there and need no announcing; a role that a
+          // key just added does.
+          if (i < 2) PartyBlock(vm, s, p, i, party)
+          else Revealed(party.role) { PartyBlock(vm, s, p, i, party) }
         }
         // The optional roles arrive on demand; the two mandatory ones are always there.
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -185,33 +191,40 @@ private fun SetupStep(vm: LimenViewModel, s: Str, p: Protocol) {
           DepositKind.entries.map { it to s.depositKind(it) },
           p.deposit.kind,
         ) { k -> vm.edit { it.copy(deposit = it.deposit.copy(kind = k)) } }
-        when (p.deposit.kind) {
-          DepositKind.Insurance -> {
-            // The provider is typed, not picked from a row of brands. Selectable brand keys
-            // would read as a connection to those insurers, and there is none: the app holds
-            // no account with anybody and only copies what is written on the certificate.
-            Field(s.depositProvider, p.deposit.provider) { v -> vm.edit { it.copy(deposit = it.deposit.copy(provider = v)) } }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-              Field(s.depositPolicy, p.deposit.policyNo, Modifier.weight(1.3f)) { v ->
-                vm.edit { it.copy(deposit = it.deposit.copy(policyNo = v)) }
-              }
-              Field(s.depositAmount, p.deposit.amountChf, Modifier.weight(1f)) { v ->
-                vm.edit { it.copy(deposit = it.deposit.copy(amountChf = v)) }
+        // Whichever road the pill above chose, its fields arrive under the highlight.
+        if (p.deposit.kind != DepositKind.None) {
+          Revealed(p.deposit.kind) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+              if (p.deposit.kind == DepositKind.Insurance) {
+                // The provider is typed, not picked from a row of brands. Selectable brand
+                // keys would read as a connection to those insurers, and there is none: the
+                // app holds no account anywhere and copies what the certificate says.
+                Field(s.depositProvider, p.deposit.provider) { v ->
+                  vm.edit { it.copy(deposit = it.deposit.copy(provider = v)) }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                  Field(s.depositPolicy, p.deposit.policyNo, Modifier.weight(1.3f)) { v ->
+                    vm.edit { it.copy(deposit = it.deposit.copy(policyNo = v)) }
+                  }
+                  Field(s.depositAmount, p.deposit.amountChf, Modifier.weight(1f)) { v ->
+                    vm.edit { it.copy(deposit = it.deposit.copy(amountChf = v)) }
+                  }
+                }
+              } else {
+                Field(s.depositBankName, p.deposit.bank) { v ->
+                  vm.edit { it.copy(deposit = it.deposit.copy(bank = v)) }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                  Field(s.depositAccount, p.deposit.account, Modifier.weight(1.3f)) { v ->
+                    vm.edit { it.copy(deposit = it.deposit.copy(account = v)) }
+                  }
+                  Field(s.depositAmount, p.deposit.amountChf, Modifier.weight(1f)) { v ->
+                    vm.edit { it.copy(deposit = it.deposit.copy(amountChf = v)) }
+                  }
+                }
               }
             }
           }
-          DepositKind.BankAccount -> {
-            Field(s.depositBankName, p.deposit.bank) { v -> vm.edit { it.copy(deposit = it.deposit.copy(bank = v)) } }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-              Field(s.depositAccount, p.deposit.account, Modifier.weight(1.3f)) { v ->
-                vm.edit { it.copy(deposit = it.deposit.copy(account = v)) }
-              }
-              Field(s.depositAmount, p.deposit.amountChf, Modifier.weight(1f)) { v ->
-                vm.edit { it.copy(deposit = it.deposit.copy(amountChf = v)) }
-              }
-            }
-          }
-          DepositKind.None -> Unit
         }
 
         // The comparison gets its own line and is named for what it opens. Sharing the pill
@@ -349,15 +362,20 @@ private fun RoomsStep(vm: LimenViewModel, s: Str, p: Protocol) {
     ) {
       if (addingRoom) {
         Panel(label = s.addRoom) {
-          Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-            listOf(
-              RoomKind.Room, RoomKind.Bedroom, RoomKind.SepWC, RoomKind.Bathroom,
-              RoomKind.Attic, RoomKind.Garage, RoomKind.LaundryRoom, RoomKind.HobbyRoom,
-              RoomKind.Custom,
-            ).forEach { kind ->
-              Chip(s.room(kind)) {
-                vm.addRoom(kind)
-                addingRoom = false
+          Revealed(addingRoom) {
+            Row(
+              Modifier.horizontalScroll(rememberScrollState()),
+              horizontalArrangement = Arrangement.spacedBy(5.dp),
+            ) {
+              listOf(
+                RoomKind.Room, RoomKind.Bedroom, RoomKind.SepWC, RoomKind.Bathroom,
+                RoomKind.Attic, RoomKind.Garage, RoomKind.LaundryRoom, RoomKind.HobbyRoom,
+                RoomKind.Custom,
+              ).forEach { kind ->
+                Chip(s.room(kind)) {
+                  vm.addRoom(kind)
+                  addingRoom = false
+                }
               }
             }
           }

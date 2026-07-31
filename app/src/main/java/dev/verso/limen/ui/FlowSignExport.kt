@@ -122,7 +122,7 @@ private fun SignRow(
       }
       if (sig == null) {
         SmallKey(s.signKey, Modifier.padding(end = 6.dp), onPress = onSign)
-        SmallKey(s.refusedKey) { vm.refuseSignature(role, plane) }
+        SmallKey(s.refusedKey, tick = Tick.Reject) { vm.refuseSignature(role, plane) }
       } else {
         SmallKey(s.clearInk) { vm.clearSignature(role, plane) }
       }
@@ -142,6 +142,12 @@ private fun SignRow(
 @Composable
 internal fun ExportStep(vm: LimenViewModel, s: Str, p: Protocol) {
   val context = LocalContext.current
+  // The document landing is the other moment that ends something, and it arrives after
+  // the key was released, so the confirmation is played by the result rather than the tap.
+  val play = rememberTick()
+  androidx.compose.runtime.LaunchedEffect(vm.exported) {
+    if (vm.exported != null) play(Tick.Confirm)
+  }
 
   Column(
     Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
@@ -167,6 +173,7 @@ internal fun ExportStep(vm: LimenViewModel, s: Str, p: Protocol) {
     }
 
     vm.exported?.let { file ->
+      Revealed(file.displayName) {
       Panel(label = s.exported, info = s.tipShareNow()) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
           Text(file.displayName, style = MaterialTheme.typography.titleMedium, color = Limen.colors.ink)
@@ -198,6 +205,7 @@ internal fun ExportStep(vm: LimenViewModel, s: Str, p: Protocol) {
             }
           }
         }
+      }
       }
     }
 

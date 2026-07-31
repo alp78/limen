@@ -154,6 +154,10 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
         KeyCount(KeyKind.Cellar),
       ),
       rooms = rooms,
+      // The grading canon follows the region the language points at, so most people never
+      // touch the setting: romand forms grade TB/B/M/O, the Deutschschweiz canon ticks
+      // "in Ordnung" or writes a defect.
+      style = if (lang == Lang.Fr) GradeStyle.Grades else GradeStyle.Binary,
     )
     store.save(p)
     working = p
