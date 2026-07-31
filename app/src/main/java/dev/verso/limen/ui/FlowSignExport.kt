@@ -1,0 +1,221 @@
+package dev.verso.limen.ui
+
+import android.content.Intent
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import dev.verso.limen.data.DepositKind
+import dev.verso.limen.data.Kind
+import dev.verso.limen.data.Plane
+import dev.verso.limen.data.Protocol
+import dev.verso.limen.data.Role
+import dev.verso.limen.theme.Limen
+
+/**
+ * The two signature planes, kept apart on purpose and by law: the record's signature is
+ * never the debt's. Refusal is a key, not a dead end, and every signature can carry its
+ * dictated reservation.
+ */
+@Composable
+internal fun SignStep(vm: LimenViewModel, s: Str, p: Protocol) {
+  var padTarget by remember { mutableStateOf<Pair<Role, Plane>?>(null) }
+
+  // A Box, so the pad truly overlays the step instead of queueing below the scroll.
+  androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
+  Column(
+    Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+    verticalArrangement = Arrangement.spacedBy(10.dp),
+  ) {
+    Panel(label = s.signRecordTitle, info = s.tipRecord()) {
+      Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        recordRoles(p).forEach { role ->
+          SignRow(vm, s, p, role, Plane.Record) { padTarget = role to Plane.Record }
+        }
+      }
+    }
+
+    Panel(label = s.signCostsTitle, info = s.tipCosts()) {
+      Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        listOf(Role.Tenant, Role.Landlord).forEach { role ->
+          SignRow(vm, s, p, role, Plane.Costs) { padTarget = role to Plane.Costs }
+        }
+      }
+    }
+
+    BigKey(s.stepExport.uppercase(), active = true, Modifier.fillMaxWidth()) {
+      vm.goTo(FlowStep.Export)
+    }
+    Spacer(Modifier.height(12.dp))
+  }
+
+  padTarget?.let { (role, plane) ->
+    SignPadOverlay(
+      title = "${if (plane == Plane.Record) s.signRecordTitle else s.signCostsTitle} · ${s.role(role)}",
+      meaning = if (plane == Plane.Record) s.tipRecord().lead else s.tipCosts().lead,
+      s = s,
+      onKeep = { bmp ->
+        vm.keepSignature(role, plane, bmp)
+        padTarget = null
+      },
+      onCancel = { padTarget = null },
+    )
+  }
+  }
+}
+
+/** Who signs the record: the two principals, minus the absent one, plus whoever attended. */
+private fun recordRoles(p: Protocol): List<Role> = buildList {
+  add(Role.Tenant)
+  if (!p.oneSided) add(Role.Landlord)
+  if (p.parties.any { it.role == Role.Witness }) add(Role.Witness)
+  if (p.parties.any { it.role == Role.Expert }) add(Role.Expert)
+}
+
+@Composable
+private fun SignRow(
+  vm: LimenViewModel,
+  s: Str,
+  p: Protocol,
+  role: Role,
+  plane: Plane,
+  onSign: () -> Unit,
+) {
+  val sig = p.signatures.firstOrNull { it.role == role && it.plane == plane }
+  Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+      Column(Modifier.weight(1f)) {
+        Text(s.role(role), style = MaterialTheme.typography.bodyMedium, color = Limen.colors.ink)
+        // The status: the one place besides the case's chip where the seal green appears.
+        val (label, sealed) = when {
+          sig == null -> s.notSigned to false
+          sig.refused -> s.refusedNote to false
+          else -> s.signed to true
+        }
+        Text(
+          label,
+          style = MaterialTheme.typography.labelSmall,
+          color = if (sealed) Limen.colors.seal else Limen.colors.inkDim,
+        )
+      }
+      if (sig == null) {
+        SmallKey(s.signKey, Modifier.padding(end = 6.dp), onPress = onSign)
+        SmallKey(s.refusedKey) { vm.refuseSignature(role, plane) }
+      } else {
+        SmallKey(s.clearInk) { vm.clearSignature(role, plane) }
+      }
+    }
+    if (sig != null) {
+      Field(s.reservationLabel, sig.reservation) { v ->
+        vm.setSignatureReservation(role, plane, v)
+      }
+    }
+  }
+}
+
+/**
+ * The way out: the document's language, the export itself, the result card, and the
+ * deposit's next step, which is the last thing both parties read at the door.
+ */
+@Composable
+internal fun ExportStep(vm: LimenViewModel, s: Str, p: Protocol) {
+  val context = LocalContext.current
+  Column(
+    Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+    verticalArrangement = Arrangement.spacedBy(10.dp),
+  ) {
+    Panel(label = s.pdfLanguage) {
+      PillRow(
+        Lang.entries.map { it to it.name.uppercase() },
+        vm.pdfLang ?: vm.lang,
+        dense = true,
+        onSelect = vm::selectPdfLang,
+      )
+    }
+
+    BigKey(
+      if (vm.exporting) "…" else s.exportPdf,
+      active = !vm.exporting,
+      Modifier.fillMaxWidth(),
+    ) { vm.exportPdf() }
+
+    if (vm.exportError) {
+      Text("×", fontFamily = FontFamily.Monospace, fontSize = 20.sp, color = Limen.colors.ink)
+    }
+
+    vm.exported?.let { file ->
+      Panel(label = s.exported) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+          Text(file.displayName, style = MaterialTheme.typography.titleMedium, color = Limen.colors.ink)
+          Text(
+            "${s.exportedTo} Download/Limen · ${(file.bytes / 1024).coerceAtLeast(1)} KB",
+            style = MaterialTheme.typography.labelSmall,
+            color = Limen.colors.inkDim,
+          )
+          Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            SmallKey(s.open, Modifier.weight(1f)) {
+              runCatching {
+                context.startActivity(
+                  Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(file.uri, "application/pdf")
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                  }
+                )
+              }
+            }
+            SmallKey(s.share, Modifier.weight(1f)) {
+              runCatching {
+                val send = Intent(Intent.ACTION_SEND).apply {
+                  type = "application/pdf"
+                  putExtra(Intent.EXTRA_STREAM, file.uri)
+                  addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                context.startActivity(Intent.createChooser(send, s.share))
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // The deposit's next step, on screen as well as in the PDF.
+    if (p.kind == Kind.Exit && p.deposit.kind != DepositKind.None) {
+      Panel(label = s.releaseTitle) {
+        Text(
+          when (p.deposit.kind) {
+            DepositKind.BankAccount -> s.releaseBank
+            DepositKind.Insurance -> s.releaseInsurance
+            DepositKind.None -> ""
+          },
+          style = MaterialTheme.typography.bodyMedium,
+          color = Limen.colors.ink,
+        )
+      }
+    }
+
+    SmallKey(s.done, Modifier.fillMaxWidth()) { vm.closeFlow() }
+    Spacer(Modifier.height(12.dp))
+  }
+}

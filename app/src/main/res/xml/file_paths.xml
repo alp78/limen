@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One path, in the app's private cache: "captures" exists so the system camera can hand
+     a defect photo back. Nothing here is readable by anything the user has not opened. -->
+<paths>
+    <cache-path name="captures" path="captures/" />
+</paths>

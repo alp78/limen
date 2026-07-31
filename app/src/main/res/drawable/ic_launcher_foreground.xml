@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The mark: an open doorframe, the sill heavier than anything else (limen is that
+     stone), and the key hanging in the opening. Same geometry as LimenMark.kt.
+     Placeholder until the identity round with the user. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:pathData="M36,68 L36,32 L72,32 L72,68"
+        android:strokeColor="#262620"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M30,76 L78,76"
+        android:strokeColor="#262620"
+        android:strokeWidth="8"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M54,40.5 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0"
+        android:strokeColor="#6C695B"
+        android:strokeWidth="3.4" />
+    <path
+        android:pathData="M54,44.5 L54,62"
+        android:strokeColor="#6C695B"
+        android:strokeWidth="3.4"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M54,57 L58.5,57 M54,62 L60,62"
+        android:strokeColor="#6C695B"
+        android:strokeWidth="3.4"
+        android:strokeLineCap="round" />
+</vector>

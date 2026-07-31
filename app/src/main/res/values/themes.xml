@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- The splash cannot read the saved day/night preference, so it wears the day plaster:
+         day is the default face of this instrument. -->
+    <style name="Theme.Limen" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">#F0EDE6</item>
+        <item name="android:windowSplashScreenBackground" tools:targetApi="s">#F0EDE6</item>
+    </style>
+</resources>

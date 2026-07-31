@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The themed-icon layer: the same doorframe, sill and key in one colour. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:pathData="M36,68 L36,32 L72,32 L72,68"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M30,76 L78,76"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="8"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M54,40.5 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3.4" />
+    <path
+        android:pathData="M54,44.5 L54,62"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3.4"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M54,57 L58.5,57 M54,62 L60,62"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3.4"
+        android:strokeLineCap="round" />
+</vector>
