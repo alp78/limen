@@ -9,16 +9,16 @@ import androidx.compose.ui.platform.LocalView
 
 /**
  * The instrument's touch. Keys in this app visibly sink under the thumb, and a key that
- * looks mechanical should feel mechanical: the tick lands on the press, not on the
- * release, so the finger learns that the surface took the tap even when the eye is on
- * the flat rather than the screen.
+ * looks mechanical should feel mechanical.
  *
  * Three weights only. [Key] is every control. [Confirm] marks the two moments that end
  * something: a signature kept, a document written. [Reject] marks a refusal or a
  * deletion, so a destructive tap never feels the same as an ordinary one.
  *
- * The system setting governs all of it: [View.performHapticFeedback] stays silent when
- * the phone's touch feedback is off, and nothing here overrides that.
+ * The phone's own touch-feedback setting governs all of it, and nothing here talks around
+ * it: the window asks the system to play a feedback, the system decides. That also keeps
+ * the manifest's promise, since asking this way needs no VIBRATE permission, while driving
+ * the vibrator directly would.
  */
 enum class Tick { Key, Confirm, Reject }
 
@@ -41,5 +41,10 @@ fun View.tick(weight: Tick) {
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) HapticFeedbackConstants.REJECT
       else HapticFeedbackConstants.LONG_PRESS
   }
-  performHapticFeedback(constant)
+  // FLAG_IGNORE_VIEW_SETTING passes the per-View legacy toggle. That toggle is not the
+  // user's preference, it is a leftover from the days of XML layouts, and where a build
+  // leaves it off this call silently returns false and plays nothing on that device while
+  // working everywhere else. Compose's own haptics pass the same flag. The phone's
+  // touch-feedback setting is a different thing entirely and still decides.
+  performHapticFeedback(constant, HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING)
 }
