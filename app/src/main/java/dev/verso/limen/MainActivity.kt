@@ -58,9 +58,6 @@ class MainActivity : ComponentActivity() {
             // The flow owns the screen until it is closed; back walks its stations.
             BackHandler { vm.flowBack() }
             FlowScreen(modifier = screenModifier, vm = vm, s = s)
-          } else if (vm.counterSigning) {
-            // The other phone's role in the seal exchange, one face over the case.
-            dev.verso.limen.ui.CounterSignScreen(modifier = screenModifier, vm = vm, s = s)
           } else {
             // Back from a face returns to the case rather than leaving the app, which is
             // what the mark in the masthead does too.
@@ -69,7 +66,6 @@ class MainActivity : ComponentActivity() {
               AppMode.Home -> HomeScreen(modifier = screenModifier, vm = vm, s = s)
               AppMode.Value -> ValueScreen(modifier = screenModifier, vm = vm, s = s)
               AppMode.Clocks -> ClocksScreen(modifier = screenModifier, vm = vm, s = s)
-              AppMode.Link -> dev.verso.limen.ui.LinkScreen(modifier = screenModifier, vm = vm, s = s)
             }
           }
         }

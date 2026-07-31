@@ -187,13 +187,9 @@ private fun SetupStep(vm: LimenViewModel, s: Str, p: Protocol) {
         ) { k -> vm.edit { it.copy(deposit = it.deposit.copy(kind = k)) } }
         when (p.deposit.kind) {
           DepositKind.Insurance -> {
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-              listOf("SwissCaution", "Firstcaution", "goCaution", "SmartCaution", "AXA", "Helvetia").forEach { name ->
-                Chip(name, active = p.deposit.provider == name) {
-                  vm.edit { it.copy(deposit = it.deposit.copy(provider = name)) }
-                }
-              }
-            }
+            // The provider is typed, not picked from a row of brands. Selectable brand keys
+            // would read as a connection to those insurers, and there is none: the app holds
+            // no account with anybody and only copies what is written on the certificate.
             Field(s.depositProvider, p.deposit.provider) { v -> vm.edit { it.copy(deposit = it.deposit.copy(provider = v)) } }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
               Field(s.depositPolicy, p.deposit.policyNo, Modifier.weight(1.3f)) { v ->

@@ -727,78 +727,6 @@ class Str(val lang: Lang) {
     ),
   )
 
-  // ── The seal: tamper evidence over the exported document ──────────────────────────────
-  val sealTitle = pick("Seal", "Sceau", "Siegel", "Sigillo", "Sigil")
-  val contentFingerprint = pick("Content fingerprint", "Empreinte du contenu", "Inhalts-Fingerabdruck", "Impronta del contenuto", "Impronta dal cuntegn")
-  val pdfFingerprint = pick("PDF fingerprint", "Empreinte du PDF", "PDF-Fingerabdruck", "Impronta del PDF", "Impronta dal PDF")
-  val deviceSeal = pick("Device seal", "Sceau de l'appareil", "Gerätesiegel", "Sigillo del dispositivo", "Sigil da l'apparat")
-  val counterSealLabel = pick("Countersignature", "Contresignature", "Gegenzeichnung", "Controfirma", "Cuntrasuttascripziun")
-  val counterSignKey = pick("COUNTERSIGN", "CONTRESIGNER", "GEGENZEICHNEN", "CONTROFIRMA", "CUNTRASUTTASCRIVER")
-  val attachCounterSeal = pick("ATTACH", "JOINDRE", "ANHÄNGEN", "ALLEGA", "AGIUNTAR")
-  val sealCertificateKey = pick("SEAL CERTIFICATE", "CERTIFICAT DE SCEAU", "SIEGELZERTIFIKAT", "CERTIFICATO DI SIGILLO", "CERTIFICAT DAL SIGIL")
-  val verified = pick("Verified", "Vérifiée", "Geprüft", "Verificata", "Verifitgada")
-  val noMatch = pick(
-    "Does not match this document",
-    "Ne correspond pas à ce document",
-    "Passt nicht zu diesem Dokument",
-    "Non corrisponde a questo documento",
-    "Na correspunda betg a quest document",
-  )
-  val pickPdf = pick("PICK THE PDF", "CHOISIR LE PDF", "PDF WÄHLEN", "SCEGLI IL PDF", "TSCHERNER IL PDF")
-  val signerName = pick(
-    "Name of the signer",
-    "Nom du signataire",
-    "Name der unterzeichnenden Person",
-    "Nome del firmatario",
-    "Num da la persuna che suttascriva",
-  )
-  val pdfSealNote = pick(
-    "Content fingerprint: SHA-256 over the protocol data, its photos and its ink. The device seal and any countersignature over the exported file are verified in the app and printed on the seal certificate. This document carries simple electronic signatures: valid evidence, not a qualified electronic signature.",
-    "Empreinte du contenu : SHA-256 sur les données du protocole, ses photos et son encre. Le sceau de l'appareil et toute contresignature du fichier exporté se vérifient dans l'app et s'impriment sur le certificat de sceau. Ce document porte des signatures électroniques simples : une preuve valable, non une signature électronique qualifiée.",
-    "Inhalts-Fingerabdruck: SHA-256 über die Protokolldaten, die Fotos und die Tinte. Das Gerätesiegel und jede Gegenzeichnung der exportierten Datei werden in der App geprüft und auf dem Siegelzertifikat gedruckt. Dieses Dokument trägt einfache elektronische Signaturen: gültiges Beweismittel, keine qualifizierte elektronische Signatur.",
-    "Impronta del contenuto: SHA-256 sui dati del verbale, le sue foto e il suo inchiostro. Il sigillo del dispositivo e ogni controfirma del file esportato si verificano nell'app e si stampano sul certificato di sigillo. Questo documento porta firme elettroniche semplici: prova valida, non firma elettronica qualificata.",
-    "Impronta dal cuntegn: SHA-256 sur las datas dal protocol, sias fotos e sia tinta. Il sigil da l'apparat e mintga cuntrasuttascripziun vegnan verifitgads en l'app e stampads sin il certificat dal sigil. Quest document porta suttascripziuns electronicas simplas: ina cumprova valaivla, betg ina suttascripziun electronica qualifitgada.",
-  )
-
-  fun tipSeal() = Tip(
-    pick(
-      "The seal proves the document unchanged since export.",
-      "Le sceau prouve que le document n'a pas changé depuis l'export.",
-      "Das Siegel beweist, dass das Dokument seit dem Export unverändert ist.",
-      "Il sigillo prova che il documento è invariato dall'esportazione.",
-      "Il sigil cumprova ch'il document n'è betg midà dapi l'export.",
-    ),
-    listOf(
-      pick(
-        "The content fingerprint covers the data, the photos and the ink",
-        "L'empreinte du contenu couvre les données, les photos et l'encre",
-        "Der Inhalts-Fingerabdruck deckt Daten, Fotos und Tinte",
-        "L'impronta del contenuto copre dati, foto e inchiostro",
-        "L'impronta dal cuntegn cuvra datas, fotos e tinta",
-      ),
-      pick(
-        "This phone's key signs the digest of the exported PDF",
-        "La clé de ce téléphone signe l'empreinte du PDF exporté",
-        "Der Schlüssel dieses Telefons signiert den Hash des exportierten PDF",
-        "La chiave di questo telefono firma l'impronta del PDF esportato",
-        "La clav da quest telefon suttascriva l'impronta dal PDF exportà",
-      ),
-      pick(
-        "The other party's phone can countersign the same digest",
-        "Le téléphone de l'autre partie peut contresigner la même empreinte",
-        "Das Telefon der Gegenpartei kann denselben Hash gegenzeichnen",
-        "Il telefono dell'altra parte può controfirmare la stessa impronta",
-        "Il telefon da l'autra partida po cuntrasuttascriver la medema impronta",
-      ),
-      pick(
-        "Only a qualified e-signature equals handwriting; this seal is evidence of integrity",
-        "Seule une signature électronique qualifiée équivaut à la main ; ce sceau prouve l'intégrité",
-        "Nur eine qualifizierte E-Signatur ersetzt die Handschrift; dieses Siegel beweist die Integrität",
-        "Solo una firma elettronica qualificata equivale alla mano; questo sigillo prova l'integrità",
-        "Mo ina suttascripziun electronica qualifitgada vala sco quella a maun; quest sigil cumprova l'integritad",
-      ),
-    ),
-  )
 
   fun tipCounterSign() = Tip(
     pick(
@@ -1032,7 +960,6 @@ class Str(val lang: Lang) {
     "Tgi tegna quest telefon?",
   )
   val profileName = pick("Your name", "Votre nom", "Ihr Name", "Il vostro nome", "Voss num")
-  val yourSide = pick("Your side", "Votre côté", "Ihre Seite", "Il vostro lato", "Vossa vart")
 
   fun tipRole() = Tip(
     pick(
@@ -1159,145 +1086,23 @@ class Str(val lang: Lang) {
       "Duas suttascripziuns cun dus muments: l'emprim il protocol, lura, mo sche acceptà, ils custs.",
     )
     FlowStep.Export -> pick(
-      "Export the PDF, sealed by this phone, and hand it to both sides right now.",
-      "Exportez le PDF, scellé par ce téléphone, et remettez-le aux deux parties immédiatement.",
-      "Exportiert das PDF, versiegelt von diesem Telefon, und übergebt es sofort beiden Seiten.",
-      "Esportate il PDF, sigillato da questo telefono, e consegnatelo subito a entrambe le parti.",
-      "Exportai il PDF, sigillà da quest telefon, e surdatti el immediat ad omaduas varts.",
+      "Export the PDF and hand a copy to each side right now.",
+      "Exportez le PDF et remettez un exemplaire à chaque partie immédiatement.",
+      "Exportiert das PDF und übergebt jeder Seite sofort ein Exemplar.",
+      "Esportate il PDF e consegnate subito una copia a ciascuna parte.",
+      "Exportai il PDF e surdatti immediat ina copia a mintga vart.",
     )
   }
 
-  // ── The link face: handshake, locked features, audit ──────────────────────────────────
-  val faceLink = pick("LINK", "LIAISON", "VERBINDUNG", "LEGAME", "COLLIAZIUN")
-  val linkTitle = pick("Linked dossier", "Dossier lié", "Verbundenes Dossier", "Dossier collegato", "Dossier collià")
-  val shareMyKey = pick("SHARE MY KEY CARD", "PARTAGER MA CARTE-CLÉ", "MEINE SCHLÜSSELKARTE TEILEN", "CONDIVIDI LA MIA CARTA-CHIAVE", "CUNDIVIDER MIA CARTA-CLAV")
-  val importTheirKey = pick("IMPORT THEIRS", "IMPORTER LA LEUR", "IHRE IMPORTIEREN", "IMPORTA LA LORO", "IMPORTAR LUR CARTA")
-  val jointFingerprintLabel = pick(
-    "Joint fingerprint",
-    "Empreinte commune",
-    "Gemeinsamer Fingerabdruck",
-    "Impronta comune",
-    "Impronta cuminaivla",
-  )
-  val sealPairKey = pick(
-    "SEAL THE LINK",
-    "SCELLER LE LIEN",
-    "VERBINDUNG SIEGELN",
-    "SIGILLA IL LEGAME",
-    "SIGILLAR LA COLLIAZIUN",
-  )
-  val fingerprintsMatchLead = pick(
-    "Same fingerprint on both screens? Compare it aloud.",
-    "Même empreinte sur les deux écrans ? Comparez-la à voix haute.",
-    "Gleicher Fingerabdruck auf beiden Bildschirmen? Laut vergleichen.",
-    "Stessa impronta su entrambi gli schermi? Confrontatela ad alta voce.",
-    "La medema impronta sin tuts dus visurs? Cumparegliai ad auta vusch.",
-  )
-  val linkedWith = pick("Linked with", "Lié avec", "Verbunden mit", "Collegato con", "Collià cun")
-  val unlink = pick("UNLINK", "DÉLIER", "TRENNEN", "SCOLLEGA", "STACCAR")
-  val lockedUntilPair = pick(
-    "Locked until the keys are exchanged",
-    "Verrouillé avant l'échange des clés",
-    "Gesperrt bis zum Schlüsseltausch",
-    "Bloccato fino allo scambio delle chiavi",
-    "Bloccà fin al barat da las clavs",
-  )
-  val notACard = pick(
-    "Not a valid key card",
-    "Carte-clé invalide",
-    "Keine gültige Schlüsselkarte",
-    "Carta-chiave non valida",
-    "Carta-clav nunvalaivla",
-  )
-  val featureDocuments = pick("Shared documents", "Documents partagés", "Geteilte Dokumente", "Documenti condivisi", "Documents cundivids")
-  val featureReceipts = pick("Signed receipts", "Accusés de réception signés", "Signierte Empfangsbestätigungen", "Ricevute firmate", "Quittanzas suttascrittas")
-  val featureShared = pick("Live shared dossier", "Dossier partagé en direct", "Live geteiltes Dossier", "Dossier condiviso dal vivo", "Dossier cundivis en direct")
-  val comingWithRelay = pick(
-    "Arrives with the relay",
-    "Arrive avec le relais",
-    "Kommt mit dem Relais",
-    "Arriva con il relay",
-    "Vegn cun il relay",
-  )
 
-  fun tipLink() = Tip(
-    pick(
-      "One dossier, two phones, every act signed.",
-      "Un dossier, deux téléphones, chaque acte signé.",
-      "Ein Dossier, zwei Telefone, jede Handlung signiert.",
-      "Un dossier, due telefoni, ogni atto firmato.",
-      "In dossier, dus telefons, mintga act suttascrit.",
-    ),
-    listOf(
-      pick(
-        "Exchange key cards at the handover, in the same room",
-        "Échangez les cartes-clés lors de la remise, dans la même pièce",
-        "Schlüsselkarten bei der Übergabe tauschen, im selben Raum",
-        "Scambiate le carte-chiave alla consegna, nella stessa stanza",
-        "Barattai las cartas-clav tar la surdada, en il medem local",
-      ),
-      pick(
-        "Compare the joint fingerprint aloud, then seal the link",
-        "Comparez l'empreinte commune à voix haute, puis scellez le lien",
-        "Den gemeinsamen Fingerabdruck laut vergleichen, dann die Verbindung siegeln",
-        "Confrontate l'impronta comune ad alta voce, poi sigillate il legame",
-        "Cumparegliai l'impronta cuminaivla a vusch auta, lura sigillai la colliaziun",
-      ),
-      pick(
-        "The linked features unlock only after that",
-        "Les fonctions liées ne se déverrouillent qu'après",
-        "Die verbundenen Funktionen öffnen sich erst danach",
-        "Le funzioni collegate si sbloccano solo dopo",
-        "Las funcziuns colliadas sa deblocheschan pir suenter",
-      ),
-      pick(
-        "Every act enters a signed journal neither side can rewrite",
-        "Chaque acte entre dans un journal signé qu'aucune partie ne peut réécrire",
-        "Jede Handlung steht in einem signierten Journal, das keine Seite umschreiben kann",
-        "Ogni atto entra in un giornale firmato che nessuna parte può riscrivere",
-        "Mintga act entra en in schurnal suttascrit che nagina vart na po rescriver",
-      ),
-    ),
-  )
 
-  // ── The audit journal ─────────────────────────────────────────────────────────────────
-  val auditJournal = pick("Audit journal", "Journal d'audit", "Prüfjournal", "Giornale di audit", "Schurnal d'audit")
-  val exportAudit = pick("EXPORT THE JOURNAL", "EXPORTER LE JOURNAL", "JOURNAL EXPORTIEREN", "ESPORTA IL GIORNALE", "EXPORTAR IL SCHURNAL")
-  val chainOk = pick("Chain verified", "Chaîne vérifiée", "Kette geprüft", "Catena verificata", "Chadaina verifitgada")
-  val chainBrokenAt = pick("Chain broken at entry", "Chaîne rompue à l'entrée", "Kette gebrochen bei Eintrag", "Catena rotta alla voce", "Chadaina rutta tar l'endataziun")
-  val entries = pick("entries", "entrées", "Einträge", "voci", "endataziuns")
-
-  fun tipAudit() = Tip(
-    pick(
-      "The journal is the storage, not a report about it.",
-      "Le journal est le stockage lui-même, pas un rapport à son sujet.",
-      "Das Journal ist der Speicher selbst, kein Bericht darüber.",
-      "Il giornale è l'archivio stesso, non un rapporto su di esso.",
-      "Il schurnal è l'archiv sez, betg in rapport davart el.",
-    ),
-    listOf(
-      pick(
-        "Every discrete act is one signed, chained entry",
-        "Chaque acte distinct est une entrée signée et chaînée",
-        "Jede einzelne Handlung ist ein signierter, verketteter Eintrag",
-        "Ogni atto distinto è una voce firmata e concatenata",
-        "Mintga act è ina endataziun suttascritta ed enchadanada",
-      ),
-      pick(
-        "Each entry countersigns all history before it, both sides included",
-        "Chaque entrée contresigne toute l'histoire qui la précède, deux côtés compris",
-        "Jeder Eintrag gegenzeichnet die ganze Geschichte davor, beide Seiten inbegriffen",
-        "Ogni voce controfirma tutta la storia precedente, entrambe le parti incluse",
-        "Mintga endataziun cuntrasuttascriva tut l'istorgia avant, omaduas varts incluses",
-      ),
-      pick(
-        "Rewriting the past breaks a signature the rewriter does not own",
-        "Réécrire le passé brise une signature que le falsificateur ne possède pas",
-        "Wer die Vergangenheit umschreibt, bricht eine fremde Signatur",
-        "Riscrivere il passato rompe una firma che il falsario non possiede",
-        "Tgi che rescriva il passà rumpa ina suttascripziun ch'el na posseda betg",
-      ),
-    ),
+  /** Said on the paper, because two signed originals are what both parties go home with. */
+  val pdfTwoCopies = pick(
+    "Established in two identical copies, one for each party.",
+    "Établi en deux exemplaires identiques, un pour chaque partie.",
+    "In zwei gleichlautenden Exemplaren erstellt, eines für jede Partei.",
+    "Redatto in due esemplari identici, uno per ciascuna parte.",
+    "Fatg en dus exemplars identics, in per mintga partida.",
   )
 
   val notAdvice = pick(

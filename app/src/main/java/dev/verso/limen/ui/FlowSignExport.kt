@@ -142,9 +142,6 @@ private fun SignRow(
 @Composable
 internal fun ExportStep(vm: LimenViewModel, s: Str, p: Protocol) {
   val context = LocalContext.current
-  val pickCounterSeal = androidx.activity.compose.rememberLauncherForActivityResult(
-    androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
-  ) { uri -> if (uri != null) vm.attachCounterSeal(uri) }
 
   Column(
     Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
@@ -204,36 +201,6 @@ internal fun ExportStep(vm: LimenViewModel, s: Str, p: Protocol) {
       }
     }
 
-    // The seal: the document's own fingerprints, and the other phone's signature over them.
-    p.seal?.let { seal ->
-      Panel(label = s.sealTitle, info = s.tipSeal()) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-          FingerprintLine(s.contentFingerprint, seal.contentHash)
-          FingerprintLine(s.pdfFingerprint, seal.pdfHash)
-          val cs = p.counterSeal
-          if (cs != null) {
-            Text(
-              "${s.counterSealLabel} · ${cs.name} · ${s.role(cs.role)} · ${s.verified}",
-              style = MaterialTheme.typography.labelSmall,
-              color = Limen.colors.seal,
-            )
-          } else {
-            if (vm.counterSealResult == false) {
-              Text(
-                s.noMatch,
-                style = MaterialTheme.typography.labelSmall,
-                color = Limen.colors.ink,
-              )
-            }
-            SmallKey("${s.counterSealLabel}: ${s.attachCounterSeal}", Modifier.fillMaxWidth()) {
-              pickCounterSeal.launch(arrayOf("application/json", "application/octet-stream", "*/*"))
-            }
-          }
-          SmallKey(s.sealCertificateKey, Modifier.fillMaxWidth()) { vm.exportCertificate() }
-        }
-      }
-    }
-
     // The deposit's next step, on screen as well as in the PDF.
     if (p.kind == Kind.Exit && p.deposit.kind != DepositKind.None) {
       Panel(label = s.releaseTitle) {
@@ -249,8 +216,11 @@ internal fun ExportStep(vm: LimenViewModel, s: Str, p: Protocol) {
       }
     }
 
-    // The dispute's letter: a neutral official invited to record the facts.
-    Panel(label = s.befundTitle, info = s.tipBefund()) {
+    // The dispute's letter: a neutral official invited to record the facts. It appears
+    // only when there is something to dispute, a charged defect or a refused signature.
+    // A handover where both sides agree should not be handed an escalation form.
+    val contested = p.defects.any { it.chargedToTenant } || p.signatures.any { it.refused }
+    if (contested) Panel(label = s.befundTitle, info = s.tipBefund()) {
       var commune by androidx.compose.runtime.saveable.rememberSaveable {
         androidx.compose.runtime.mutableStateOf("")
       }
@@ -265,21 +235,3 @@ internal fun ExportStep(vm: LimenViewModel, s: Str, p: Protocol) {
   }
 }
 
-/** A stamped label and a spoken-size fingerprint, the hash a person can compare aloud. */
-@Composable
-private fun FingerprintLine(label: String, hex: String) {
-  Row(verticalAlignment = Alignment.CenterVertically) {
-    Text(
-      label,
-      style = MaterialTheme.typography.labelSmall,
-      color = Limen.colors.inkDim,
-      modifier = Modifier.weight(1f),
-    )
-    Text(
-      dev.verso.limen.data.Seal.fingerprint(hex),
-      fontFamily = FontFamily.Monospace,
-      fontSize = 15.sp,
-      color = Limen.colors.ink,
-    )
-  }
-}

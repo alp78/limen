@@ -29,49 +29,83 @@ object PdfExport {
   private const val MARGIN = 90f
   private const val FOOT = 60f
 
-  /** The export plus the digest of its own bytes, the thing the device seal signs. */
-  data class Result(val file: ExportedFile, val pdfSha256: String)
-
   fun export(
     context: Context,
     p: Protocol,
     s: Str,
     photoDir: File,
     signatureDir: File,
-    contentHash: String = "",
-  ): Result {
-    val doc = PdfDocument()
-    val sheet = Sheet(doc, s)
+  ): ExportedFile {
+    val reference = reference(p)
+    // Twice: the first pass only counts the sheets so the second can number them "3 / 7".
+    // A form that names its own total is a form nobody can quietly take a page out of,
+    // which is the tamper evidence paper has always used and people actually check.
+    val counted = build(context, p, s, photoDir, signatureDir, reference, 0)
+    val total = try { counted.pages.size } finally { counted.close() }
+
+    val doc = build(context, p, s, photoDir, signatureDir, reference, total)
     try {
-      title(sheet, p, s, context)
-      header(sheet, p, s)
-      parties(sheet, p, s)
-      deposit(sheet, p, s)
-      metersAndKeys(sheet, p, s)
-      rooms(sheet, p, s)
-      defects(sheet, p, s)
-      remarks(sheet, p, s)
-      signatures(sheet, p, s, signatureDir)
-      release(sheet, p, s)
-      sealBlock(sheet, s, contentHash)
-      annex(sheet, p, s, photoDir)
-      sheet.close()
       val kind = if (p.kind == Kind.Entry) s.entry else s.exit
       val name = "limen-${kind.lowercase().replace(' ', '-')}-${exportStamp()}.pdf"
-      // The PDF is hashed while it streams out, so the seal signs exactly what was written.
-      val digest = java.security.MessageDigest.getInstance("SHA-256")
-      val file = writeToDownloads(context, name, "application/pdf") { out ->
-        doc.writeTo(java.security.DigestOutputStream(out, digest))
-      }
-      return Result(file, digest.digest().joinToString("") { "%02x".format(it) })
+      return writeToDownloads(context, name, "application/pdf") { out -> doc.writeTo(out) }
     } finally {
       doc.close()
     }
   }
 
+  /** One rendering pass. [total] is 0 while counting, and the real page count afterwards. */
+  private fun build(
+    context: Context,
+    p: Protocol,
+    s: Str,
+    photoDir: File,
+    signatureDir: File,
+    reference: String,
+    total: Int,
+  ): PdfDocument {
+    val doc = PdfDocument()
+    val sheet = Sheet(doc, s, reference, total)
+    title(sheet, p, s, context)
+    header(sheet, p, s)
+    parties(sheet, p, s)
+    deposit(sheet, p, s)
+    metersAndKeys(sheet, p, s)
+    rooms(sheet, p, s)
+    defects(sheet, p, s)
+    remarks(sheet, p, s)
+    signatures(sheet, p, s, signatureDir)
+    release(sheet, p, s)
+    annex(sheet, p, s, photoDir, measuring = total == 0)
+    sheet.close()
+    return doc
+  }
+
+  /**
+   * The filing reference, printed on every page the way an official form carries its
+   * number. The tail is a short digest of what the document says, so two protocols that
+   * differ by one word carry different references: enough to tell two papers apart at a
+   * counter, and claiming nothing more than that.
+   */
+  private fun reference(p: Protocol): String {
+    val body = buildString {
+      append(p.kind.name).append('|').append(p.address).append('|').append(p.place)
+      append('|').append(p.handoverDate).append('|').append(p.remarks)
+      p.parties.forEach { append('|').append(it.role.name).append(':').append(it.name) }
+      p.rooms.forEach { r -> append('|').append(r.name); r.items.forEach { append(it.grade.ordinal) } }
+      p.defects.forEach { append('|').append(it.text).append(':').append(it.chargedToTenant) }
+      p.signatures.forEach {
+        append('|').append(it.role.name).append(it.plane.name).append(it.refused)
+      }
+    }
+    val digest = java.security.MessageDigest.getInstance("SHA-256")
+      .digest(body.toByteArray(Charsets.UTF_8))
+    val tail = digest.take(3).joinToString("") { "%02X".format(it) }
+    return "LIMEN-${exportStamp().substringBefore('-')}-$tail"
+  }
+
   // ── The sheet: cursor, page breaks, footer ───────────────────────────────────────────
 
-  private class Sheet(val doc: PdfDocument, val s: Str) {
+  private class Sheet(val doc: PdfDocument, val s: Str, val reference: String, val total: Int) {
     val ink = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.BLACK }
     val titlePaint = Paint(ink).apply {
       typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD); textSize = 40f
@@ -105,8 +139,8 @@ object PdfExport {
       val pg = page ?: return
       // The footer: the instrument's name and the page, quietly.
       canvas.drawLine(MARGIN, H - FOOT - 14f, W - MARGIN, H - FOOT - 14f, rule)
-      canvas.drawText("Limen", MARGIN, H - FOOT + 8f, small)
-      val pageText = "${s.pdfPage} $pageNo"
+      canvas.drawText("Limen · $reference", MARGIN, H - FOOT + 8f, small)
+      val pageText = if (total > 0) "${s.pdfPage} $pageNo / $total" else "${s.pdfPage} $pageNo"
       canvas.drawText(pageText, W - MARGIN - small.measureText(pageText), H - FOOT + 8f, small)
       doc.finishPage(pg)
       page = null
@@ -415,6 +449,12 @@ object PdfExport {
       sheet.gap(10f)
       drawPlane(sheet, p, s, signatureDir, Plane.Costs)
     }
+
+    // The Swiss ritual, said on the document itself: two identical papers, one per party.
+    // In Vaud the RULV require exactly that, and a tenant who reads it here knows to leave
+    // the flat holding one.
+    sheet.gap(6f)
+    sheet.wrapped(s.pdfTwoCopies, sheet.small)
   }
 
   private fun drawPlane(sheet: Sheet, p: Protocol, s: Str, dir: File, plane: Plane) {
@@ -476,19 +516,8 @@ object PdfExport {
     }
   }
 
-  /** The document names its own data: the fingerprint printed where a stamp would sit. */
-  private fun sealBlock(sheet: Sheet, s: Str, contentHash: String) {
-    if (contentHash.isBlank()) return
-    sheet.sectionTitle(s.sealTitle)
-    sheet.ensure(60f)
-    sheet.canvas.drawText(s.contentFingerprint, MARGIN, sheet.y + sheet.label.textSize, sheet.label)
-    sheet.y += sheet.label.textSize + 8f
-    sheet.wrapped(Seal.grouped(contentHash), sheet.value)
-    sheet.gap(6f)
-    sheet.wrapped(s.pdfSealNote, sheet.small)
-  }
 
-  private fun annex(sheet: Sheet, p: Protocol, s: Str, photoDir: File) {
+  private fun annex(sheet: Sheet, p: Protocol, s: Str, photoDir: File, measuring: Boolean) {
     val withPhotos = p.defects.withIndex().filter { it.value.photos.isNotEmpty() }
     if (withPhotos.isEmpty()) return
     sheet.newPage()
@@ -498,17 +527,21 @@ object PdfExport {
     var col = 0
     withPhotos.forEach { (index, d) ->
       d.photos.forEach { name ->
-        val bmp = decodeDown(File(photoDir, name), cellW.toInt())
-        if (bmp != null) {
+        val file = File(photoDir, name)
+        // The counting pass reads the dimensions only: same page breaks, no decoding.
+        val bmp = if (measuring) null else decodeDown(file, cellW.toInt())
+        if (if (measuring) readable(file) else bmp != null) {
           if (col == 0) sheet.ensure(cellH + 50f)
           val x = MARGIN + col * (cellW + 40f)
-          val scale = minOf(cellW / bmp.width, (cellH - 40f) / bmp.height)
-          val w = bmp.width * scale
-          val h = bmp.height * scale
-          val paint = Paint(Paint.FILTER_BITMAP_FLAG)
-          sheet.canvas.drawBitmap(bmp, null, android.graphics.RectF(x, sheet.y, x + w, sheet.y + h), paint)
-          sheet.canvas.drawText("${s.defects} ${index + 1}", x, sheet.y + h + sheet.small.textSize + 6f, sheet.small)
-          bmp.recycle()
+          if (bmp != null) {
+            val scale = minOf(cellW / bmp.width, (cellH - 40f) / bmp.height)
+            val w = bmp.width * scale
+            val h = bmp.height * scale
+            val paint = Paint(Paint.FILTER_BITMAP_FLAG)
+            sheet.canvas.drawBitmap(bmp, null, android.graphics.RectF(x, sheet.y, x + w, sheet.y + h), paint)
+            sheet.canvas.drawText("${s.defects} ${index + 1}", x, sheet.y + h + sheet.small.textSize + 6f, sheet.small)
+            bmp.recycle()
+          }
           col++
           if (col == 2) {
             col = 0
@@ -518,6 +551,13 @@ object PdfExport {
       }
     }
     if (col != 0) sheet.y += cellH + 20f
+  }
+
+  /** Whether a photo file would decode at all: the bounds pass, for counting pages. */
+  private fun readable(file: File): Boolean {
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeFile(file.absolutePath, bounds)
+    return bounds.outWidth > 0 && bounds.outHeight > 0
   }
 
   /** EXIF-blind fast decode at roughly [targetWidth]; the camera writes upright JPEGs here. */

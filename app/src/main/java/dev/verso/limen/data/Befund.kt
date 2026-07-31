@@ -66,15 +66,6 @@ object Befund {
       fact(s.objectLabel, listOf(p.address, p.place, p.objectDetail).filter { it.isNotBlank() }.joinToString(", "))
       fact(s.handoverDate, p.handoverDate)
       p.parties.filter { it.name.isNotBlank() }.forEach { fact(s.role(it.role), it.name) }
-      p.seal?.let {
-        y += 6f
-        c.drawText(s.contentFingerprint, MARGIN, y + label.textSize, label)
-        y += label.textSize + 8f
-        wrap(Seal.grouped(it.contentHash), value, W - 2 * MARGIN).forEach { line ->
-          c.drawText(line, MARGIN, y + value.textSize, value)
-          y += value.textSize + 6f
-        }
-      }
       y += 22f
 
       fact(s.befundDesiredDate, "")

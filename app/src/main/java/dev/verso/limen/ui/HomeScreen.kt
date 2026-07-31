@@ -117,10 +117,6 @@ fun HomeScreen(modifier: Modifier = Modifier, vm: LimenViewModel = viewModel(), 
           SmallKey(s.faceValue, Modifier.weight(1f)) { vm.selectMode(AppMode.Value) }
           SmallKey(s.faceClocks, Modifier.weight(1f)) { vm.selectMode(AppMode.Clocks) }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-          SmallKey(s.faceLink, Modifier.weight(1f)) { vm.selectMode(AppMode.Link) }
-          SmallKey(s.counterSignKey, Modifier.weight(1f)) { vm.openCounterSign() }
-        }
       }
       Spacer(Modifier.height(12.dp))
     }
