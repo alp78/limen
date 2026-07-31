@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The adaptive icon's required foreground, deliberately transparent: the badge is the
+     background layer (ic_launcher_art.png, the provided image verbatim). The path is not
+     decoration: a vector with no path fails to inflate and the launcher falls back to the
+     default robot. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:pathData="M0,0h108v108h-108z"
+        android:fillColor="#00000000" />
+</vector>
