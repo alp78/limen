@@ -181,14 +181,10 @@ private fun SetupStep(vm: LimenViewModel, s: Str, p: Protocol) {
 
     Panel(label = s.deposit, info = s.tipDeposit()) {
       Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-          PillRow(
-            DepositKind.entries.map { it to s.depositKind(it) },
-            p.deposit.kind,
-          ) { k -> vm.edit { it.copy(deposit = it.deposit.copy(kind = k)) } }
-          Spacer(Modifier.weight(1f))
-          Chip(s.compareKey, dim = false) { vm.setDepositCompare(true) }
-        }
+        PillRow(
+          DepositKind.entries.map { it to s.depositKind(it) },
+          p.deposit.kind,
+        ) { k -> vm.edit { it.copy(deposit = it.deposit.copy(kind = k)) } }
         when (p.deposit.kind) {
           DepositKind.Insurance -> {
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
@@ -220,6 +216,14 @@ private fun SetupStep(vm: LimenViewModel, s: Str, p: Protocol) {
             }
           }
           DepositKind.None -> Unit
+        }
+
+        // The comparison gets its own line and is named for what it opens. Sharing the pill
+        // row it had room for one letter, and a key that says "C" teaches nobody that the two
+        // roads for a deposit are a blocked account or an insurance, or what either costs.
+        Row(verticalAlignment = Alignment.CenterVertically) {
+          SmallKey(s.compareKey, Modifier.weight(1f)) { vm.setDepositCompare(true) }
+          InfoTip(s.tipCompare())
         }
       }
     }

@@ -874,7 +874,13 @@ class Str(val lang: Lang) {
   )
 
   // ── The deposit comparison ────────────────────────────────────────────────────────────
-  val compareKey = pick("COMPARE", "COMPARER", "VERGLEICHEN", "CONFRONTA", "CUMPAREGLIAR")
+  val compareKey = pick(
+    "COMPARE DEPOSIT OPTIONS",
+    "COMPARER LES GARANTIES",
+    "KAUTIONEN VERGLEICHEN",
+    "CONFRONTA LE GARANZIE",
+    "CUMPAREGLIAR GARANZIAS",
+  )
   val linkKey = pick("LINK", "LIEN", "LINK", "LINK", "LINK")
   val perYear = pick("per year", "par an", "pro Jahr", "all'anno", "per onn")
 
