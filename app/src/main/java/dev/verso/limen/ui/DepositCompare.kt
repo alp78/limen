@@ -2,6 +2,7 @@ package dev.verso.limen.ui
 
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -74,12 +75,12 @@ fun DepositCompareOverlay(vm: LimenViewModel, s: Str) {
     ) {
       Panel(label = s.depositBank) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-          bankOffers.forEach { OfferRow(it, s) { url -> open(context, url) } }
+          bankOffers.forEach { OfferRow(it, s) { url -> open(context, url, s.openLinkFailed) } }
         }
       }
       Panel(label = "${s.depositInsurance} · ${s.perYear}") {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-          insuranceOffers.forEach { OfferRow(it, s) { url -> open(context, url) } }
+          insuranceOffers.forEach { OfferRow(it, s) { url -> open(context, url, s.openLinkFailed) } }
         }
       }
     }
@@ -110,6 +111,7 @@ private fun OfferRow(offer: Offer, s: Str, onOpen: (String) -> Unit) {
   }
 }
 
-private fun open(context: android.content.Context, url: String) {
+private fun open(context: android.content.Context, url: String, failureMessage: String) {
   runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+    .onFailure { Toast.makeText(context, failureMessage, Toast.LENGTH_SHORT).show() }
 }

@@ -129,6 +129,27 @@ data class Deposit(
 @Serializable
 enum class DepositKind { None, BankAccount, Insurance }
 
+/**
+ * The recurring Swiss rental-guarantee insurers shown in the setup picker. Only the
+ * certificate's printed provider name is stored, so older and uncommon insurers remain
+ * intact through [Other] rather than being forced into a made-up category.
+ */
+enum class CautionProvider(val storedName: String?) {
+  SwissCaution("SwissCaution"),
+  GoCaution("goCaution"),
+  Firstcaution("Firstcaution"),
+  SmartCaution("SmartCaution"),
+  Axa("AXA"),
+  Helvetia("Helvetia"),
+  Zurich("Zurich"),
+  Other(null);
+
+  companion object {
+    fun fromStoredName(name: String): CautionProvider =
+      entries.firstOrNull { it.storedName == name.trim() } ?: Other
+  }
+}
+
 /** Meter readings from the form header. Strings, exactly as read off the dial. */
 @Serializable
 data class Meters(

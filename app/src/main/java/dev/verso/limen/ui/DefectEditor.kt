@@ -2,6 +2,7 @@ package dev.verso.limen.ui
 
 import android.content.ActivityNotFoundException
 import android.graphics.BitmapFactory
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -98,6 +99,7 @@ fun DefectEditor(vm: LimenViewModel, s: Str, p: Protocol, defectId: String) {
       takePicture.launch(uri)
     } catch (e: ActivityNotFoundException) {
       cameraSlot = null
+      Toast.makeText(context, s.cameraOpenFailed, Toast.LENGTH_SHORT).show()
     }
   }
 

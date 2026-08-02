@@ -156,7 +156,12 @@ fun SignPadOverlay(
         SmallKey(s.cancel, Modifier.weight(1f), onPress = onCancel)
         // Keeping the ink is one of the two moments that end something, so it is felt
         // differently from the keys that only move you along.
-        SmallKey(s.saveInk, Modifier.weight(1.4f), tick = Tick.Confirm) {
+        SmallKey(
+          s.saveInk,
+          Modifier.weight(1.4f),
+          tick = Tick.Confirm,
+          enabled = strokes.isNotEmpty() && padSize.width > 0 && padSize.height > 0,
+        ) {
           val bmp = renderStrokes(strokes, padSize)
           if (bmp != null) onKeep(bmp)
         }

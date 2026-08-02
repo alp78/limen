@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,6 +32,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.verso.limen.data.CautionProvider
 import dev.verso.limen.data.Defect
 import dev.verso.limen.data.DepositKind
 import dev.verso.limen.data.Grade
@@ -119,7 +122,11 @@ private fun FlowMast(vm: LimenViewModel, s: Str, p: Protocol) {
     horizontalArrangement = Arrangement.spacedBy(5.dp),
   ) {
     stations.forEachIndexed { i, (step, label) ->
-      Chip("${i + 1} · $label", active = vm.flowStep == step) { vm.goTo(step) }
+      Chip(
+        "${i + 1} · $label",
+        active = vm.flowStep == step,
+        enabled = vm.flowStep != step,
+      ) { vm.goTo(step) }
     }
   }
 }
@@ -197,11 +204,19 @@ private fun SetupStep(vm: LimenViewModel, s: Str, p: Protocol) {
           Revealed(p.deposit.kind) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
               if (p.deposit.kind == DepositKind.Insurance) {
-                // The provider is typed, not picked from a row of brands. Selectable brand
-                // keys would read as a connection to those insurers, and there is none: the
-                // app holds no account anywhere and copies what the certificate says.
-                Field(s.depositProvider, p.deposit.provider) { v ->
-                  vm.edit { it.copy(deposit = it.deposit.copy(provider = v)) }
+                CautionProviderPicker(s, p.deposit.provider) { provider ->
+                  vm.edit { current ->
+                    val existing = current.deposit.provider
+                    val providerName = provider.storedName ?: existing.takeIf {
+                      CautionProvider.fromStoredName(it) == CautionProvider.Other
+                    }.orEmpty()
+                    current.copy(deposit = current.deposit.copy(provider = providerName))
+                  }
+                }
+                if (CautionProvider.fromStoredName(p.deposit.provider) == CautionProvider.Other) {
+                  Field(s.otherCautionProvider, p.deposit.provider) { v ->
+                    vm.edit { it.copy(deposit = it.deposit.copy(provider = v)) }
+                  }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                   Field(s.depositPolicy, p.deposit.policyNo, Modifier.weight(1.3f)) { v ->
@@ -293,6 +308,54 @@ private fun SetupStep(vm: LimenViewModel, s: Str, p: Protocol) {
 
     BigKey(s.next, active = true, Modifier.fillMaxWidth()) { vm.goTo(FlowStep.Rooms) }
     Spacer(Modifier.height(12.dp))
+  }
+}
+
+@Composable
+private fun CautionProviderPicker(
+  s: Str,
+  storedName: String,
+  onSelect: (CautionProvider) -> Unit,
+) {
+  var expanded by remember { mutableStateOf(false) }
+  val selected = CautionProvider.fromStoredName(storedName)
+
+  Box(Modifier.fillMaxWidth()) {
+    KeySurface(
+      modifier = Modifier.fillMaxWidth(),
+      shape = RoundedCornerShape(6.dp),
+      onPress = { expanded = true },
+    ) {
+      Row(
+        Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+      ) {
+        Column(Modifier.weight(1f)) {
+          Text(s.depositProvider, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
+          Text(s.cautionProvider(selected), style = MaterialTheme.typography.bodyMedium, color = Limen.colors.ink)
+        }
+        Text("▾", style = MaterialTheme.typography.bodyMedium, color = Limen.colors.inkDim)
+      }
+    }
+    DropdownMenu(
+      expanded = expanded,
+      onDismissRequest = { expanded = false },
+      containerColor = Limen.colors.plateRaised,
+    ) {
+      CautionProvider.entries.forEach { provider ->
+        DropdownMenuItem(
+          text = { Text(s.cautionProvider(provider), color = Limen.colors.ink) },
+          enabled = provider != selected,
+          trailingIcon = if (provider == selected) {
+            { Text("✓", color = Limen.colors.inkDim) }
+          } else null,
+          onClick = {
+            onSelect(provider)
+            expanded = false
+          },
+        )
+      }
+    }
   }
 }
 

@@ -1,5 +1,6 @@
 package dev.verso.limen.ui
 
+import dev.verso.limen.data.CautionProvider
 import dev.verso.limen.data.DepositKind
 import dev.verso.limen.data.Grade
 import dev.verso.limen.data.ItemKey
@@ -156,7 +157,8 @@ class Str(val lang: Lang) {
   val depositBank = pick("Bank account", "Compte bancaire", "Sperrkonto", "Conto bancario", "Conto da banca")
   val depositInsurance = pick("Insurance", "Assurance", "Versicherung", "Assicurazione", "Assicuranza")
   val depositAmount = pick("Amount CHF", "Montant CHF", "Betrag CHF", "Importo CHF", "Import CHF")
-  val depositProvider = pick("Provider", "Prestataire", "Anbieter", "Fornitore", "Purschider")
+  val depositProvider = pick("Caution insurer", "Assureur de caution", "Kautionsversicherer", "Assicuratore della garanzia", "Assicuratur da deposit")
+  val otherCautionProvider = pick("Other insurer", "Autre assureur", "Anderer Versicherer", "Altro assicuratore", "Auter assicuratur")
   val depositPolicy = pick("Certificate no.", "No de certificat", "Zertifikat-Nr.", "N. certificato", "Nr. dal certificat")
   val depositBankName = pick("Bank", "Banque", "Bank", "Banca", "Banca")
   val depositAccount = pick("Account / IBAN", "Compte / IBAN", "Konto / IBAN", "Conto / IBAN", "Conto / IBAN")
@@ -280,6 +282,17 @@ class Str(val lang: Lang) {
     DepositKind.Insurance -> depositInsurance
   }
 
+  fun cautionProvider(provider: CautionProvider) = when (provider) {
+    CautionProvider.SwissCaution -> "SwissCaution"
+    CautionProvider.GoCaution -> "goCaution"
+    CautionProvider.Firstcaution -> "Firstcaution"
+    CautionProvider.SmartCaution -> "SmartCaution"
+    CautionProvider.Axa -> "AXA"
+    CautionProvider.Helvetia -> "Helvetia"
+    CautionProvider.Zurich -> "Zurich"
+    CautionProvider.Other -> otherCautionProvider
+  }
+
   // Rooms walk.
   val roomKeys = pick("Keys of this room", "Clés de cette pièce", "Schlüssel dieses Raums", "Chiavi di questo locale", "Clavs da quest local")
   val freshWalls = pick("Walls freshly painted", "Murs repeints à neuf", "Wände frisch gestrichen", "Pareti ridipinte", "Paraids frestg pittiradas")
@@ -332,6 +345,13 @@ class Str(val lang: Lang) {
   val reservationLabel = pick("Reservation", "Réserve", "Vorbehalt", "Riserva", "Resalva")
   val photo = pick("PHOTO", "PHOTO", "FOTO", "FOTO", "FOTO")
   val gallery = pick("GALLERY", "GALERIE", "GALERIE", "GALLERIA", "GALARIA")
+  val cameraOpenFailed = pick(
+    "The camera could not be opened.",
+    "L'appareil photo n'a pas pu être ouvert.",
+    "Die Kamera konnte nicht geöffnet werden.",
+    "Non è stato possibile aprire la fotocamera.",
+    "La camera na pudeva betg vegnir averta.",
+  )
   val tenantResponse = pick("Tenant's response", "Réponse du locataire", "Stellungnahme der Mieterschaft", "Posizione del conduttore", "Posiziun dal locatari")
   fun tenantResponse(value: TenantResponse) = when (value) {
     TenantResponse.NotStated -> pick("Not stated", "Non indiquée", "Nicht angegeben", "Non indicata", "Betg inditgà")
@@ -460,6 +480,20 @@ class Str(val lang: Lang) {
   val pdfLanguage = pick("Language of the PDF", "Langue du PDF", "Sprache des PDF", "Lingua del PDF", "Lingua dal PDF")
   val open = pick("OPEN", "OUVRIR", "ÖFFNEN", "APRI", "AVRIR")
   val share = pick("SHARE", "PARTAGER", "TEILEN", "CONDIVIDI", "CUNDIVIDER")
+  val openFileFailed = pick(
+    "No app could open this PDF.",
+    "Aucune app ne peut ouvrir ce PDF.",
+    "Keine App kann dieses PDF öffnen.",
+    "Nessuna app può aprire questo PDF.",
+    "Nagina app po avrir quest PDF.",
+  )
+  val shareFileFailed = pick(
+    "Sharing is not available on this device.",
+    "Le partage n'est pas disponible sur cet appareil.",
+    "Teilen ist auf diesem Gerät nicht verfügbar.",
+    "La condivisione non è disponibile su questo dispositivo.",
+    "Parter na stat betg a disposiziun sin quest apparat.",
+  )
   val exportedTo = pick("Saved to", "Enregistré dans", "Gespeichert unter", "Salvato in", "Memorisà en")
   val exportBlocked = pick("Finalize the record before exporting it.", "Finalisez le constat avant de l'exporter.", "Protokoll vor dem Export abschliessen.", "Finalizzate il verbale prima di esportarlo.", "Finalisai il protocol avant d'exportar el.")
   fun exportIssue(issue: ExportIssue) = when (issue) {
@@ -894,6 +928,13 @@ class Str(val lang: Lang) {
     "CUMPAREGLIAR GARANZIAS",
   )
   val linkKey = pick("LINK", "LIEN", "LINK", "LINK", "LINK")
+  val openLinkFailed = pick(
+    "No app could open this website.",
+    "Aucune app ne peut ouvrir ce site.",
+    "Keine App kann diese Website öffnen.",
+    "Nessuna app può aprire questo sito.",
+    "Nagina app po avrir questa pagina web.",
+  )
   val perYear = pick("per year", "par an", "pro Jahr", "all'anno", "per onn")
 
   fun tipCompare() = Tip(

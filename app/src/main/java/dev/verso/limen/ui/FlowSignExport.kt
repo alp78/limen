@@ -1,6 +1,7 @@
 package dev.verso.limen.ui
 
 import android.content.Intent
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -239,7 +240,7 @@ internal fun ExportStep(vm: LimenViewModel, s: Str, p: Protocol) {
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                   }
                 )
-              }
+              }.onFailure { Toast.makeText(context, s.openFileFailed, Toast.LENGTH_SHORT).show() }
             }
             SmallKey(s.share, Modifier.weight(1f)) {
               runCatching {
@@ -249,7 +250,7 @@ internal fun ExportStep(vm: LimenViewModel, s: Str, p: Protocol) {
                   addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
                 context.startActivity(Intent.createChooser(send, s.share))
-              }
+              }.onFailure { Toast.makeText(context, s.shareFileFailed, Toast.LENGTH_SHORT).show() }
             }
           }
         }

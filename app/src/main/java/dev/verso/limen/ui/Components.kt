@@ -239,7 +239,7 @@ fun KeySurface(
       .graphicsLayer {
         scaleX = scale
         scaleY = scale
-        alpha = if (enabled) 1f else 0.45f
+        alpha = if (enabled || active) 1f else 0.45f
       }
       .shadow(lift, shape, clip = false)
       .clip(shape)
@@ -301,9 +301,10 @@ fun SmallKey(
   label: String,
   modifier: Modifier = Modifier,
   tick: Tick = Tick.Key,
+  enabled: Boolean = true,
   onPress: () -> Unit,
 ) {
-  KeySurface(modifier, shape = RoundedCornerShape(11.dp), tick = tick, onPress = onPress) {
+  KeySurface(modifier, enabled = enabled, shape = RoundedCornerShape(11.dp), tick = tick, onPress = onPress) {
     Text(
       label,
       fontFamily = FontFamily.SansSerif,
@@ -326,9 +327,17 @@ fun Chip(
   modifier: Modifier = Modifier,
   dim: Boolean = true,
   tick: Tick = Tick.Key,
+  enabled: Boolean = true,
   onPress: () -> Unit,
 ) {
-  KeySurface(modifier, active = active, shape = RoundedCornerShape(9.dp), tick = tick, onPress = onPress) {
+  KeySurface(
+    modifier,
+    active = active,
+    enabled = enabled,
+    shape = RoundedCornerShape(9.dp),
+    tick = tick,
+    onPress = onPress,
+  ) {
     Text(
       label,
       fontFamily = FontFamily.SansSerif,
@@ -438,7 +447,7 @@ fun <T> PillRow(
     verticalArrangement = Arrangement.spacedBy(if (dense) 5.dp else 6.dp),
   ) {
     options.forEach { (value, label) ->
-      Chip(label, active = value == current) { onSelect(value) }
+      Chip(label, active = value == current, enabled = value != current) { onSelect(value) }
     }
   }
 }
@@ -477,7 +486,11 @@ fun Field(
 @Composable
 fun Stepper(count: Int, onChange: (Int) -> Unit) {
   Row(verticalAlignment = Alignment.CenterVertically) {
-    KeySurface(shape = RoundedCornerShape(9.dp), onPress = { if (count > 0) onChange(count - 1) }) {
+    KeySurface(
+      enabled = count > 0,
+      shape = RoundedCornerShape(9.dp),
+      onPress = { if (count > 0) onChange(count - 1) },
+    ) {
       Text(
         "−",
         fontFamily = FontFamily.SansSerif,

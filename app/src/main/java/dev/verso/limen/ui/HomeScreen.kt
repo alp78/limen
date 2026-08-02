@@ -233,9 +233,12 @@ private fun ProtocolCard(vm: LimenViewModel, s: Str, p: Protocol) {
     Spacer(Modifier.height(8.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
       if (p.kind == Kind.Entry) {
-        Chip(if (p.isFinalized()) s.exitFromThis else s.finalizeEntryFirst, dim = !p.isFinalized()) {
-          if (p.isFinalized()) vm.seedExitFrom(p) else vm.openProtocol(p.id)
-        }
+        val canCreateExit = p.isFinalized()
+        Chip(
+          if (canCreateExit) s.exitFromThis else s.finalizeEntryFirst,
+          dim = !canCreateExit,
+          enabled = canCreateExit,
+        ) { vm.seedExitFrom(p) }
       }
       Spacer(Modifier.weight(1f))
       Chip(if (armed) s.sure else s.delete, tick = if (armed) Tick.Reject else Tick.Key) {

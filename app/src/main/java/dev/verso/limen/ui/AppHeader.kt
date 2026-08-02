@@ -52,7 +52,7 @@ fun AppHeader(vm: LimenViewModel, s: Str) {
 
 @Composable
 private fun ModePill(label: String, active: Boolean, onSelect: () -> Unit) {
-  Chip(label, active = active, onPress = onSelect)
+  Chip(label, active = active, enabled = !active, onPress = onSelect)
 }
 
 /**

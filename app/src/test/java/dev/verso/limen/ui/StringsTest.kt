@@ -1,5 +1,6 @@
 package dev.verso.limen.ui
 
+import dev.verso.limen.data.CautionProvider
 import dev.verso.limen.data.DepositKind
 import dev.verso.limen.data.Grade
 import dev.verso.limen.data.ItemKey
@@ -21,6 +22,7 @@ class StringsTest {
       Role.entries.forEach { assertTrue("$lang role $it", s.role(it).isNotBlank()) }
       KeyKind.entries.forEach { assertTrue("$lang key $it", s.keyKind(it).isNotBlank()) }
       DepositKind.entries.forEach { assertTrue("$lang deposit $it", s.depositKind(it).isNotBlank()) }
+      CautionProvider.entries.forEach { assertTrue("$lang caution $it", s.cautionProvider(it).isNotBlank()) }
     }
   }
 
