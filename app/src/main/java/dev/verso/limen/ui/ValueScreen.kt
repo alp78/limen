@@ -59,6 +59,9 @@ fun ValueScreen(modifier: Modifier = Modifier, vm: LimenViewModel, s: Str) {
       Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
       verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
+      Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+        LimenMark(size = 76.dp)
+      }
       Panel(label = s.faceValue, info = s.tipZeitwert()) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
           // The picked thing, or the way into the table.
@@ -67,8 +70,8 @@ fun ValueScreen(modifier: Modifier = Modifier, vm: LimenViewModel, s: Str) {
             Modifier
               .fillMaxWidth()
               .clip(RoundedCornerShape(8.dp))
-              .background(Limen.colors.plate)
-              .border(1.dp, Limen.colors.plateEdge, RoundedCornerShape(8.dp))
+              .background(Limen.colors.input)
+              .border(1.5.dp, Limen.colors.actionOutline, RoundedCornerShape(10.dp))
               .clickable {
                 play(Tick.Key)
                 showTable = !showTable

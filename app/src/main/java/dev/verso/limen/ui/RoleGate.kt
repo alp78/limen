@@ -54,12 +54,8 @@ fun RoleGate(vm: LimenViewModel, s: Str) {
       verticalArrangement = Arrangement.Center,
     ) {
       Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-        LimenMark(size = 72.dp)
+        LimenMark(size = 96.dp)
       }
-      Spacer(Modifier.height(20.dp))
-      Text(s.welcomeLead, style = MaterialTheme.typography.bodyLarge, color = Limen.colors.ink)
-      Spacer(Modifier.height(14.dp))
-      GuideSteps(s)
       Spacer(Modifier.height(24.dp))
       Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
@@ -70,17 +66,21 @@ fun RoleGate(vm: LimenViewModel, s: Str) {
         )
         InfoTip(s.tipRole())
       }
+      Spacer(Modifier.height(8.dp))
+      Text(s.welcomeLead, style = MaterialTheme.typography.bodyMedium, color = Limen.colors.inkDim)
       Spacer(Modifier.height(14.dp))
       Field(s.profileName, name) { name = it }
-      Spacer(Modifier.height(14.dp))
+      Spacer(Modifier.height(18.dp))
       Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        BigKey(s.role(Role.Tenant).uppercase(), active = true, Modifier.fillMaxWidth()) {
+        BigKey(s.role(Role.Tenant).uppercase(), active = false, Modifier.fillMaxWidth()) {
           vm.chooseRole(Role.Tenant, name)
         }
-        BigKey(s.role(Role.Landlord).uppercase(), active = true, Modifier.fillMaxWidth()) {
+        BigKey(s.role(Role.Landlord).uppercase(), active = false, Modifier.fillMaxWidth()) {
           vm.chooseRole(Role.Landlord, name)
         }
       }
+      Spacer(Modifier.height(18.dp))
+      GuideSteps(s)
       Spacer(Modifier.height(24.dp))
     }
   }

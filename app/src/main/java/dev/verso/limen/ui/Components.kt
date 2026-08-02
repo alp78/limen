@@ -3,7 +3,6 @@ package dev.verso.limen.ui
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -44,9 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
@@ -77,7 +74,7 @@ fun InfoTip(tip: Tip, target: androidx.compose.ui.unit.Dp = 40.dp) {
   val state = rememberTooltipState(isPersistent = true)
   val scope = rememberCoroutineScope()
   val play = rememberTick()
-  val tint = Limen.colors.inkDim
+  val tint = Limen.colors.actionOutline
   val text = tip.lead
   TooltipBox(
     positionProvider =
@@ -153,12 +150,12 @@ fun Revealed(key: Any?, modifier: Modifier = Modifier, content: @Composable () -
   LaunchedEffect(key) {
     progress.animateTo(0f, animationSpec = tween(durationMillis = 700, easing = LinearOutSlowInEasing))
   }
-  val wash = Limen.colors.ink.copy(alpha = 0.09f * progress.value)
-  val edge = Limen.colors.ink.copy(alpha = 0.55f * progress.value)
+  val wash = Limen.colors.actionOutline.copy(alpha = 0.08f * progress.value)
+  val edge = Limen.colors.actionOutline.copy(alpha = 0.60f * progress.value)
   Box(
     modifier
       .fillMaxWidth()
-      .clip(RoundedCornerShape(8.dp))
+      .clip(RoundedCornerShape(12.dp))
       .background(wash)
       .drawBehind {
         // The marker: full height at the start, retracting upward as the wash fades.
@@ -185,9 +182,9 @@ fun Panel(label: String, info: Tip? = null, content: @Composable () -> Unit) {
   Column(
     Modifier
       .fillMaxWidth()
-      .background(Limen.colors.plateRaised, RoundedCornerShape(10.dp))
-      .border(1.dp, Limen.colors.plateEdge, RoundedCornerShape(10.dp))
-      .padding(14.dp)
+      .background(Limen.colors.plateRaised, RoundedCornerShape(12.dp))
+      .border(1.5.dp, Limen.colors.actionOutline, RoundedCornerShape(12.dp))
+      .padding(16.dp)
   ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
       Text(label, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
@@ -201,12 +198,7 @@ fun Panel(label: String, info: Tip? = null, content: @Composable () -> Unit) {
   }
 }
 
-/**
- * The pressable surface every key and chip sits on: a softly embossed plate that lifts a
- * hair off the paper, presses down under the finger, and springs back. The emboss is a
- * light inner edge along the top and a shade along the bottom, no gradient anywhere; the
- * press is a scale and the shadow settling, which is what a real key does.
- */
+/** The shared outlined control surface used by every actionable element. */
 @Composable
 fun KeySurface(
   modifier: Modifier = Modifier,
@@ -220,20 +212,21 @@ fun KeySurface(
   val play = rememberTick()
   val interaction = remember { MutableInteractionSource() }
   val pressed by interaction.collectIsPressedAsState()
-  // Stiff and barely bouncy on purpose. The earlier spring took about a third of a second
-  // to settle, and a key still moving when the screen has already changed reads as the app
-  // being slow to answer rather than as the key being springy.
   val scale by animateFloatAsState(
-    targetValue = if (pressed && enabled) 0.955f else 1f,
-    animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
+    targetValue = if (pressed && enabled) 0.98f else 1f,
+    animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessHigh),
     label = "keyScale",
   )
-  val lift by animateDpAsState(
-    targetValue = if (pressed && enabled) 0.dp else 2.dp,
-    animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessHigh),
-    label = "keyLift",
-  )
-  val corner = 12f
+  val fill = when {
+    !enabled && !active -> Limen.colors.disabled
+    active -> Limen.colors.action
+    else -> Limen.colors.input
+  }
+  val outline = when {
+    !enabled && !active -> Limen.colors.plateEdge
+    active -> Limen.colors.action
+    else -> Limen.colors.actionOutline
+  }
   Box(
     modifier
       .graphicsLayer {
@@ -241,18 +234,9 @@ fun KeySurface(
         scaleY = scale
         alpha = if (enabled || active) 1f else 0.45f
       }
-      .shadow(lift, shape, clip = false)
       .clip(shape)
-      .background(if (active) Limen.colors.ink else Limen.colors.plateRaised)
-      .border(1.dp, if (active) Limen.colors.ink else Limen.colors.plateEdge, shape)
-      .drawBehind {
-        // The emboss: a light edge where the light lands, a shade where it leaves.
-        val inset = corner * density
-        val hi = if (active) Color.White.copy(alpha = 0.10f) else Color.White.copy(alpha = 0.75f)
-        val lo = if (active) Color.Black.copy(alpha = 0.25f) else Color.Black.copy(alpha = 0.07f)
-        drawLine(hi, Offset(inset, 1.2f * density), Offset(size.width - inset, 1.2f * density), 2f * density, StrokeCap.Round)
-        drawLine(lo, Offset(inset, size.height - 1.2f * density), Offset(size.width - inset, size.height - 1.2f * density), 2f * density, StrokeCap.Round)
-      }
+      .background(fill)
+      .border(1.5.dp, outline, shape)
       .clickable(enabled = enabled, interactionSource = interaction, indication = null) {
         play(tick)
         onPress()
@@ -263,7 +247,7 @@ fun KeySurface(
   }
 }
 
-/** A transport-sized key. Active means engaged: it fills with ink, never with the seal green. */
+/** A transport-sized primary action. */
 @Composable
 fun BigKey(
   label: String,
@@ -277,7 +261,7 @@ fun BigKey(
     modifier,
     active = active,
     enabled = enabled,
-    shape = RoundedCornerShape(14.dp),
+    shape = RoundedCornerShape(12.dp),
     tick = tick,
     onPress = onPress,
   ) {
@@ -295,7 +279,7 @@ fun BigKey(
   }
 }
 
-/** The transport keys' smaller sibling: same plate, room for three in a row. */
+/** The transport keys' smaller sibling, outlined for secondary actions. */
 @Composable
 fun SmallKey(
   label: String,
@@ -304,7 +288,7 @@ fun SmallKey(
   enabled: Boolean = true,
   onPress: () -> Unit,
 ) {
-  KeySurface(modifier, enabled = enabled, shape = RoundedCornerShape(11.dp), tick = tick, onPress = onPress) {
+  KeySurface(modifier, enabled = enabled, shape = RoundedCornerShape(10.dp), tick = tick, onPress = onPress) {
     Text(
       label,
       fontFamily = FontFamily.SansSerif,
@@ -313,7 +297,7 @@ fun SmallKey(
       letterSpacing = 0.4.sp,
       textAlign = TextAlign.Center,
       maxLines = 1,
-      color = Limen.colors.ink,
+      color = if (enabled) Limen.colors.ink else Limen.colors.disabledInk,
       modifier = Modifier.padding(horizontal = 14.dp, vertical = 13.dp),
     )
   }
@@ -334,7 +318,7 @@ fun Chip(
     modifier,
     active = active,
     enabled = enabled,
-    shape = RoundedCornerShape(9.dp),
+    shape = RoundedCornerShape(10.dp),
     tick = tick,
     onPress = onPress,
   ) {
@@ -348,6 +332,7 @@ fun Chip(
       maxLines = 1,
       color = when {
         active -> Limen.colors.onInk
+        !enabled -> Limen.colors.disabledInk
         dim -> Limen.colors.inkDim
         else -> Limen.colors.ink
       },
@@ -422,9 +407,9 @@ fun StepLead(text: String) {
   Row(
     Modifier
       .fillMaxWidth()
-      .background(Limen.colors.plateRaised, RoundedCornerShape(10.dp))
-      .border(1.dp, Limen.colors.plateEdge, RoundedCornerShape(10.dp))
-      .padding(horizontal = 14.dp, vertical = 12.dp),
+      .background(Limen.colors.plateRaised, RoundedCornerShape(12.dp))
+      .border(1.5.dp, Limen.colors.actionOutline, RoundedCornerShape(12.dp))
+      .padding(horizontal = 16.dp, vertical = 14.dp),
   ) {
     Text(
       text,
@@ -466,18 +451,21 @@ fun Field(
     value = value,
     onValueChange = onChange,
     modifier = modifier.fillMaxWidth(),
+    shape = RoundedCornerShape(10.dp),
     singleLine = singleLine,
     label = { Text(label, style = MaterialTheme.typography.labelSmall) },
     placeholder = hint?.let { { Text(it, style = MaterialTheme.typography.bodyMedium, color = Limen.colors.inkDim) } },
     textStyle = MaterialTheme.typography.bodyMedium.copy(color = Limen.colors.ink),
     colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
-      focusedBorderColor = Limen.colors.ink,
-      unfocusedBorderColor = Limen.colors.plateEdge,
-      focusedLabelColor = Limen.colors.ink,
+      focusedBorderColor = Limen.colors.actionOutline,
+      unfocusedBorderColor = Limen.colors.actionOutline,
+      focusedLabelColor = Limen.colors.actionOutline,
       unfocusedLabelColor = Limen.colors.inkDim,
-      cursorColor = Limen.colors.ink,
-      focusedContainerColor = Limen.colors.plateRaised,
-      unfocusedContainerColor = Limen.colors.plateRaised,
+      cursorColor = Limen.colors.actionOutline,
+      focusedContainerColor = Limen.colors.input,
+      unfocusedContainerColor = Limen.colors.input,
+      disabledContainerColor = Limen.colors.disabled,
+      disabledTextColor = Limen.colors.disabledInk,
     ),
   )
 }
@@ -520,7 +508,7 @@ fun Stepper(count: Int, onChange: (Int) -> Unit) {
   }
 }
 
-/** A key that stays down. Ink when engaged, as every engaged control in this app is. */
+/** A labelled switch for persistent on/off choices. */
 @Composable
 fun Toggle(
   label: String,
@@ -529,17 +517,37 @@ fun Toggle(
   dense: Boolean = false,
   onPress: () -> Unit,
 ) {
-  KeySurface(modifier, active = on, shape = RoundedCornerShape(9.dp), onPress = onPress) {
-    Text(
-      label,
-      fontFamily = FontFamily.SansSerif,
-      fontWeight = FontWeight.Medium,
-      fontSize = 12.sp,
-      letterSpacing = 0.3.sp,
-      textAlign = TextAlign.Center,
-      maxLines = 1,
-      color = if (on) Limen.colors.onInk else Limen.colors.inkDim,
-      modifier = Modifier.padding(horizontal = if (dense) 10.dp else 13.dp, vertical = 9.dp),
-    )
+  KeySurface(modifier, shape = RoundedCornerShape(10.dp), onPress = onPress) {
+    Row(
+      Modifier.fillMaxWidth().padding(horizontal = if (dense) 10.dp else 13.dp, vertical = if (dense) 7.dp else 9.dp),
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      Text(
+        label,
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.Medium,
+        fontSize = 12.sp,
+        letterSpacing = 0.2.sp,
+        maxLines = 1,
+        color = Limen.colors.ink,
+        modifier = Modifier.weight(1f),
+      )
+      Box(
+        Modifier
+          .width(42.dp)
+          .height(24.dp)
+          .clip(CircleShape)
+          .background(if (on) Limen.colors.action else Limen.colors.plateEdge)
+          .padding(3.dp),
+      ) {
+        Box(
+          Modifier
+            .size(18.dp)
+            .align(if (on) Alignment.CenterEnd else Alignment.CenterStart)
+            .clip(CircleShape)
+            .background(if (on) Limen.colors.onInk else Limen.colors.inkDim),
+        )
+      }
+    }
   }
 }

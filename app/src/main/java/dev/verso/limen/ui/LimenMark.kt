@@ -9,15 +9,11 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.verso.limen.R
 
-/**
- * The mark: the user's badge, verbatim. A navy seal ringed in gold, LIMEN PACTORUM ET
- * IURIUM around a cross carrying the key, the signed scroll at its foot. The raster is
- * the identity; the launcher icon carries the same art on its paper disc.
- */
+/** The fixed Limen seal, rendered from the supplied vector master. */
 @Composable
 fun LimenMark(size: Dp = 30.dp, modifier: Modifier = Modifier) {
   Image(
-    painter = painterResource(R.drawable.limen_mark),
+    painter = painterResource(R.drawable.limen_logo),
     contentDescription = null,
     modifier = modifier.size(size),
   )

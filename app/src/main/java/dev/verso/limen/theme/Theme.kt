@@ -19,20 +19,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * The corridor and the document, almost colourless.
- *
- * A handover happens in an empty flat: plaster walls, bare floors, a paper protocol on a
- * windowsill. Day is ink on warm plaster; night inverts to bone on a dark stairwell.
- * Hierarchy is carried by size and weight, and the one colour is [seal], a deep enamel
- * green, and it means exactly one thing: this part of the record is signed, agreed,
- * settled. A defect is not red and a draft is not grey; only settledness wears colour,
- * because in this instrument the signature is the whole point.
+ * The product palette sampled from the Limen identity system. Both schemes stay neutral
+ * grey, while the mark's navy becomes the consistent outline and action colour.
  */
 @Immutable
 data class LimenColors(
   val plate: Color,
   val plateRaised: Color,
+  val input: Color,
   val plateEdge: Color,
+  val actionOutline: Color,
+  val action: Color,
   /** All lettering. A fact, never a status. */
   val ink: Color,
   val inkDim: Color,
@@ -42,30 +39,54 @@ data class LimenColors(
   val seal: Color,
   /** Lettering on a [seal] fill. */
   val onSeal: Color,
+  val warning: Color,
+  val warningOutline: Color,
+  val danger: Color,
+  val dangerOutline: Color,
+  val disabled: Color,
+  val disabledInk: Color,
   val isDark: Boolean,
 )
 
 val Day = LimenColors(
-  plate = Color(0xFFF0EDE6),
-  plateRaised = Color(0xFFFBF9F3),
-  plateEdge = Color(0xFFD6D2C5),
-  ink = Color(0xFF262620),
-  inkDim = Color(0xFF6C695B),
-  onInk = Color(0xFFFBF9F3),
-  seal = Color(0xFF175E54),
-  onSeal = Color(0xFFFBF9F3),
+  plate = Color(0xFFF6F7F9),
+  plateRaised = Color(0xFFE7E9EE),
+  input = Color(0xFFEFF1F4),
+  plateEdge = Color(0xFFD7DAE0),
+  actionOutline = Color(0xFF233350),
+  action = Color(0xFF233350),
+  ink = Color(0xFF1A1D23),
+  inkDim = Color(0xFF5B6472),
+  onInk = Color.White,
+  seal = Color(0xFF233350),
+  onSeal = Color.White,
+  warning = Color(0xFFFCEBD2),
+  warningOutline = Color(0xFFB26A00),
+  danger = Color(0xFFFDE8E8),
+  dangerOutline = Color(0xFFC94242),
+  disabled = Color(0xFFE7E9EE),
+  disabledInk = Color(0xFFA7ADB8),
   isDark = false,
 )
 
 val Night = LimenColors(
-  plate = Color(0xFF1D1E1A),
-  plateRaised = Color(0xFF272822),
-  plateEdge = Color(0xFF3C3E35),
-  ink = Color(0xFFE9E7DD),
-  inkDim = Color(0xFF9C9A8B),
-  onInk = Color(0xFF1D1E1A),
-  seal = Color(0xFF63BCA6),
-  onSeal = Color(0xFF1D1E1A),
+  plate = Color(0xFF1C1F24),
+  plateRaised = Color(0xFF2A2D33),
+  input = Color(0xFF24272D),
+  plateEdge = Color(0xFF3A3E46),
+  actionOutline = Color(0xFF7C93C4),
+  action = Color(0xFF4863A0),
+  ink = Color(0xFFF2F3F5),
+  inkDim = Color(0xFFA7ADB8),
+  onInk = Color.White,
+  seal = Color(0xFF4863A0),
+  onSeal = Color.White,
+  warning = Color(0xFF3A2D1C),
+  warningOutline = Color(0xFFFFB74D),
+  danger = Color(0xFF3B262A),
+  dangerOutline = Color(0xFFFF7878),
+  disabled = Color(0xFF2A2D33),
+  disabledInk = Color(0xFF5B6472),
   isDark = true,
 )
 
@@ -79,13 +100,13 @@ object Limen {
 private fun LimenColors.toScheme() =
   if (isDark) {
     darkColorScheme(
-      primary = ink,
+      primary = action,
       onPrimary = onInk,
-      primaryContainer = inkDim,
-      onPrimaryContainer = ink,
-      secondary = inkDim,
-      onSecondary = plate,
-      secondaryContainer = plateEdge,
+      primaryContainer = action,
+      onPrimaryContainer = onInk,
+      secondary = actionOutline,
+      onSecondary = ink,
+      secondaryContainer = input,
       onSecondaryContainer = ink,
       tertiary = seal,
       onTertiary = onSeal,
@@ -93,19 +114,19 @@ private fun LimenColors.toScheme() =
       onBackground = ink,
       surface = plateRaised,
       onSurface = ink,
-      surfaceVariant = plateEdge,
+      surfaceVariant = input,
       onSurfaceVariant = inkDim,
-      outline = plateEdge,
+      outline = actionOutline,
     )
   } else {
     lightColorScheme(
-      primary = ink,
+      primary = action,
       onPrimary = onInk,
-      primaryContainer = inkDim,
-      onPrimaryContainer = ink,
-      secondary = inkDim,
-      onSecondary = plateRaised,
-      secondaryContainer = plateEdge,
+      primaryContainer = action,
+      onPrimaryContainer = onInk,
+      secondary = actionOutline,
+      onSecondary = onInk,
+      secondaryContainer = input,
       onSecondaryContainer = ink,
       tertiary = seal,
       onTertiary = onSeal,
@@ -113,58 +134,59 @@ private fun LimenColors.toScheme() =
       onBackground = ink,
       surface = plateRaised,
       onSurface = ink,
-      surfaceVariant = plateEdge,
+      surfaceVariant = input,
       onSurfaceVariant = inkDim,
-      outline = plateEdge,
+      outline = actionOutline,
     )
   }
 
 private val DocumentShapes =
   Shapes(
-    extraSmall = RoundedCornerShape(3.dp),
-    small = RoundedCornerShape(6.dp),
-    medium = RoundedCornerShape(10.dp),
-    large = RoundedCornerShape(14.dp),
-    extraLarge = RoundedCornerShape(18.dp),
+    extraSmall = RoundedCornerShape(6.dp),
+    small = RoundedCornerShape(10.dp),
+    medium = RoundedCornerShape(12.dp),
+    large = RoundedCornerShape(16.dp),
+    extraLarge = RoundedCornerShape(22.dp),
   )
 
 /**
- * Monospace where figures are read against each other: meter readings, key counts, dates,
- * the Zeitwert arithmetic. Sans for prose. A protocol is a document; it should set like one.
+ * Clear sans hierarchy for field work, with monospaced figures where readings and dates need
+ * to line up at a glance.
  */
 private val DocumentTypography =
   Typography(
     displayLarge = TextStyle(
-      fontFamily = FontFamily.Monospace,
-      fontWeight = FontWeight.Light,
-      fontSize = 64.sp,
-      letterSpacing = (-1).sp,
+      fontFamily = FontFamily.SansSerif,
+      fontWeight = FontWeight.Bold,
+      fontSize = 42.sp,
+      letterSpacing = (-0.5).sp,
     ),
     titleMedium = TextStyle(
-      fontFamily = FontFamily.Monospace,
-      fontWeight = FontWeight.SemiBold,
-      fontSize = 18.sp,
+      fontFamily = FontFamily.SansSerif,
+      fontWeight = FontWeight.Bold,
+      fontSize = 21.sp,
     ),
     bodyLarge = TextStyle(
       fontFamily = FontFamily.SansSerif,
-      fontSize = 17.sp,
-      lineHeight = 24.sp,
+      fontSize = 16.sp,
+      lineHeight = 23.sp,
     ),
     bodyMedium = TextStyle(
       fontFamily = FontFamily.SansSerif,
-      fontSize = 16.sp,
-      lineHeight = 22.sp,
+      fontSize = 15.sp,
+      lineHeight = 21.sp,
     ),
     labelLarge = TextStyle(
       fontFamily = FontFamily.SansSerif,
-      fontWeight = FontWeight.SemiBold,
+      fontWeight = FontWeight.Bold,
       fontSize = 13.sp,
-      letterSpacing = 0.6.sp,
+      letterSpacing = 0.3.sp,
     ),
     labelSmall = TextStyle(
       fontFamily = FontFamily.SansSerif,
-      fontSize = 12.5.sp,
-      letterSpacing = 0.4.sp,
+      fontWeight = FontWeight.Medium,
+      fontSize = 12.sp,
+      letterSpacing = 0.2.sp,
     ),
   )
 

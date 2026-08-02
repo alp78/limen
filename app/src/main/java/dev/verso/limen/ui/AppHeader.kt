@@ -1,12 +1,12 @@
 package dev.verso.limen.ui
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -18,9 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import dev.verso.limen.theme.Limen
 
@@ -55,29 +53,32 @@ private fun ModePill(label: String, active: Boolean, onSelect: () -> Unit) {
   Chip(label, active = active, enabled = !active, onPress = onSelect)
 }
 
-/**
- * Day/night. A half-filled disc: the one glyph that means contrast rather than standing
- * for a sun or a moon, and it stays legible at this size in either scheme.
- */
+/** Compact light/dark switch matching the shared outlined control language. */
 @Composable
 fun ThemeToggle(dark: Boolean, onToggle: () -> Unit) {
-  val ink = Limen.colors.inkDim
-  Canvas(
-    Modifier
-      .size(34.dp)
-      .clip(CircleShape)
-      .clickable(onClick = onToggle)
-      .padding(9.dp)
-  ) {
-    val r = size.minDimension / 2f
-    drawCircle(color = ink, radius = r, style = Stroke(width = 1.6f * density))
-    drawArc(
-      color = ink,
-      startAngle = if (dark) 90f else 270f,
-      sweepAngle = 180f,
-      useCenter = true,
-      topLeft = Offset(center.x - r, center.y - r),
-      size = Size(r * 2, r * 2),
-    )
+  KeySurface(shape = RoundedCornerShape(20.dp), onPress = onToggle) {
+    Box(
+      Modifier
+        .width(42.dp)
+        .height(28.dp)
+        .padding(3.dp)
+        .clip(CircleShape)
+        .background(if (dark) Limen.colors.action else Limen.colors.plateEdge),
+    ) {
+      Box(
+        Modifier
+          .size(22.dp)
+          .align(if (dark) Alignment.CenterEnd else Alignment.CenterStart)
+          .clip(CircleShape)
+          .background(Limen.colors.onInk),
+      ) {
+        Text(
+          if (dark) "☾" else "☼",
+          fontWeight = FontWeight.Bold,
+          color = Limen.colors.actionOutline,
+          modifier = Modifier.align(Alignment.Center),
+        )
+      }
+    }
   }
 }

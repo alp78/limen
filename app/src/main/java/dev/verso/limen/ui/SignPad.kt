@@ -112,7 +112,7 @@ fun SignPadOverlay(
             .aspectRatio(2.1f)
             .clip(RoundedCornerShape(12.dp))
             .background(Color.White)
-            .border(1.dp, Limen.colors.plateEdge, RoundedCornerShape(12.dp))
+            .border(1.5.dp, Limen.colors.actionOutline, RoundedCornerShape(12.dp))
             .pointerInput(Unit) {
               detectDragGestures(
                 onDragStart = { start -> live = listOf(start) },

@@ -93,7 +93,9 @@ private fun FlowMast(vm: LimenViewModel, s: Str, p: Protocol) {
         .clickable { vm.flowBack() }
         .padding(horizontal = 12.dp, vertical = 2.dp),
     )
-    Spacer(Modifier.width(4.dp))
+    Spacer(Modifier.width(6.dp))
+    LimenMark(size = 30.dp)
+    Spacer(Modifier.width(8.dp))
     Column(Modifier.weight(1f)) {
       Text(
         (if (p.kind == Kind.Entry) s.entry else s.exit).uppercase(),
@@ -567,10 +569,10 @@ private fun ItemRow(
   Row(
     Modifier
       .fillMaxWidth()
-      .clip(RoundedCornerShape(8.dp))
+      .clip(RoundedCornerShape(10.dp))
       .background(Limen.colors.plateRaised)
-      .border(1.dp, Limen.colors.plateEdge, RoundedCornerShape(8.dp))
-      .padding(horizontal = 10.dp, vertical = 6.dp),
+      .border(1.5.dp, Limen.colors.actionOutline, RoundedCornerShape(10.dp))
+      .padding(horizontal = 12.dp, vertical = 8.dp),
     verticalAlignment = Alignment.CenterVertically,
   ) {
     Column(Modifier.weight(1f)) {

@@ -251,7 +251,7 @@ private fun PhotoThumb(vm: LimenViewModel, defectId: String, name: String) {
       Modifier
         .size(84.dp)
         .clip(RoundedCornerShape(8.dp))
-        .border(1.dp, Limen.colors.plateEdge, RoundedCornerShape(8.dp)),
+        .border(1.5.dp, Limen.colors.actionOutline, RoundedCornerShape(10.dp)),
     )
     return
   }
@@ -263,7 +263,7 @@ private fun PhotoThumb(vm: LimenViewModel, defectId: String, name: String) {
       modifier = Modifier
         .size(84.dp)
         .clip(RoundedCornerShape(8.dp))
-        .border(1.dp, Limen.colors.plateEdge, RoundedCornerShape(8.dp)),
+        .border(1.5.dp, Limen.colors.actionOutline, RoundedCornerShape(10.dp)),
     )
     Text(
       "×",

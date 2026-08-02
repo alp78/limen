@@ -50,7 +50,7 @@ fun HomeScreen(modifier: Modifier = Modifier, vm: LimenViewModel = viewModel(), 
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
       ) {
-        LimenMark(size = 40.dp)
+        LimenMark(size = 46.dp)
         Spacer(Modifier.weight(1f))
         vm.myRole?.let { role ->
           Chip(
@@ -182,16 +182,16 @@ private fun ProfileOverlay(vm: LimenViewModel, s: Str, onClose: () -> Unit) {
 /** One dossier: what, where, when, and how far it got. Delete asks twice, quietly. */
 @Composable
 private fun ProtocolCard(vm: LimenViewModel, s: Str, p: Protocol) {
-  val shape = RoundedCornerShape(12.dp)
+  val shape = RoundedCornerShape(14.dp)
   var armed by remember(p.id) { mutableStateOf(false) }
   Column(
     Modifier
       .fillMaxWidth()
       .clip(shape)
       .background(Limen.colors.plateRaised)
-      .border(1.dp, Limen.colors.plateEdge, shape)
+      .border(1.5.dp, Limen.colors.actionOutline, shape)
       .clickable { vm.openProtocol(p.id) }
-      .padding(horizontal = 14.dp, vertical = 10.dp),
+      .padding(horizontal = 16.dp, vertical = 12.dp),
   ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
       Column(Modifier.weight(1f)) {
@@ -225,8 +225,8 @@ private fun ProtocolCard(vm: LimenViewModel, s: Str, p: Protocol) {
         color = if (sealed) Limen.colors.onSeal else Limen.colors.inkDim,
         modifier = Modifier
           .clip(RoundedCornerShape(6.dp))
-          .background(if (sealed) Limen.colors.seal else Limen.colors.plate)
-          .border(1.dp, Limen.colors.plateEdge, RoundedCornerShape(6.dp))
+          .background(if (sealed) Limen.colors.seal else Limen.colors.input)
+          .border(1.dp, Limen.colors.actionOutline, RoundedCornerShape(8.dp))
           .padding(horizontal = 8.dp, vertical = 4.dp),
       )
     }
