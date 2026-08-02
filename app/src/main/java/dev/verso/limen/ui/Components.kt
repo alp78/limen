@@ -1,10 +1,8 @@
 package dev.verso.limen.ui
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.LinearOutSlowInEasing
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -19,6 +17,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -26,6 +25,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Text
@@ -43,10 +43,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
@@ -56,6 +63,21 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.verso.limen.theme.Limen
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.PhotoCamera
+import androidx.compose.material.icons.outlined.PhotoLibrary
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Remove
+import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 
 /**
  * What an info mark explains: a lead sentence, then bullets, never a wall of text. The
@@ -176,14 +198,23 @@ fun Revealed(key: Any?, modifier: Modifier = Modifier, content: @Composable () -
   }
 }
 
-/** A raised panel with its stamped label, the container every control row sits in. */
+/** A raised panel with its stamped label; findings can use the warning treatment. */
 @Composable
-fun Panel(label: String, info: Tip? = null, content: @Composable () -> Unit) {
+fun Panel(
+  label: String,
+  info: Tip? = null,
+  warning: Boolean = false,
+  content: @Composable () -> Unit,
+) {
   Column(
     Modifier
       .fillMaxWidth()
-      .background(Limen.colors.plateRaised, RoundedCornerShape(12.dp))
-      .border(1.5.dp, Limen.colors.actionOutline, RoundedCornerShape(12.dp))
+      .background(if (warning) Limen.colors.warning else Limen.colors.plateRaised, RoundedCornerShape(12.dp))
+      .border(
+        1.5.dp,
+        if (warning) Limen.colors.warningOutline else Limen.colors.actionOutline,
+        RoundedCornerShape(12.dp),
+      )
       .padding(16.dp)
   ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -198,52 +229,172 @@ fun Panel(label: String, info: Tip? = null, content: @Composable () -> Unit) {
   }
 }
 
-/** The shared outlined control surface used by every actionable element. */
+/**
+ * The shared action surface. The visual depth is deliberately part of the control itself:
+ * a lighter top, the palette colour through its face, and a darker lower edge. On touch the
+ * face travels down into that edge, making the pressed state legible without changing Limen's
+ * approved palette.
+ */
 @Composable
 fun KeySurface(
   modifier: Modifier = Modifier,
   active: Boolean = false,
   enabled: Boolean = true,
   shape: RoundedCornerShape = RoundedCornerShape(12.dp),
+  fillColor: Color? = null,
+  outlineColor: Color? = null,
   tick: Tick = Tick.Key,
   onPress: () -> Unit,
   content: @Composable () -> Unit,
 ) {
   val play = rememberTick()
-  val interaction = remember { MutableInteractionSource() }
-  val pressed by interaction.collectIsPressedAsState()
-  val scale by animateFloatAsState(
-    targetValue = if (pressed && enabled) 0.98f else 1f,
-    animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessHigh),
-    label = "keyScale",
-  )
   val fill = when {
     !enabled && !active -> Limen.colors.disabled
+    fillColor != null -> fillColor
     active -> Limen.colors.action
     else -> Limen.colors.input
   }
   val outline = when {
     !enabled && !active -> Limen.colors.plateEdge
+    outlineColor != null -> outlineColor
     active -> Limen.colors.action
     else -> Limen.colors.actionOutline
   }
-  Box(
-    modifier
-      .graphicsLayer {
-        scaleX = scale
-        scaleY = scale
-        alpha = if (enabled || active) 1f else 0.45f
-      }
+  val interactionSource = remember { MutableInteractionSource() }
+  val pressed by interactionSource.collectIsPressedAsState()
+  val depth = if (enabled) 3.dp else 2.dp
+  val faceOffset by animateDpAsState(
+    targetValue = if (pressed && enabled) depth else 0.dp,
+    animationSpec = tween(durationMillis = 90),
+    label = "keyFaceOffset",
+  )
+  val topLight = fill.lifted(if (Limen.colors.isDark) 0.18f else 0.30f)
+  val lowerTone = fill.shaded(if (Limen.colors.isDark) 0.18f else 0.12f)
+  val edge = fill.shaded(if (enabled) 0.16f else 0.08f)
+  val faceOutline = if (
+    !Limen.colors.isDark && !active && fillColor == null && outlineColor == null
+  ) {
+    Limen.colors.plateEdge
+  } else {
+    outline
+  }
+  val face = remember(topLight, fill, lowerTone) {
+    Brush.verticalGradient(
+      0.0f to topLight,
+      0.36f to fill,
+      1.0f to lowerTone,
+    )
+  }
+
+  Layout(
+    content = content,
+    modifier = modifier
+      .defaultMinSize(minWidth = 44.dp, minHeight = 40.dp)
       .clip(shape)
-      .background(fill)
-      .border(1.5.dp, outline, shape)
-      .clickable(enabled = enabled, interactionSource = interaction, indication = null) {
+      .background(edge, shape)
+      .drawBehind {
+        val faceHeight = size.height - depth.toPx()
+        val faceOffsetPx = faceOffset.toPx()
+        if (faceHeight <= 0f) return@drawBehind
+        val faceSize = Size(size.width, faceHeight)
+        val radius = shape.topStart.toPx(faceSize, this).coerceAtMost(faceHeight / 2f)
+        val corner = CornerRadius(radius, radius)
+        withTransform({ translate(top = faceOffsetPx) }) {
+          drawRoundRect(brush = face, size = faceSize, cornerRadius = corner)
+          drawRoundRect(
+            color = faceOutline,
+            size = faceSize,
+            cornerRadius = corner,
+            style = Stroke(width = 1.dp.toPx()),
+          )
+        }
+      }
+      .border(1.dp, edge, shape)
+      .clickable(
+        interactionSource = interactionSource,
+        indication = null,
+        enabled = enabled,
+      ) {
         play(tick)
         onPress()
       },
-    contentAlignment = Alignment.Center,
+  ) { measurables, constraints ->
+    val contentConstraints = constraints.copy(minWidth = 0, minHeight = 0)
+    val placeables = measurables.map { it.measure(contentConstraints) }
+    val contentWidth = placeables.maxOfOrNull { it.width } ?: 0
+    val contentHeight = placeables.maxOfOrNull { it.height } ?: 0
+    val width = contentWidth.coerceIn(constraints.minWidth, constraints.maxWidth)
+    val depthPx = depth.roundToPx()
+    val height = (contentHeight + depthPx).coerceIn(constraints.minHeight, constraints.maxHeight)
+    val faceHeight = (height - depthPx).coerceAtLeast(0)
+    val faceOffsetPx = faceOffset.roundToPx()
+    layout(width, height) {
+      placeables.forEach { placeable ->
+        placeable.placeRelative(
+          x = (width - placeable.width) / 2,
+          y = faceOffsetPx + (faceHeight - placeable.height) / 2,
+        )
+      }
+    }
+  }
+}
+
+private fun Color.lifted(amount: Float): Color = Color.White.copy(alpha = amount).compositeOver(this)
+
+private fun Color.shaded(amount: Float): Color = Color.Black.copy(alpha = amount).compositeOver(this)
+
+/** Universal controls use the familiar Material icon instead of repeating a text label. */
+enum class ButtonGlyph {
+  Add, Remove, Delete, Edit, Camera, Gallery, Back, Next, Confirm, Cancel, Clear, Share, Open,
+}
+
+fun ButtonGlyph.vector(): ImageVector = when (this) {
+  ButtonGlyph.Add -> Icons.Outlined.Add
+  ButtonGlyph.Remove -> Icons.Outlined.Remove
+  ButtonGlyph.Delete -> Icons.Outlined.Delete
+  ButtonGlyph.Edit -> Icons.Outlined.Edit
+  ButtonGlyph.Camera -> Icons.Outlined.PhotoCamera
+  ButtonGlyph.Gallery -> Icons.Outlined.PhotoLibrary
+  ButtonGlyph.Back -> Icons.AutoMirrored.Outlined.ArrowBack
+  ButtonGlyph.Next -> Icons.AutoMirrored.Outlined.ArrowForward
+  ButtonGlyph.Confirm -> Icons.Outlined.Check
+  ButtonGlyph.Cancel -> Icons.Outlined.Close
+  ButtonGlyph.Clear -> Icons.Outlined.Refresh
+  ButtonGlyph.Share -> Icons.Outlined.Share
+  ButtonGlyph.Open -> Icons.AutoMirrored.Outlined.OpenInNew
+}
+
+@Composable
+fun IconKey(
+  glyph: ButtonGlyph,
+  contentDescription: String,
+  modifier: Modifier = Modifier,
+  enabled: Boolean = true,
+  destructive: Boolean = false,
+  fillColor: Color? = null,
+  outlineColor: Color? = null,
+  tint: Color? = null,
+  tick: Tick = Tick.Key,
+  onPress: () -> Unit,
+) {
+  val resolvedFill = if (destructive) Limen.colors.danger else fillColor
+  val resolvedOutline = if (destructive) Limen.colors.dangerOutline else outlineColor
+  val resolvedTint = if (destructive) Limen.colors.dangerOutline else tint
+  KeySurface(
+    modifier = Modifier.defaultMinSize(minWidth = 44.dp, minHeight = 44.dp).then(modifier),
+    enabled = enabled,
+    shape = RoundedCornerShape(12.dp),
+    fillColor = resolvedFill,
+    outlineColor = resolvedOutline,
+    tick = tick,
+    onPress = onPress,
   ) {
-    content()
+    Icon(
+      imageVector = glyph.vector(),
+      contentDescription = contentDescription,
+      modifier = Modifier.size(20.dp),
+      tint = if (enabled) resolvedTint ?: Limen.colors.ink else Limen.colors.disabledInk,
+    )
   }
 }
 
@@ -273,7 +424,11 @@ fun BigKey(
       letterSpacing = 0.8.sp,
       textAlign = TextAlign.Center,
       maxLines = 1,
-      color = if (active) Limen.colors.onInk else Limen.colors.ink,
+      color = when {
+        active -> Limen.colors.onInk
+        !enabled -> Limen.colors.disabledInk
+        else -> Limen.colors.ink
+      },
       modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
     )
   }
@@ -312,13 +467,19 @@ fun Chip(
   dim: Boolean = true,
   tick: Tick = Tick.Key,
   enabled: Boolean = true,
+  destructive: Boolean = false,
   onPress: () -> Unit,
 ) {
+  val destructiveFill = if (destructive) {
+    if (active) Limen.colors.dangerOutline else Limen.colors.danger
+  } else null
   KeySurface(
     modifier,
-    active = active,
+    active = active && !destructive,
     enabled = enabled,
     shape = RoundedCornerShape(10.dp),
+    fillColor = destructiveFill,
+    outlineColor = if (destructive) Limen.colors.dangerOutline else null,
     tick = tick,
     onPress = onPress,
   ) {
@@ -331,6 +492,8 @@ fun Chip(
       textAlign = TextAlign.Center,
       maxLines = 1,
       color = when {
+        destructive && active -> Limen.colors.onInk
+        destructive -> Limen.colors.dangerOutline
         active -> Limen.colors.onInk
         !enabled -> Limen.colors.disabledInk
         dim -> Limen.colors.inkDim
@@ -474,20 +637,12 @@ fun Field(
 @Composable
 fun Stepper(count: Int, onChange: (Int) -> Unit) {
   Row(verticalAlignment = Alignment.CenterVertically) {
-    KeySurface(
+    IconKey(
+      glyph = ButtonGlyph.Remove,
+      contentDescription = "Decrease",
       enabled = count > 0,
-      shape = RoundedCornerShape(9.dp),
       onPress = { if (count > 0) onChange(count - 1) },
-    ) {
-      Text(
-        "−",
-        fontFamily = FontFamily.SansSerif,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 17.sp,
-        color = Limen.colors.ink,
-        modifier = Modifier.padding(horizontal = 15.dp, vertical = 6.dp),
-      )
-    }
+    )
     Text(
       count.toString(),
       fontFamily = FontFamily.Monospace,
@@ -495,16 +650,7 @@ fun Stepper(count: Int, onChange: (Int) -> Unit) {
       color = Limen.colors.ink,
       modifier = Modifier.padding(horizontal = 14.dp),
     )
-    KeySurface(shape = RoundedCornerShape(9.dp), onPress = { onChange(count + 1) }) {
-      Text(
-        "+",
-        fontFamily = FontFamily.SansSerif,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 17.sp,
-        color = Limen.colors.ink,
-        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
-      )
-    }
+    IconKey(ButtonGlyph.Add, "Increase") { onChange(count + 1) }
   }
 }
 
