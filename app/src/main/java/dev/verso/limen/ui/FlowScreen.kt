@@ -31,6 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -60,10 +61,13 @@ import dev.verso.limen.data.Protocol
 import dev.verso.limen.data.Role
 import dev.verso.limen.data.RoomKind
 import dev.verso.limen.data.RoomItem
+import dev.verso.limen.data.SwissAddressCandidate
+import dev.verso.limen.data.SwissAddressLookup
 import dev.verso.limen.data.TenantResponse
 import dev.verso.limen.R
 import dev.verso.limen.sense.Clocks
 import dev.verso.limen.theme.Limen
+import kotlinx.coroutines.delay
 import java.time.LocalDate
 
 /**
@@ -281,14 +285,68 @@ private fun FlowMast(vm: LimenViewModel, s: Str, p: Protocol) {
 
 @Composable
 private fun SetupStep(vm: LimenViewModel, s: Str, p: Protocol) {
+  var objectSearching by remember(p.id) { mutableStateOf(false) }
+  var objectMatches by remember(p.id) { mutableStateOf(emptyList<SwissAddressCandidate>()) }
+  var focusedObjectFields by remember(p.id) { mutableStateOf(emptySet<String>()) }
+  var objectAddressVerified by remember(p.id) { mutableStateOf(p.address.isNotBlank() && p.place.isNotBlank()) }
+  val objectAddressFocused = focusedObjectFields.isNotEmpty()
+  val objectAddressQuery = listOf(p.address, p.place)
+    .filter { it.isNotBlank() }
+    .joinToString(" ")
+
+  LaunchedEffect(p.id, objectAddressQuery, objectAddressFocused, objectAddressVerified) {
+    if (!objectAddressFocused || objectAddressVerified || objectAddressQuery.trim().length < 3) {
+      objectMatches = emptyList()
+      objectSearching = false
+      return@LaunchedEffect
+    }
+    delay(350)
+    objectSearching = true
+    objectMatches = SwissAddressLookup.search(objectAddressQuery)
+    objectSearching = false
+  }
+
+  fun setObjectFieldFocused(field: String, focused: Boolean) {
+    focusedObjectFields = if (focused) focusedObjectFields + field else focusedObjectFields - field
+  }
+
+  fun editObjectAddress(transform: (Protocol) -> Protocol) {
+    objectAddressVerified = false
+    objectMatches = emptyList()
+    objectSearching = false
+    vm.edit(transform)
+  }
+
+  fun selectObjectAddress(candidate: SwissAddressCandidate) {
+    vm.edit {
+      it.copy(
+        address = listOf(candidate.street, candidate.flatNumber).filter { part -> part.isNotBlank() }.joinToString(" "),
+        place = listOf(candidate.postalCode, candidate.city).filter { part -> part.isNotBlank() }.joinToString(" "),
+      )
+    }
+    objectMatches = emptyList()
+    objectAddressVerified = true
+  }
+
   Column(
     Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
     verticalArrangement = Arrangement.spacedBy(10.dp),
   ) {
     Panel(label = s.objectLabel) {
       Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Field(s.address, p.address) { v -> vm.edit { it.copy(address = v) } }
-        Field(s.place, p.place) { v -> vm.edit { it.copy(place = v) } }
+        Field(
+          s.address,
+          p.address,
+          hint = s.addressLookupHint,
+          onFocusChanged = { setObjectFieldFocused("address", it) },
+        ) { value -> editObjectAddress { it.copy(address = value) } }
+        Field(s.place, p.place, onFocusChanged = { setObjectFieldFocused("place", it) }) { value ->
+          editObjectAddress { it.copy(place = value) }
+        }
+        if (objectAddressFocused && !objectAddressVerified && objectSearching) {
+          Text(s.addressSearching, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
+        }
+        if (objectAddressFocused && !objectAddressVerified) OfficialAddressMatches(objectMatches, ::selectObjectAddress)
         Field(s.objectDetail, p.objectDetail) { v -> vm.edit { it.copy(objectDetail = v) } }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
           Field(s.handoverDate, p.handoverDate, Modifier.weight(1.4f)) { v ->
@@ -439,6 +497,32 @@ private fun SetupStep(vm: LimenViewModel, s: Str, p: Protocol) {
 
     BigKey(s.next, active = true, Modifier.fillMaxWidth()) { vm.goTo(FlowStep.Rooms) }
     Spacer(Modifier.height(12.dp))
+  }
+}
+
+/** The handed-over flat is resolved independently from any participant contact address. */
+@Composable
+private fun OfficialAddressMatches(
+  matches: List<SwissAddressCandidate>,
+  onSelect: (SwissAddressCandidate) -> Unit,
+) {
+  if (matches.isEmpty()) return
+  Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    matches.forEach { candidate ->
+      KeySurface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(10.dp),
+        onPress = { onSelect(candidate) },
+      ) {
+        Text(
+          candidate.label,
+          style = MaterialTheme.typography.bodyMedium,
+          color = Limen.colors.ink,
+          maxLines = 2,
+          modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+        )
+      }
+    }
   }
 }
 

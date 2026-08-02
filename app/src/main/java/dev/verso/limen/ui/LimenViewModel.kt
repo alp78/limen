@@ -270,8 +270,10 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
       sessionRole = sessionRole,
       sessionName = resolvedName,
       sessionIdentity = resolvedIdentity,
-      address = resolvedIdentity.addressLine,
-      place = resolvedIdentity.placeLine,
+      // The object is the flat being handed over, not the starter's contact address.
+      // It is entered independently from the official swisstopo lookup in Setup.
+      address = "",
+      place = "",
       createdEpochMs = now,
       handoverDate = LocalDate.now().toString(),
       parties = listOf(
