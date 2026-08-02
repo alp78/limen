@@ -36,6 +36,8 @@ object PdfExport {
     photoDir: File,
     signatureDir: File,
   ): ExportedFile {
+    require(p.isFinalized()) { "Only finalized protocols can be exported" }
+    check(ProtocolIntegrity.matches(p, photoDir, signatureDir)) { "Finalized evidence does not match its fingerprint" }
     val reference = reference(p)
     // Twice: the first pass only counts the sheets so the second can number them "3 / 7".
     // A form that names its own total is a form nobody can quietly take a page out of,
@@ -67,6 +69,7 @@ object PdfExport {
     val sheet = Sheet(doc, s, reference, total)
     title(sheet, p, s, context)
     header(sheet, p, s)
+    integrity(sheet, p, s)
     parties(sheet, p, s)
     deposit(sheet, p, s)
     metersAndKeys(sheet, p, s)
@@ -80,28 +83,8 @@ object PdfExport {
     return doc
   }
 
-  /**
-   * The filing reference, printed on every page the way an official form carries its
-   * number. The tail is a short digest of what the document says, so two protocols that
-   * differ by one word carry different references: enough to tell two papers apart at a
-   * counter, and claiming nothing more than that.
-   */
-  private fun reference(p: Protocol): String {
-    val body = buildString {
-      append(p.kind.name).append('|').append(p.address).append('|').append(p.place)
-      append('|').append(p.handoverDate).append('|').append(p.remarks)
-      p.parties.forEach { append('|').append(it.role.name).append(':').append(it.name) }
-      p.rooms.forEach { r -> append('|').append(r.name); r.items.forEach { append(it.grade.ordinal) } }
-      p.defects.forEach { append('|').append(it.text).append(':').append(it.chargedToTenant) }
-      p.signatures.forEach {
-        append('|').append(it.role.name).append(it.plane.name).append(it.refused)
-      }
-    }
-    val digest = java.security.MessageDigest.getInstance("SHA-256")
-      .digest(body.toByteArray(Charsets.UTF_8))
-    val tail = digest.take(3).joinToString("") { "%02X".format(it) }
-    return "LIMEN-${exportStamp().substringBefore('-')}-$tail"
-  }
+  /** The filing reference is a readable prefix of the frozen evidence fingerprint. */
+  private fun reference(p: Protocol): String = "LIMEN-${p.evidenceFingerprint.take(16)}"
 
   // ── The sheet: cursor, page breaks, footer ───────────────────────────────────────────
 
@@ -262,6 +245,15 @@ object PdfExport {
     }
   }
 
+  /** Identifies the immutable record and, when applicable, the record it corrects. */
+  private fun integrity(sheet: Sheet, p: Protocol, s: Str) {
+    sheet.sectionTitle(s.pdfFinalized)
+    sheet.wrapped("${s.fingerprint}: ${p.evidenceFingerprint}", sheet.small)
+    if (p.amendedFromId.isNotBlank()) {
+      sheet.wrapped("${s.pdfAmends}: ${p.amendedFromId}", sheet.small)
+    }
+  }
+
   private fun parties(sheet: Sheet, p: Protocol, s: Str) {
     sheet.sectionTitle(s.parties)
     p.parties.forEach { party ->
@@ -407,12 +399,18 @@ object PdfExport {
         if (d.fixDeadline.isNotBlank()) add("${s.fixDeadline} ${d.fixDeadline}")
         if (d.costNote.isNotBlank()) add("${s.costNote}: ${d.costNote}")
         if (d.photos.isNotEmpty()) add("${s.photos}: ${d.photos.size}")
+        if (d.tenantResponse != TenantResponse.NotStated) {
+          add("${s.tenantResponse}: ${s.tenantResponse(d.tenantResponse)}")
+        }
       }
       if (meta.isNotEmpty()) {
         sheet.wrapped(meta.joinToString(" · "), sheet.small, MARGIN + 60f, W - 2 * MARGIN - 60f)
       }
       if (d.reservation.isNotBlank()) {
         sheet.wrapped("${s.reservationLabel}: ${d.reservation}", sheet.small, MARGIN + 60f, W - 2 * MARGIN - 60f)
+      }
+      if (d.tenantComment.isNotBlank()) {
+        sheet.wrapped("${s.tenantComment}: ${d.tenantComment}", sheet.small, MARGIN + 60f, W - 2 * MARGIN - 60f)
       }
       sheet.gap(8f)
     }
@@ -442,7 +440,7 @@ object PdfExport {
     drawPlane(sheet, p, s, signatureDir, Plane.Record)
 
     // Plane 2: the debt. Printed only when someone engaged with it; its warning always.
-    val costs = p.signatures.filter { it.plane == Plane.Costs }
+    val costs = p.signatures.filter { it.plane == Plane.Costs && p.isCurrent(it) }
     if (costs.isNotEmpty()) {
       sheet.sectionTitle(s.signCostsTitle)
       sheet.wrapped(s.signCostsWarning, sheet.small)
@@ -458,7 +456,7 @@ object PdfExport {
   }
 
   private fun drawPlane(sheet: Sheet, p: Protocol, s: Str, dir: File, plane: Plane) {
-    val sigs = p.signatures.filter { it.plane == plane }
+    val sigs = p.signatures.filter { it.plane == plane && p.isCurrent(it) }
     if (sigs.isEmpty()) {
       sheet.wrapped(s.notSigned, sheet.body)
       return
@@ -539,7 +537,12 @@ object PdfExport {
             val h = bmp.height * scale
             val paint = Paint(Paint.FILTER_BITMAP_FLAG)
             sheet.canvas.drawBitmap(bmp, null, android.graphics.RectF(x, sheet.y, x + w, sheet.y + h), paint)
-            sheet.canvas.drawText("${s.defects} ${index + 1}", x, sheet.y + h + sheet.small.textSize + 6f, sheet.small)
+            val proof = d.photoEvidence.firstOrNull { it.file == name }?.sha256?.take(12).orEmpty()
+            val caption = buildString {
+              append("${s.defects} ${index + 1}")
+              if (proof.isNotBlank()) append(" · ").append(proof)
+            }
+            sheet.canvas.drawText(caption, x, sheet.y + h + sheet.small.textSize + 6f, sheet.small)
             bmp.recycle()
           }
           col++

@@ -21,6 +21,7 @@ object Befund {
   private const val MARGIN = 110f
 
   fun export(context: Context, p: Protocol, s: Str, commune: String): ExportedFile {
+    require(p.isFinalized()) { "A finding letter must refer to a finalized protocol" }
     val doc = PdfDocument()
     try {
       val page = doc.startPage(PdfDocument.PageInfo.Builder(W, H, 1).create())
@@ -65,6 +66,7 @@ object Befund {
       }
       fact(s.objectLabel, listOf(p.address, p.place, p.objectDetail).filter { it.isNotBlank() }.joinToString(", "))
       fact(s.handoverDate, p.handoverDate)
+      paragraph("${s.fingerprint}: ${p.evidenceFingerprint}", small, 10f)
       p.parties.filter { it.name.isNotBlank() }.forEach { fact(s.role(it.role), it.name) }
       y += 22f
 

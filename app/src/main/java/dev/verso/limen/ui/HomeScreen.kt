@@ -214,8 +214,9 @@ private fun ProtocolCard(vm: LimenViewModel, s: Str, p: Protocol) {
       }
       // The status chip: the one place the seal green is allowed to appear.
       val (label, sealed) = when {
-        p.isExported() -> s.exported to true
-        p.isSigned() -> s.signed to true
+        p.isFinalized() && p.isExported() -> s.exported to true
+        p.isFinalized() -> s.finalized to true
+        p.isSigned() -> s.awaitingSignatures to false
         else -> s.draft to false
       }
       Text(
@@ -232,7 +233,9 @@ private fun ProtocolCard(vm: LimenViewModel, s: Str, p: Protocol) {
     Spacer(Modifier.height(8.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
       if (p.kind == Kind.Entry) {
-        Chip(s.exitFromThis, dim = false) { vm.seedExitFrom(p) }
+        Chip(if (p.isFinalized()) s.exitFromThis else s.finalizeEntryFirst, dim = !p.isFinalized()) {
+          if (p.isFinalized()) vm.seedExitFrom(p) else vm.openProtocol(p.id)
+        }
       }
       Spacer(Modifier.weight(1f))
       Chip(if (armed) s.sure else s.delete, tick = if (armed) Tick.Reject else Tick.Key) {

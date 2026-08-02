@@ -16,6 +16,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -210,6 +211,7 @@ fun Panel(label: String, info: Tip? = null, content: @Composable () -> Unit) {
 fun KeySurface(
   modifier: Modifier = Modifier,
   active: Boolean = false,
+  enabled: Boolean = true,
   shape: RoundedCornerShape = RoundedCornerShape(12.dp),
   tick: Tick = Tick.Key,
   onPress: () -> Unit,
@@ -222,12 +224,12 @@ fun KeySurface(
   // to settle, and a key still moving when the screen has already changed reads as the app
   // being slow to answer rather than as the key being springy.
   val scale by animateFloatAsState(
-    targetValue = if (pressed) 0.955f else 1f,
+    targetValue = if (pressed && enabled) 0.955f else 1f,
     animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessHigh),
     label = "keyScale",
   )
   val lift by animateDpAsState(
-    targetValue = if (pressed) 0.dp else 2.dp,
+    targetValue = if (pressed && enabled) 0.dp else 2.dp,
     animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessHigh),
     label = "keyLift",
   )
@@ -237,6 +239,7 @@ fun KeySurface(
       .graphicsLayer {
         scaleX = scale
         scaleY = scale
+        alpha = if (enabled) 1f else 0.45f
       }
       .shadow(lift, shape, clip = false)
       .clip(shape)
@@ -250,7 +253,7 @@ fun KeySurface(
         drawLine(hi, Offset(inset, 1.2f * density), Offset(size.width - inset, 1.2f * density), 2f * density, StrokeCap.Round)
         drawLine(lo, Offset(inset, size.height - 1.2f * density), Offset(size.width - inset, size.height - 1.2f * density), 2f * density, StrokeCap.Round)
       }
-      .clickable(interactionSource = interaction, indication = null) {
+      .clickable(enabled = enabled, interactionSource = interaction, indication = null) {
         play(tick)
         onPress()
       },
@@ -267,9 +270,17 @@ fun BigKey(
   active: Boolean,
   modifier: Modifier = Modifier,
   tick: Tick = Tick.Key,
+  enabled: Boolean = true,
   onPress: () -> Unit,
 ) {
-  KeySurface(modifier, active = active, shape = RoundedCornerShape(14.dp), tick = tick, onPress = onPress) {
+  KeySurface(
+    modifier,
+    active = active,
+    enabled = enabled,
+    shape = RoundedCornerShape(14.dp),
+    tick = tick,
+    onPress = onPress,
+  ) {
     Text(
       label,
       fontFamily = FontFamily.SansSerif,
@@ -422,7 +433,10 @@ fun <T> PillRow(
   dense: Boolean = false,
   onSelect: (T) -> Unit,
 ) {
-  Row(horizontalArrangement = Arrangement.spacedBy(if (dense) 5.dp else 6.dp)) {
+  FlowRow(
+    horizontalArrangement = Arrangement.spacedBy(if (dense) 5.dp else 6.dp),
+    verticalArrangement = Arrangement.spacedBy(if (dense) 5.dp else 6.dp),
+  ) {
     options.forEach { (value, label) ->
       Chip(label, active = value == current) { onSelect(value) }
     }

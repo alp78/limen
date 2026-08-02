@@ -6,6 +6,7 @@ import dev.verso.limen.data.ItemKey
 import dev.verso.limen.data.KeyKind
 import dev.verso.limen.data.Role
 import dev.verso.limen.data.RoomKind
+import dev.verso.limen.data.TenantResponse
 import java.util.Locale
 
 /**
@@ -90,6 +91,10 @@ class Str(val lang: Lang) {
   val exit = pick("Exit", "Sortie", "Auszug", "Riconsegna", "Sortida")
   val draft = pick("Draft", "Brouillon", "Entwurf", "Bozza", "Sboz")
   val signed = pick("Signed", "Signé", "Unterzeichnet", "Firmato", "Suttascrit")
+  val finalized = pick("Finalized", "Finalisé", "Abgeschlossen", "Finalizzato", "Finalisà")
+  val awaitingSignatures = pick(
+    "Awaiting signatures", "En attente des signatures", "Unterschriften ausstehend", "In attesa di firme", "Spetga sin suttascripziuns",
+  )
   val exported = pick("Exported", "Exporté", "Exportiert", "Esportato", "Exportà")
 
   // Common keys.
@@ -283,6 +288,13 @@ class Str(val lang: Lang) {
   val addRoom = pick("ADD ROOM", "AJOUTER UNE PIÈCE", "RAUM HINZUFÜGEN", "AGGIUNGI LOCALE", "AGIUNTAR IN LOCAL")
   val addDefect = pick("Note a defect", "Noter un défaut", "Mangel erfassen", "Annotare un difetto", "Registrar ina mancanza")
   val defects = pick("Defects", "Défauts", "Mängel", "Difetti", "Mancanzas")
+  val entryBaseline = pick(
+    "Entry record alongside this exit walk", "État d'entrée à côté de cette sortie", "Einzugsprotokoll neben diesem Auszugsrundgang", "Verbale d'entrata accanto a questa riconsegna", "Protocol d'entrada sper questa sortida",
+  )
+  val atEntry = pick("At entry", "À l'entrée", "Bei Einzug", "All'entrata", "Tar l'entrada")
+  val noEntryBaseline = pick(
+    "No linked entry record", "Aucun état d'entrée lié", "Kein verknüpftes Einzugsprotokoll", "Nessun verbale d'entrata collegato", "Nagin protocol d'entrada collià",
+  )
 
   // The defect editor.
   val defectText = pick(
@@ -320,6 +332,22 @@ class Str(val lang: Lang) {
   val reservationLabel = pick("Reservation", "Réserve", "Vorbehalt", "Riserva", "Resalva")
   val photo = pick("PHOTO", "PHOTO", "FOTO", "FOTO", "FOTO")
   val gallery = pick("GALLERY", "GALERIE", "GALERIE", "GALLERIA", "GALARIA")
+  val tenantResponse = pick("Tenant's response", "Réponse du locataire", "Stellungnahme der Mieterschaft", "Posizione del conduttore", "Posiziun dal locatari")
+  fun tenantResponse(value: TenantResponse) = when (value) {
+    TenantResponse.NotStated -> pick("Not stated", "Non indiquée", "Nicht angegeben", "Non indicata", "Betg inditgà")
+    TenantResponse.Agrees -> pick("Agrees", "Accepte", "Einverstanden", "Accetta", "Accepta")
+    TenantResponse.Disputes -> pick("Disputes", "Conteste", "Bestreitet", "Contesta", "Contesta")
+    TenantResponse.NormalWear -> pick("Normal wear", "Usure normale", "Normale Abnützung", "Usura normale", "Isanza normala")
+    TenantResponse.ExistingAtEntry -> pick("Already at entry", "Déjà présent à l'entrée", "Bereits bei Einzug", "Già presente all'entrata", "Gia tar l'entrada")
+  }
+  val tenantComment = pick("Tenant's comment", "Commentaire du locataire", "Kommentar der Mieterschaft", "Commento del conduttore", "cuntegn dal locatari")
+  val normalWearNote = pick(
+    "Normal wear is not a tenant charge. Record the tenant's view even where the agency disagrees.",
+    "L'usure normale n'est pas à la charge du locataire. Consignez son point de vue même si la régie n'est pas d'accord.",
+    "Normale Abnützung ist keine Belastung der Mieterschaft. Halten Sie ihre Sicht auch bei Widerspruch der Verwaltung fest.",
+    "L'usura normale non è a carico del conduttore. Registrate la sua posizione anche se l'amministrazione non concorda.",
+    "L'isanza normala na vegn betg messa a quint al locatari. Registrai sia posiziun er sche l'administraziun na concorda betg.",
+  )
 
   // Review.
   val remarks = pick("Remarks", "Remarques", "Bemerkungen", "Osservazioni", "Remartgas")
@@ -348,6 +376,9 @@ class Str(val lang: Lang) {
 
   // The case's cards and the flow's frame.
   val exitFromThis = pick("EXIT FROM THIS", "SORTIE DEPUIS CELUI-CI", "AUSZUG DARAUS", "RICONSEGNA DA QUESTO", "SORTIDA DA QUEST")
+  val finalizeEntryFirst = pick(
+    "FINALIZE ENTRY FIRST", "FINALISER L'ENTRÉE D'ABORD", "EINZUG ZUERST ABSCHLIESSEN", "FINALIZZARE PRIMA L'ENTRATA", "FINALISAR L'ENTRADA L'EMPRIM",
+  )
   val sure = pick("SURE?", "SÛR ?", "SICHER?", "SICURO?", "SEGIR?")
   val noAddress = pick("Address not yet entered", "Adresse pas encore saisie", "Adresse noch nicht erfasst", "Indirizzo non ancora inserito", "Adressa anc betg endatada")
   val infoDeposit = pick(
@@ -393,6 +424,36 @@ class Str(val lang: Lang) {
   val clearInk = pick("CLEAR", "EFFACER", "LÖSCHEN", "CANCELLA", "STIZZAR")
   val saveInk = pick("KEEP", "CONSERVER", "ÜBERNEHMEN", "CONSERVA", "TEGNAIR")
   val notSigned = pick("Not signed", "Non signé", "Nicht unterzeichnet", "Non firmato", "Betg suttascrit")
+  val resignRequired = pick(
+    "Sign again after the change", "Signer à nouveau après la modification", "Nach der Änderung erneut unterschreiben", "Firmare di nuovo dopo la modifica", "Suttascriver danovamain suenter la midada",
+  )
+  val finalizeRecord = pick("FINALIZE RECORD", "FINALISER LE CONSTAT", "PROTOKOLL ABSCHLIESSEN", "FINALIZZA VERBALE", "FINALISAR PROTOCOL")
+  val finalizeLead = pick(
+    "Finalizing freezes this version and its original evidence. Further changes create an amendment.",
+    "La finalisation fige cette version et ses preuves originales. Toute modification crée un avenant.",
+    "Der Abschluss friert diese Version und ihre Originalbelege ein. Änderungen erzeugen einen Nachtrag.",
+    "La finalizzazione blocca questa versione e le prove originali. Ogni modifica crea un'integrazione.",
+    "La finalisaziun fixescha questa versiun e sias novitads originalas. Midadas creeschan in supplement.",
+  )
+  val finalizing = pick("Finalizing…", "Finalisation…", "Wird abgeschlossen…", "Finalizzazione…", "Finalisaziun…")
+  val finalizationNeeds = pick("Before finalizing", "Avant la finalisation", "Vor dem Abschluss", "Prima della finalizzazione", "Avant la finalisaziun")
+  val finalizationFailed = pick(
+    "The record could not be finalized. Keep the draft and try again.",
+    "Le constat n'a pas pu être finalisé. Conservez le brouillon et réessayez.",
+    "Das Protokoll konnte nicht abgeschlossen werden. Entwurf behalten und erneut versuchen.",
+    "Il verbale non ha potuto essere finalizzato. Conservate la bozza e riprovate.",
+    "Il protocol n'ha betg pudì vegnir finalisà. Tegnai il sboz e empruvai danovamain.",
+  )
+  fun finalizationIssue(issue: FinalizationIssue) = when (issue) {
+    FinalizationIssue.Address -> pick("Add the street and number", "Indiquez la rue et le numéro", "Strasse und Nummer ergänzen", "Indicate via e numero", "Agiuntai via e numer")
+    FinalizationIssue.Place -> pick("Add the postcode and place", "Indiquez le NPA et la localité", "PLZ und Ort ergänzen", "Indicate NAP e località", "Agiuntai NPA e lieu")
+    FinalizationIssue.HandoverDate -> pick("Add the handover date", "Indiquez la date de remise", "Übergabedatum ergänzen", "Indicate la data di consegna", "Agiuntai la data da surdada")
+    FinalizationIssue.HandoverTime -> pick("Add the handover time", "Indiquez l'heure de remise", "Übergabezeit ergänzen", "Indicate l'ora di consegna", "Agiuntai l'ura da surdada")
+    FinalizationIssue.Parties -> pick("Name both tenant and landlord / agency", "Nommez le locataire et le bailleur / la régie", "Mieterschaft und Vermieterschaft / Verwaltung benennen", "Indicate conduttore e locatore / amministrazione", "Numnai locatari e locatur / administraziun")
+    FinalizationIssue.RoomChecks -> pick("Check every room item or add its defect", "Contrôlez chaque poste ou ajoutez son défaut", "Jede Position prüfen oder ihren Mangel erfassen", "Controllate ogni elemento o aggiungete il difetto", "Controllai mintga posiziun u agiuntai sia mancanza")
+    FinalizationIssue.DefectText -> pick("Describe every defect precisely", "Décrivez chaque défaut précisément", "Jeden Mangel präzise beschreiben", "Descrivete ogni difetto con precisione", "Descrivai mintga mancanza precis")
+    FinalizationIssue.RecordOutcomes -> pick("Record each required signature or refusal", "Consignez chaque signature ou refus requis", "Jede erforderliche Unterschrift oder Verweigerung erfassen", "Registrate ogni firma o rifiuto richiesto", "Registrai mintga suttascripziun u refusa necessaria")
+  }
 
   // Export.
   val exportPdf = pick("EXPORT PDF", "EXPORTER LE PDF", "PDF EXPORTIEREN", "ESPORTA PDF", "EXPORTAR PDF")
@@ -400,6 +461,34 @@ class Str(val lang: Lang) {
   val open = pick("OPEN", "OUVRIR", "ÖFFNEN", "APRI", "AVRIR")
   val share = pick("SHARE", "PARTAGER", "TEILEN", "CONDIVIDI", "CUNDIVIDER")
   val exportedTo = pick("Saved to", "Enregistré dans", "Gespeichert unter", "Salvato in", "Memorisà en")
+  val exportBlocked = pick("Finalize the record before exporting it.", "Finalisez le constat avant de l'exporter.", "Protokoll vor dem Export abschliessen.", "Finalizzate il verbale prima di esportarlo.", "Finalisai il protocol avant d'exportar el.")
+  fun exportIssue(issue: ExportIssue) = when (issue) {
+    ExportIssue.NotFinalized -> exportBlocked
+    ExportIssue.IntegrityMismatch -> pick(
+      "Evidence changed or is missing. This record cannot be exported.",
+      "Une preuve a changé ou manque. Ce constat ne peut pas être exporté.",
+      "Belege wurden verändert oder fehlen. Dieses Protokoll kann nicht exportiert werden.",
+      "Una prova è cambiata o manca. Questo verbale non può essere esportato.",
+      "Ina novitads è midada u manca. Quest protocol na po betg vegnir exportà.",
+    )
+    ExportIssue.Failed -> pick("The PDF could not be created. Try again.", "Le PDF n'a pas pu être créé. Réessayez.", "Das PDF konnte nicht erstellt werden. Erneut versuchen.", "Il PDF non ha potuto essere creato. Riprovate.", "Il PDF n'ha betg pudì vegnir creà. Empruvai danovamain.")
+  }
+  val copiesDelivered = pick("Identical copies delivered", "Exemplaires identiques remis", "Gleichlautende Kopien übergeben", "Copie identiche consegnate", "Copias identicas surdadas")
+  fun copyDeliveredTo(partyRole: Role) = pick(
+    "Copy handed to ${role(partyRole)}", "Exemplaire remis à ${role(partyRole)}", "Kopie an ${role(partyRole)} übergeben", "Copia consegnata a ${role(partyRole)}", "Copia surdada a ${role(partyRole)}",
+  )
+  val amendRecord = pick("CREATE AMENDMENT", "CRÉER UN AVENANT", "NACHTRAG ERSTELLEN", "CREA INTEGRAZIONE", "CREAR SUPPLEMENT")
+  val amendLead = pick(
+    "A correction starts a new draft linked to this final record; the original remains unchanged.",
+    "Une correction crée un nouveau brouillon lié à ce constat final ; l'original reste inchangé.",
+    "Eine Korrektur erstellt einen neuen, mit diesem Abschluss verknüpften Entwurf; das Original bleibt unverändert.",
+    "Una correzione crea una nuova bozza collegata a questo verbale finale; l'originale resta invariato.",
+    "Ina correctura creescha in nov sboz collià cun quest protocol final; l'original resta nunmidà.",
+  )
+  val amending = pick("Creating amendment…", "Création de l'avenant…", "Nachtrag wird erstellt…", "Creazione integrazione…", "Creaziun dal supplement…")
+  val fingerprint = pick("Evidence fingerprint", "Empreinte des preuves", "Fingerabdruck der Belege", "Impronta delle prove", "Impronta da las novitads")
+  val pdfFinalized = pick("Finalized record", "Constat finalisé", "Abgeschlossenes Protokoll", "Verbale finalizzato", "Protocol finalisà")
+  val pdfAmends = pick("Amends record", "Modifie le constat", "Ändert Protokoll", "Modifica verbale", "Mida protocol")
 
   // The deposit's next step, printed at the end of the exit protocol.
   val releaseTitle = pick(
@@ -787,11 +876,11 @@ class Str(val lang: Lang) {
         "Las mancanzas da sortida dovran vinavant la brev recumandada entaifer 2 fin 3 dis da lavur",
       ),
       pick(
-        "The countersignature of the other phone completes the seal",
-        "La contresignature de l'autre téléphone complète le sceau",
-        "Die Gegenzeichnung des anderen Telefons vervollständigt das Siegel",
-        "La controfirma dell'altro telefono completa il sigillo",
-        "La cuntrasuttascripziun da l'auter telefon cumplettescha il sigil",
+        "A drawn signature is an acknowledgement in this record, not a qualified electronic signature",
+        "Une signature dessinée vaut reconnaissance dans ce constat, pas signature électronique qualifiée",
+        "Eine gezeichnete Unterschrift ist eine Bestätigung in diesem Protokoll, keine qualifizierte elektronische Signatur",
+        "Una firma disegnata è una conferma in questo verbale, non una firma elettronica qualificata",
+        "Ina suttascripziun dissegnada è ina conferma en quest protocol, betg ina suttascripziun electronica qualifitgada",
       ),
     ),
   )
@@ -1008,11 +1097,11 @@ class Str(val lang: Lang) {
     "Voss protocols",
   )
   val welcomeLead = pick(
-    "Limen records the apartment handover, from the first meter reading to the sealed PDF.",
-    "Limen consigne l'état des lieux, du premier relevé au PDF scellé.",
-    "Limen hält die Wohnungsübergabe fest, vom ersten Zählerstand bis zum versiegelten PDF.",
-    "Limen registra la consegna dell'alloggio, dalla prima lettura al PDF sigillato.",
-    "Limen documentescha la surdada da l'abitaziun, da l'emprima letga fin al PDF sigillà.",
+    "Limen records the apartment handover, from the first meter reading to a final PDF both sides receive.",
+    "Limen consigne l'état des lieux, du premier relevé au PDF final remis aux deux parties.",
+    "Limen hält die Wohnungsübergabe fest, vom ersten Zählerstand bis zum finalen PDF für beide Seiten.",
+    "Limen registra la consegna dell'alloggio, dalla prima lettura al PDF finale ricevuto da entrambe le parti.",
+    "Limen documentescha la surdada da l'abitaziun, da l'emprima letga fin al PDF final per omaduas partidas.",
   )
   val howItWorks = pick(
     "How it works",
@@ -1044,11 +1133,11 @@ class Str(val lang: Lang) {
       "Suttascrivai tuts dus sin quest telefon",
     ),
     pick(
-      "Export the sealed PDF and share it",
-      "Exportez le PDF scellé et partagez-le",
-      "Exportiert das versiegelte PDF und teilt es",
-      "Esportate il PDF sigillato e condividetelo",
-      "Exportai il PDF sigillà e tramettai el",
+      "Finalize the record, then export and share the PDF",
+      "Finalisez le constat, puis exportez et partagez le PDF",
+      "Protokoll abschliessen, dann PDF exportieren und teilen",
+      "Finalizzate il verbale, poi esportate e condividete il PDF",
+      "Finalisai il protocol, lura exportai e tramettai il PDF",
     ),
   )
   fun stepLead(step: FlowStep) = when (step) {

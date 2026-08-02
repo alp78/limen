@@ -2,6 +2,10 @@ package dev.verso.limen.data
 
 import kotlinx.serialization.json.Json
 import java.io.File
+import java.nio.file.AtomicMoveNotSupportedException
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption.ATOMIC_MOVE
+import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 
 /**
  * The protocol store: one JSON file per protocol under [root]/protocols, photos under
@@ -37,13 +41,22 @@ class Store(private val root: File) {
     return runCatching { json.decodeFromString<Protocol>(f.readText()) }.getOrNull()
   }
 
+  @Synchronized
   fun save(p: Protocol) {
-    // Write-then-rename, so a process death mid-write never eats the only copy.
+    // Keep the previous record until the replacement is fully written. A shared fixed .tmp
+    // let a lifecycle flush race the debounce and could leave no readable protocol behind.
     val target = File(dir, "${p.id}.json")
-    val tmp = File(dir, "${p.id}.json.tmp")
-    tmp.writeText(json.encodeToString(Protocol.serializer(), p))
-    if (target.exists()) target.delete()
-    tmp.renameTo(target)
+    val tmp = File.createTempFile("${p.id}-", ".tmp", dir)
+    try {
+      tmp.writeText(json.encodeToString(Protocol.serializer(), p))
+      try {
+        Files.move(tmp.toPath(), target.toPath(), ATOMIC_MOVE, REPLACE_EXISTING)
+      } catch (_: AtomicMoveNotSupportedException) {
+        Files.move(tmp.toPath(), target.toPath(), REPLACE_EXISTING)
+      }
+    } finally {
+      if (tmp.exists()) tmp.delete()
+    }
   }
 
   fun delete(id: String) {

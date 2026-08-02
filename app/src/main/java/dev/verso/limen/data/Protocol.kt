@@ -15,7 +15,7 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class Protocol(
-  val schema: Int = 1,
+  val schema: Int = 2,
   val id: String,
   val kind: Kind,
   /** How items are graded: the Deutschschweiz binary tick or the romand four grades. */
@@ -50,11 +50,25 @@ data class Protocol(
   val signatures: List<Signature> = emptyList(),
   /** The id of the entry protocol this exit protocol was seeded from, if any. */
   val seedId: String = "",
+  /** The frozen document this draft amends, if it was changed after finalization. */
+  val amendedFromId: String = "",
+  /** Bumped for every material edit; ink is valid only for the revision it saw. */
+  val contentRevision: Long = 0,
+  /** A finalized protocol is never edited in place. An edit becomes a new amendment. */
+  val finalizedEpochMs: Long = 0,
+  /** SHA-256 over the finalized record and its original photo and ink files. */
+  val evidenceFingerprint: String = "",
+  /** A self-declared record that an identical copy was handed to a party. */
+  val deliveryReceipts: List<DeliveryReceipt> = emptyList(),
   val exportedEpochMs: Long = 0,
 ) {
-  /** The record plane is signed once anyone has signed it and nobody refused outright. */
-  fun isSigned(): Boolean = signatures.any { it.plane == Plane.Record && !it.refused }
+  /** The record plane has current ink from at least one person. */
+  fun isSigned(): Boolean = signatures.any {
+    it.plane == Plane.Record && !it.refused && it.contentRevision == contentRevision
+  }
+  fun isFinalized(): Boolean = finalizedEpochMs > 0 && evidenceFingerprint.isNotBlank()
   fun isExported(): Boolean = exportedEpochMs > 0
+  fun isCurrent(signature: Signature): Boolean = signature.contentRevision == contentRevision
 }
 
 @Serializable
@@ -171,6 +185,8 @@ data class Defect(
   val text: String = "",
   /** File names under the protocol's photo directory, in the order they were taken. */
   val photos: List<String> = emptyList(),
+  /** Hashes and capture moments for photos added in version 2 or later. */
+  val photoEvidence: List<PhotoEvidence> = emptyList(),
   val chargedToTenant: Boolean = false,
   val fixBy: FixBy = FixBy.Open,
   /** "by DATE" of the remediation table; free text. */
@@ -179,10 +195,33 @@ data class Defect(
   val costNote: String = "",
   /** The party's dictated reservation on this one finding: "conteste", "already at entry". */
   val reservation: String = "",
+  /** The tenant can state a position without the app treating it as an admission. */
+  val tenantResponse: TenantResponse = TenantResponse.NotStated,
+  val tenantComment: String = "",
 )
 
 @Serializable
 enum class FixBy { Open, Tenant, Landlord }
+
+@Serializable
+data class PhotoEvidence(
+  val file: String,
+  val sha256: String = "",
+  val capturedEpochMs: Long = 0,
+  val source: PhotoSource = PhotoSource.Unknown,
+)
+
+@Serializable
+enum class PhotoSource { Camera, Gallery, Unknown }
+
+@Serializable
+enum class TenantResponse { NotStated, Agrees, Disputes, NormalWear, ExistingAtEntry }
+
+@Serializable
+data class DeliveryReceipt(
+  val role: Role,
+  val epochMs: Long = 0,
+)
 
 /**
  * One ink signature. The two planes are the design the paper canon insists on and the
@@ -202,6 +241,8 @@ data class Signature(
   /** The signer's reservation, printed beside the signature: "sous reserve d'un devis". */
   val reservation: String = "",
   val epochMs: Long = 0,
+  /** The protocol revision shown to the signer. */
+  val contentRevision: Long = 0,
 )
 
 @Serializable

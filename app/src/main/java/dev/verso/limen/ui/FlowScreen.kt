@@ -40,6 +40,7 @@ import dev.verso.limen.data.Party
 import dev.verso.limen.data.Protocol
 import dev.verso.limen.data.Role
 import dev.verso.limen.data.RoomKind
+import dev.verso.limen.data.TenantResponse
 import dev.verso.limen.theme.Limen
 
 /**
@@ -342,6 +343,7 @@ private fun PartyBlock(vm: LimenViewModel, s: Str, p: Protocol, index: Int, part
 private fun RoomsStep(vm: LimenViewModel, s: Str, p: Protocol) {
   if (p.rooms.isEmpty()) return
   val room = p.rooms[vm.roomIndex.coerceIn(0, p.rooms.size - 1)]
+  val entryRoom = vm.entryBaseline?.rooms?.firstOrNull { it.id == room.id }
   var addingRoom by remember { mutableStateOf(false) }
 
   Column(Modifier.fillMaxSize()) {
@@ -382,6 +384,26 @@ private fun RoomsStep(vm: LimenViewModel, s: Str, p: Protocol) {
         }
       }
 
+      if (p.kind == Kind.Exit) {
+        Panel(label = s.entryBaseline) {
+          val prior = entryRoom
+          if (prior == null) {
+            Text(s.noEntryBaseline, style = MaterialTheme.typography.bodyMedium, color = Limen.colors.inkDim)
+          } else {
+            val flags = buildList {
+              if (prior.freshPaintedWalls) add(s.freshWalls)
+              if (prior.freshPaintedWoodwork) add(s.freshWood)
+              if (prior.newFloor) add(s.newFloor)
+            }
+            Text(
+              if (flags.isEmpty()) s.atEntry else "${s.atEntry}: ${flags.joinToString(" · ")}",
+              style = MaterialTheme.typography.labelSmall,
+              color = Limen.colors.inkDim,
+            )
+          }
+        }
+      }
+
       // What was fresh when the tenant arrived: the amortization clock starts here.
       if (p.kind == Kind.Entry && room.kind != RoomKind.Mailbox) {
         Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
@@ -400,11 +422,23 @@ private fun RoomsStep(vm: LimenViewModel, s: Str, p: Protocol) {
         p.defects.filter { it.roomId == room.id }.mapNotNull { it.item }.toSet()
       }
       room.items.forEachIndexed { i, item ->
+        val entryItem = entryRoom?.items?.firstOrNull { prior ->
+          prior.key == item.key && (item.key != ItemKey.Custom || prior.label == item.label)
+        }
+        val entryDefect = vm.entryBaseline?.defects?.any { defect ->
+          defect.roomId == room.id && defect.item == item.key
+        } == true
         ItemRow(
           label = if (item.key == ItemKey.Custom && item.label.isNotBlank()) item.label else s.item(item.key),
           state = s.gradeShort(item.grade),
           graded = item.grade != Grade.NotChecked,
           flagged = item.key in flagged,
+          baseline = entryItem?.let { prior ->
+            buildString {
+              append(s.atEntry).append(": ").append(s.gradeShort(prior.grade))
+              if (entryDefect) append(" · ").append(s.defects)
+            }
+          },
           onGrade = { vm.cycleGrade(room.id, i) },
           onDefect = { vm.openDefect(room.id, item.key) },
         )
@@ -423,12 +457,16 @@ private fun RoomsStep(vm: LimenViewModel, s: Str, p: Protocol) {
       }
 
       Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(
-          s.roomKeys,
-          style = MaterialTheme.typography.bodyMedium,
-          color = Limen.colors.ink,
-          modifier = Modifier.weight(1f),
-        )
+        Column(Modifier.weight(1f)) {
+          Text(s.roomKeys, style = MaterialTheme.typography.bodyMedium, color = Limen.colors.ink)
+          entryRoom?.let { prior ->
+            Text(
+              "${s.atEntry}: ${prior.keysCount}",
+              style = MaterialTheme.typography.labelSmall,
+              color = Limen.colors.inkDim,
+            )
+          }
+        }
         Stepper(room.keysCount) { c ->
           vm.edit { it.copy(rooms = it.rooms.map { r -> if (r.id == room.id) r.copy(keysCount = c) else r }) }
         }
@@ -459,6 +497,7 @@ private fun ItemRow(
   state: String,
   graded: Boolean,
   flagged: Boolean,
+  baseline: String?,
   onGrade: () -> Unit,
   onDefect: () -> Unit,
 ) {
@@ -471,12 +510,12 @@ private fun ItemRow(
       .padding(horizontal = 10.dp, vertical = 6.dp),
     verticalAlignment = Alignment.CenterVertically,
   ) {
-    Text(
-      label,
-      style = MaterialTheme.typography.bodyMedium,
-      color = Limen.colors.ink,
-      modifier = Modifier.weight(1f),
-    )
+    Column(Modifier.weight(1f)) {
+      Text(label, style = MaterialTheme.typography.bodyMedium, color = Limen.colors.ink)
+      baseline?.let {
+        Text(it, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
+      }
+    }
     if (flagged) {
       Text(
         "!",
@@ -516,6 +555,7 @@ private fun DefectLine(vm: LimenViewModel, s: Str, d: Defect) {
       d.item?.let { parts.add(s.item(it)) }
       if (d.photos.isNotEmpty()) parts.add("${s.photos} ${d.photos.size}")
       if (d.chargedToTenant) parts.add(s.chargedToTenant)
+      if (d.tenantResponse != TenantResponse.NotStated) parts.add(s.tenantResponse(d.tenantResponse))
       if (parts.isNotEmpty()) {
         Text(
           parts.joinToString(" · "),
@@ -564,6 +604,8 @@ private fun ReviewStep(vm: LimenViewModel, s: Str, p: Protocol) {
                 val parts = mutableListOf(where)
                 d.item?.let { parts.add(s.item(it)) }
                 if (d.chargedToTenant) parts.add(s.chargedToTenant)
+                if (d.tenantResponse != TenantResponse.NotStated) parts.add(s.tenantResponse(d.tenantResponse))
+                if (d.tenantComment.isNotBlank()) parts.add(d.tenantComment)
                 Text(
                   parts.filter { it.isNotBlank() }.joinToString(" · "),
                   style = MaterialTheme.typography.labelSmall,

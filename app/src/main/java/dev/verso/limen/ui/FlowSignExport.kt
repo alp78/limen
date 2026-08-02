@@ -51,7 +51,7 @@ internal fun SignStep(vm: LimenViewModel, s: Str, p: Protocol) {
   ) {
     Panel(label = s.signRecordTitle, info = s.tipRecord()) {
       Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        recordRoles(p).forEach { role ->
+        vm.requiredRecordRoles(p).forEach { role ->
           SignRow(vm, s, p, role, Plane.Record) { padTarget = role to Plane.Record }
         }
       }
@@ -62,6 +62,28 @@ internal fun SignStep(vm: LimenViewModel, s: Str, p: Protocol) {
         listOf(Role.Tenant, Role.Landlord).forEach { role ->
           SignRow(vm, s, p, role, Plane.Costs) { padTarget = role to Plane.Costs }
         }
+      }
+    }
+
+    val issues = vm.completionIssues(p)
+    Panel(label = s.finalizeRecord) {
+      Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(s.finalizeLead, style = MaterialTheme.typography.bodyMedium, color = Limen.colors.ink)
+        if (issues.isNotEmpty()) {
+          Text(s.finalizationNeeds, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
+          issues.forEach { issue ->
+            Text("• ${s.finalizationIssue(issue)}", style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
+          }
+        }
+        if (vm.finalizationError) {
+          Text(s.finalizationFailed, style = MaterialTheme.typography.labelSmall, color = Limen.colors.ink)
+        }
+        BigKey(
+          if (vm.finalizing) s.finalizing else s.finalizeRecord,
+          active = issues.isEmpty() && !vm.finalizing,
+          modifier = Modifier.fillMaxWidth(),
+          enabled = issues.isEmpty() && !vm.finalizing,
+        ) { vm.finalizeProtocol() }
       }
     }
 
@@ -86,14 +108,6 @@ internal fun SignStep(vm: LimenViewModel, s: Str, p: Protocol) {
   }
 }
 
-/** Who signs the record: the two principals, minus the absent one, plus whoever attended. */
-private fun recordRoles(p: Protocol): List<Role> = buildList {
-  add(Role.Tenant)
-  if (!p.oneSided) add(Role.Landlord)
-  if (p.parties.any { it.role == Role.Witness }) add(Role.Witness)
-  if (p.parties.any { it.role == Role.Expert }) add(Role.Expert)
-}
-
 @Composable
 private fun SignRow(
   vm: LimenViewModel,
@@ -104,6 +118,7 @@ private fun SignRow(
   onSign: () -> Unit,
 ) {
   val sig = p.signatures.firstOrNull { it.role == role && it.plane == plane }
+  val current = sig?.let(p::isCurrent) == true
   Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
     Row(verticalAlignment = Alignment.CenterVertically) {
       Column(Modifier.weight(1f)) {
@@ -111,6 +126,7 @@ private fun SignRow(
         // The status: the one place besides the case's chip where the seal green appears.
         val (label, sealed) = when {
           sig == null -> s.notSigned to false
+          !current -> s.resignRequired to false
           sig.refused -> s.refusedNote to false
           else -> s.signed to true
         }
@@ -120,7 +136,7 @@ private fun SignRow(
           color = if (sealed) Limen.colors.seal else Limen.colors.inkDim,
         )
       }
-      if (sig == null) {
+      if (sig == null || !current) {
         SmallKey(s.signKey, Modifier.padding(end = 6.dp), onPress = onSign)
         SmallKey(s.refusedKey, tick = Tick.Reject) { vm.refuseSignature(role, plane) }
       } else {
@@ -153,6 +169,37 @@ internal fun ExportStep(vm: LimenViewModel, s: Str, p: Protocol) {
     Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
     verticalArrangement = Arrangement.spacedBy(10.dp),
   ) {
+    if (!p.isFinalized()) {
+      Panel(label = s.finalizeRecord) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+          Text(s.exportBlocked, style = MaterialTheme.typography.bodyMedium, color = Limen.colors.ink)
+          SmallKey(s.stepSign.uppercase(), Modifier.fillMaxWidth()) { vm.goTo(FlowStep.Sign) }
+        }
+      }
+      vm.exportIssue?.let { issue ->
+        Text(s.exportIssue(issue), style = MaterialTheme.typography.bodyMedium, color = Limen.colors.ink)
+      }
+      SmallKey(s.done, Modifier.fillMaxWidth()) { vm.closeFlow() }
+      Spacer(Modifier.height(12.dp))
+    } else {
+    Panel(label = s.pdfFinalized) {
+      Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        Text(s.pdfFinalized, style = MaterialTheme.typography.bodyMedium, color = Limen.colors.ink)
+        Text(
+          "${s.fingerprint}: ${p.evidenceFingerprint.take(20)}",
+          style = MaterialTheme.typography.labelSmall,
+          color = Limen.colors.inkDim,
+        )
+        if (p.amendedFromId.isNotBlank()) {
+          Text(
+            "${s.pdfAmends}: ${p.amendedFromId}",
+            style = MaterialTheme.typography.labelSmall,
+            color = Limen.colors.inkDim,
+          )
+        }
+      }
+    }
+
     Panel(label = s.pdfLanguage) {
       PillRow(
         Lang.entries.map { it to it.name.uppercase() },
@@ -166,10 +213,11 @@ internal fun ExportStep(vm: LimenViewModel, s: Str, p: Protocol) {
       if (vm.exporting) "…" else s.exportPdf,
       active = !vm.exporting,
       Modifier.fillMaxWidth(),
+      enabled = !vm.exporting,
     ) { vm.exportPdf() }
 
-    if (vm.exportError) {
-      Text("×", fontFamily = FontFamily.Monospace, fontSize = 20.sp, color = Limen.colors.ink)
+    vm.exportIssue?.let { issue ->
+      Text(s.exportIssue(issue), style = MaterialTheme.typography.bodyMedium, color = Limen.colors.ink)
     }
 
     vm.exported?.let { file ->
@@ -209,6 +257,21 @@ internal fun ExportStep(vm: LimenViewModel, s: Str, p: Protocol) {
       }
     }
 
+    if (p.isExported()) {
+      Panel(label = s.copiesDelivered, info = s.tipShareNow()) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+          listOf(Role.Tenant, Role.Landlord).forEach { role ->
+            val delivered = p.deliveryReceipts.any { it.role == role }
+            Toggle(
+              s.copyDeliveredTo(role),
+              delivered,
+              Modifier.fillMaxWidth(),
+            ) { vm.setCopyDelivered(role, !delivered) }
+          }
+        }
+      }
+    }
+
     // The deposit's next step, on screen as well as in the PDF.
     if (p.kind == Kind.Exit && p.deposit.kind != DepositKind.None) {
       Panel(label = s.releaseTitle) {
@@ -238,8 +301,20 @@ internal fun ExportStep(vm: LimenViewModel, s: Str, p: Protocol) {
       }
     }
 
+    Panel(label = s.amendRecord) {
+      Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(s.amendLead, style = MaterialTheme.typography.bodyMedium, color = Limen.colors.ink)
+        BigKey(
+          if (vm.amendmentInProgress) s.amending else s.amendRecord,
+          active = !vm.amendmentInProgress,
+          modifier = Modifier.fillMaxWidth(),
+          enabled = !vm.amendmentInProgress,
+        ) { vm.createAmendment() }
+      }
+    }
+
     SmallKey(s.done, Modifier.fillMaxWidth()) { vm.closeFlow() }
     Spacer(Modifier.height(12.dp))
+    }
   }
 }
-

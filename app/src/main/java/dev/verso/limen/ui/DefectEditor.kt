@@ -45,7 +45,10 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import dev.verso.limen.data.FixBy
 import dev.verso.limen.data.ItemKey
+import dev.verso.limen.data.Kind
+import dev.verso.limen.data.PhotoSource
 import dev.verso.limen.data.Protocol
+import dev.verso.limen.data.TenantResponse
 import dev.verso.limen.theme.Limen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -67,7 +70,7 @@ fun DefectEditor(vm: LimenViewModel, s: Str, p: Protocol, defectId: String) {
     rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
       val slot = cameraSlot?.let(::File)
       cameraSlot = null
-      if (ok && slot != null && slot.exists()) vm.attachPhoto(defectId, slot)
+      if (ok && slot != null && slot.exists()) vm.attachPhoto(defectId, slot, PhotoSource.Camera)
     }
 
   val pickPhoto =
@@ -79,7 +82,7 @@ fun DefectEditor(vm: LimenViewModel, s: Str, p: Protocol, defectId: String) {
             slot.outputStream().use { input.copyTo(it) }
           }
         }
-        if (slot.exists()) vm.attachPhoto(defectId, slot)
+        if (slot.exists()) vm.attachPhoto(defectId, slot, PhotoSource.Gallery)
       }
     }
 
@@ -163,31 +166,55 @@ fun DefectEditor(vm: LimenViewModel, s: Str, p: Protocol, defectId: String) {
         }
       }
 
-      Panel(label = s.chargedToTenant, info = s.tipCharged()) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-          Toggle(s.chargedToTenant, d.chargedToTenant, Modifier.fillMaxWidth()) {
-            vm.updateDefect(defectId) { it.copy(chargedToTenant = !it.chargedToTenant) }
-          }
-          Text(s.fixByLabel, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
-          PillRow(
-            listOf(
-              FixBy.Open to s.fixOpen,
-              FixBy.Tenant to s.role(dev.verso.limen.data.Role.Tenant),
-              FixBy.Landlord to s.role(dev.verso.limen.data.Role.Landlord),
-            ),
-            d.fixBy,
-            dense = true,
-          ) { f -> vm.updateDefect(defectId) { it.copy(fixBy = f) } }
-          Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Field(s.fixDeadline, d.fixDeadline, Modifier.weight(1f)) { v ->
-              vm.updateDefect(defectId) { it.copy(fixDeadline = v) }
+      if (p.kind == Kind.Exit) {
+        Panel(label = s.tenantResponse) {
+          Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            PillRow(
+              TenantResponse.entries.map { it to s.tenantResponse(it) },
+              d.tenantResponse,
+              dense = true,
+            ) { response -> vm.updateDefect(defectId) { it.copy(tenantResponse = response) } }
+            Field(s.tenantComment, d.tenantComment, singleLine = false) { value ->
+              vm.updateDefect(defectId) { it.copy(tenantComment = value) }
             }
-            Field(s.costNote, d.costNote, Modifier.weight(1.4f)) { v ->
-              vm.updateDefect(defectId) { it.copy(costNote = v) }
+            Text(s.normalWearNote, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
+          }
+        }
+
+        Panel(label = s.chargedToTenant, info = s.tipCharged()) {
+          Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Toggle(s.chargedToTenant, d.chargedToTenant, Modifier.fillMaxWidth()) {
+              vm.updateDefect(defectId) { it.copy(chargedToTenant = !it.chargedToTenant) }
+            }
+            Text(s.fixByLabel, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
+            PillRow(
+              listOf(
+                FixBy.Open to s.fixOpen,
+                FixBy.Tenant to s.role(dev.verso.limen.data.Role.Tenant),
+                FixBy.Landlord to s.role(dev.verso.limen.data.Role.Landlord),
+              ),
+              d.fixBy,
+              dense = true,
+            ) { f -> vm.updateDefect(defectId) { it.copy(fixBy = f) } }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+              Field(s.fixDeadline, d.fixDeadline, Modifier.weight(1f)) { v ->
+                vm.updateDefect(defectId) { it.copy(fixDeadline = v) }
+              }
+              Field(s.costNote, d.costNote, Modifier.weight(1.4f)) { v ->
+                vm.updateDefect(defectId) { it.copy(costNote = v) }
+              }
+            }
+            Field(s.reservationLabel, d.reservation) { v ->
+              vm.updateDefect(defectId) { it.copy(reservation = v) }
             }
           }
-          Field(s.reservationLabel, d.reservation) { v ->
-            vm.updateDefect(defectId) { it.copy(reservation = v) }
+        }
+      }
+
+      if (p.kind == Kind.Entry) {
+        Panel(label = s.reservationLabel) {
+          Field(s.reservationLabel, d.reservation) { value ->
+            vm.updateDefect(defectId) { it.copy(reservation = value) }
           }
         }
       }
