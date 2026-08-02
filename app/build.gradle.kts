@@ -122,12 +122,13 @@ dependencies {
   implementation(libs.androidx.lifecycle.runtime.compose)
   implementation(libs.androidx.lifecycle.viewmodel.compose)
   implementation(libs.kotlinx.serialization.json)
+  implementation(libs.libphonenumber)
 
   implementation(libs.androidx.compose.ui)
   implementation(libs.androidx.compose.ui.tooling.preview)
   implementation(libs.androidx.compose.material3)
-  // No icon pack: every mark in this instrument is a few lines of Canvas, as in the rest
-  // of the portfolio.
+  // Official Material icons keep universal actions legible and familiar.
+  implementation(libs.androidx.compose.material.icons.extended)
   debugImplementation(libs.androidx.compose.ui.tooling)
 
   androidTestImplementation(libs.androidx.compose.ui.test.junit4)

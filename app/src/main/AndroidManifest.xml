@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- No permissions at all, and above all no INTERNET: a protocol documents the inside
-         of someone's home, and "it never leaves the phone" stays provable from this
-         manifest. The photos come from the SYSTEM camera app through the provider grant
-         below, so not even the camera permission is needed.
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Address text is sent to swisstopo only while the person asks for a suggestion. The
+         selected address and every handover record remain in private app storage. Photos come
+         from the SYSTEM camera app through the provider grant below, so no camera permission is
+         needed.
 
          Not even VIBRATE: the keys are felt through the window's own haptic feedback,
          which needs no permission. Holding VIBRATE was tried and measured on 2026-07-31

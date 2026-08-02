@@ -21,13 +21,11 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.verso.limen.theme.LimenTheme
-import dev.verso.limen.ui.AppMode
-import dev.verso.limen.ui.ClocksScreen
 import dev.verso.limen.ui.FlowScreen
 import dev.verso.limen.ui.HomeScreen
 import dev.verso.limen.ui.LimenViewModel
 import dev.verso.limen.ui.Str
-import dev.verso.limen.ui.ValueScreen
+import dev.verso.limen.theme.Limen
 
 class MainActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -52,38 +50,31 @@ class MainActivity : ComponentActivity() {
 
       // The system bars follow the in-app switch rather than the system setting, otherwise
       // the status icons go invisible the moment the plaster inverts.
-      LaunchedEffect(vm.darkTheme) {
+      LaunchedEffect(vm.darkTheme, vm.working) {
         val transparent = android.graphics.Color.TRANSPARENT
         enableEdgeToEdge(
           statusBarStyle =
-            if (vm.darkTheme) SystemBarStyle.dark(transparent)
+            if (vm.working == null || vm.darkTheme) SystemBarStyle.dark(transparent)
             else SystemBarStyle.light(transparent, transparent),
           navigationBarStyle =
-            if (vm.darkTheme) SystemBarStyle.dark(transparent)
+            if (vm.working == null || vm.darkTheme) SystemBarStyle.dark(transparent)
             else SystemBarStyle.light(transparent, transparent),
         )
       }
 
       LimenTheme(dark = vm.darkTheme) {
-        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+        Surface(
+          modifier = Modifier.fillMaxSize(),
+          color = if (vm.working == null) Limen.colors.action else MaterialTheme.colorScheme.background,
+        ) {
           val screenModifier = Modifier.safeDrawingPadding().padding(vertical = 8.dp)
           val s = remember(vm.lang) { Str(vm.lang) }
-          if (vm.myRole == null) {
-            // The first question, before anything else: who holds this phone.
-            dev.verso.limen.ui.RoleGate(vm = vm, s = s)
-          } else if (vm.working != null) {
+          if (vm.working != null) {
             // The flow owns the screen until it is closed; back walks its stations.
             BackHandler { vm.flowBack() }
             FlowScreen(modifier = screenModifier, vm = vm, s = s)
           } else {
-            // Back from a face returns to the case rather than leaving the app, which is
-            // what the mark in the masthead does too.
-            BackHandler(enabled = vm.appMode != AppMode.Home) { vm.selectMode(AppMode.Home) }
-            when (vm.appMode) {
-              AppMode.Home -> HomeScreen(modifier = screenModifier, vm = vm, s = s)
-              AppMode.Value -> ValueScreen(modifier = screenModifier, vm = vm, s = s)
-              AppMode.Clocks -> ClocksScreen(modifier = screenModifier, vm = vm, s = s)
-            }
+            HomeScreen(modifier = Modifier.fillMaxSize(), vm = vm, s = s)
           }
         }
       }

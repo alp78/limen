@@ -88,9 +88,16 @@ internal fun SignStep(vm: LimenViewModel, s: Str, p: Protocol) {
       }
     }
 
-    BigKey(s.stepExport.uppercase(), active = true, Modifier.fillMaxWidth()) {
+    val canExport = issues.isEmpty() && !vm.finalizing
+    BigKey(
+      s.stepExport.uppercase(),
+      active = canExport,
+      modifier = Modifier.fillMaxWidth(),
+      enabled = canExport,
+    ) {
       vm.goTo(FlowStep.Export)
     }
+    BigKey(s.saveAsDraft, active = true, Modifier.fillMaxWidth()) { vm.closeFlow() }
     Spacer(Modifier.height(12.dp))
   }
 
@@ -138,10 +145,17 @@ private fun SignRow(
         )
       }
       if (sig == null || !current) {
-        SmallKey(s.signKey, Modifier.padding(end = 6.dp), onPress = onSign)
-        SmallKey(s.refusedKey, tick = Tick.Reject) { vm.refuseSignature(role, plane) }
+        IconKey(ButtonGlyph.Edit, s.signKey, Modifier.padding(end = 6.dp), onPress = onSign)
+        IconKey(
+          ButtonGlyph.Cancel,
+          s.refusedKey,
+          fillColor = Limen.colors.danger,
+          outlineColor = Limen.colors.dangerOutline,
+          tint = Limen.colors.dangerOutline,
+          tick = Tick.Reject,
+        ) { vm.refuseSignature(role, plane) }
       } else {
-        SmallKey(s.clearInk) { vm.clearSignature(role, plane) }
+        IconKey(ButtonGlyph.Clear, s.clearInk, destructive = true) { vm.clearSignature(role, plane) }
       }
     }
     if (sig != null) {
@@ -180,7 +194,8 @@ internal fun ExportStep(vm: LimenViewModel, s: Str, p: Protocol) {
       vm.exportIssue?.let { issue ->
         Text(s.exportIssue(issue), style = MaterialTheme.typography.bodyMedium, color = Limen.colors.ink)
       }
-      SmallKey(s.done, Modifier.fillMaxWidth()) { vm.closeFlow() }
+      BigKey(s.exportPdf, active = false, modifier = Modifier.fillMaxWidth(), enabled = false) {}
+      BigKey(s.saveAsDraft, active = true, Modifier.fillMaxWidth()) { vm.closeFlow() }
       Spacer(Modifier.height(12.dp))
     } else {
     Panel(label = s.pdfFinalized) {
@@ -232,7 +247,7 @@ internal fun ExportStep(vm: LimenViewModel, s: Str, p: Protocol) {
             color = Limen.colors.inkDim,
           )
           Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            SmallKey(s.open, Modifier.weight(1f)) {
+            IconKey(ButtonGlyph.Open, s.open, Modifier.weight(1f)) {
               runCatching {
                 context.startActivity(
                   Intent(Intent.ACTION_VIEW).apply {
@@ -242,7 +257,7 @@ internal fun ExportStep(vm: LimenViewModel, s: Str, p: Protocol) {
                 )
               }.onFailure { Toast.makeText(context, s.openFileFailed, Toast.LENGTH_SHORT).show() }
             }
-            SmallKey(s.share, Modifier.weight(1f)) {
+            IconKey(ButtonGlyph.Share, s.share, Modifier.weight(1f)) {
               runCatching {
                 val send = Intent(Intent.ACTION_SEND).apply {
                   type = "application/pdf"

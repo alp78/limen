@@ -11,7 +11,6 @@ import androidx.lifecycle.viewModelScope
 import dev.verso.limen.data.Defect
 import dev.verso.limen.data.DeliveryReceipt
 import dev.verso.limen.data.Grade
-import dev.verso.limen.data.GradeStyle
 import dev.verso.limen.data.ItemKey
 import dev.verso.limen.data.KeyCount
 import dev.verso.limen.data.KeyKind
@@ -26,8 +25,10 @@ import dev.verso.limen.data.Role
 import dev.verso.limen.data.Room
 import dev.verso.limen.data.RoomItem
 import dev.verso.limen.data.RoomKind
+import dev.verso.limen.data.SessionIdentity
 import dev.verso.limen.data.Store
 import dev.verso.limen.data.Templates
+import dev.verso.limen.data.hasRequiredFields
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -47,16 +48,11 @@ private const val KEY_NAME = "profileName"
 private const val SAVE_DELAY_MS = 400L
 
 /**
- * Where the instrument is. [Home] is the case: the list of protocols and the way into a
- * new one. [Value] is the Zeitwert calculator, [Clocks] the legal deadlines. The protocol
- * flow is not a face: it opens over whatever face is current and owns the screen until
- * it is closed, and it is restored after a process death, because the camera app kills
- * this process routinely mid-handover.
+ * The protocol flow opens from the case and owns the screen until it is closed. It is restored
+ * after a process death because the camera app can interrupt a handover mid-walk.
  */
-enum class AppMode { Home, Value, Clocks }
-
 /** The stepper's stations, in walking order. */
-enum class FlowStep { Setup, Rooms, Review, Sign, Export }
+enum class FlowStep { Setup, Rooms, Extras, Review, Sign, Export }
 
 /** What still prevents a protocol from becoming the frozen record both parties reviewed. */
 enum class FinalizationIssue {
@@ -117,9 +113,6 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
   var darkTheme by mutableStateOf(prefs.getBoolean(KEY_DARK, false))
     private set
 
-  var appMode by mutableStateOf(AppMode.Home)
-    private set
-
   /** The language the instrument speaks; first run follows the system, then it is a choice. */
   var lang by mutableStateOf(Lang.from(prefs.getString(KEY_LANG, null)))
     private set
@@ -161,17 +154,6 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
 
   var finalizationError by mutableStateOf(false)
     private set
-
-  init {
-    // A handover interrupted by the camera, a phone call or a flat battery reopens where
-    // it stood: the draft is on disk after every edit, only the position needs restoring.
-    prefs.getString(KEY_OPEN, null)?.let { id ->
-      store.load(id)?.let {
-        setActiveProtocol(it)
-        flowStep = FlowStep.Setup
-      }
-    }
-  }
 
   fun photoDir(): File? = working?.let { store.photoDir(it.id) }
   fun signatureDir(): File? = working?.let { store.signatureDir(it.id) }
@@ -250,18 +232,60 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     super.onCleared()
   }
 
-  fun createProtocol(kind: Kind) {
+  /** Starts an immutable session identity and then opens the guided handover. */
+  fun startNewSession(role: Role, name: String, kind: Kind) {
+    chooseRole(role, name)
+    createProtocol(kind, role, name)
+  }
+
+  /** Starts the walk only after the new-session form has supplied a complete validated identity. */
+  fun startNewSession(role: Role, identity: SessionIdentity, kind: Kind) {
+    if (!identity.hasRequiredFields()) return
+    val name = identity.fullName
+    chooseRole(role, name)
+    createProtocol(kind, role, name, identity)
+  }
+
+  fun createProtocol(
+    kind: Kind,
+    sessionRole: Role? = myRole,
+    sessionName: String = profileName,
+    sessionIdentity: SessionIdentity = SessionIdentity(firstName = sessionName),
+  ) {
     flush()
     val now = System.currentTimeMillis()
+    val resolvedName = sessionIdentity.fullName.ifBlank { sessionName.trim() }
+    val resolvedIdentity = sessionIdentity.copy(
+      phone = dev.verso.limen.data.InternationalPhone.format(
+        sessionIdentity.phone,
+        sessionIdentity.phoneRegion,
+      ),
+    )
     val rooms = Templates.defaultRooms.mapIndexed { i, rk ->
-      Room(id = "r$i", kind = rk, items = Templates.itemsFor(rk).map { RoomItem(it) })
+      Room(id = "r$i", kind = rk, items = Templates.itemRowsFor(rk))
     }
     val p = Protocol(
       id = "p$now",
       kind = kind,
+      sessionRole = sessionRole,
+      sessionName = resolvedName,
+      sessionIdentity = resolvedIdentity,
+      address = resolvedIdentity.addressLine,
+      place = resolvedIdentity.placeLine,
       createdEpochMs = now,
       handoverDate = LocalDate.now().toString(),
-      parties = listOf(Party(Role.Tenant), Party(Role.Landlord)),
+      parties = listOf(
+        Party(
+          Role.Tenant,
+          name = if (sessionRole == Role.Tenant) resolvedName else "",
+          phone = if (sessionRole == Role.Tenant) resolvedIdentity.phone else "",
+        ),
+        Party(
+          Role.Landlord,
+          name = if (sessionRole == Role.Landlord) resolvedName else "",
+          phone = if (sessionRole == Role.Landlord) resolvedIdentity.phone else "",
+        ),
+      ),
       keys = listOf(
         KeyCount(KeyKind.Apartment),
         KeyCount(KeyKind.HouseDoor),
@@ -269,10 +293,6 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
         KeyCount(KeyKind.Cellar),
       ),
       rooms = rooms,
-      // The grading canon follows the region the language points at, so most people never
-      // touch the setting: romand forms grade TB/B/M/O, the Deutschschweiz canon ticks
-      // "in Ordnung" or writes a defect.
-      style = if (lang == Lang.Fr) GradeStyle.Grades else GradeStyle.Binary,
     )
     store.save(p)
     setActiveProtocol(p)
@@ -286,18 +306,71 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
    * the deposit and the flags of what was new at entry carry over; the grades and defects
    * do not, because the walk is about to find out.
    */
-  fun seedExitFrom(entry: Protocol) {
+  fun seedExitFrom(
+    entry: Protocol,
+    sessionRole: Role = myRole ?: Role.Tenant,
+    sessionName: String = profileName,
+  ) {
     if (!entry.isFinalized()) return
+    chooseRole(sessionRole, sessionName)
     flush()
     val now = System.currentTimeMillis()
     val p = entry.copy(
       id = "p$now",
       kind = Kind.Exit,
+      sessionRole = sessionRole,
+      sessionName = sessionName.trim(),
       createdEpochMs = now,
       handoverDate = LocalDate.now().toString(),
       handoverTime = "",
       lastProtocolDate = entry.handoverDate,
       rooms = entry.rooms.map { r -> r.copy(items = r.items.map { it.copy(grade = Grade.NotChecked) }) },
+      defects = emptyList(),
+      remarks = "",
+      chargesStatementBy = "",
+      oneSided = false,
+      signatures = emptyList(),
+      seedId = entry.id,
+      amendedFromId = "",
+      contentRevision = 0,
+      finalizedEpochMs = 0,
+      evidenceFingerprint = "",
+      deliveryReceipts = emptyList(),
+      exportedEpochMs = 0,
+      meters = dev.verso.limen.data.Meters(),
+    )
+    store.save(p)
+    setActiveProtocol(p)
+    flowStep = FlowStep.Setup
+    roomIndex = 0
+    prefs.edit().putString(KEY_OPEN, p.id).apply()
+  }
+
+  /** Opens an exit from its entry baseline while retaining the new starter's verified contact data. */
+  fun seedExitFrom(entry: Protocol, sessionRole: Role, identity: SessionIdentity) {
+    if (!identity.hasRequiredFields()) return
+    if (!entry.isFinalized()) return
+    val name = identity.fullName
+    val resolvedIdentity = identity.copy(
+      phone = dev.verso.limen.data.InternationalPhone.format(identity.phone, identity.phoneRegion),
+    )
+    chooseRole(sessionRole, name)
+    flush()
+    val now = System.currentTimeMillis()
+    val p = entry.copy(
+      id = "p$now",
+      kind = Kind.Exit,
+      sessionRole = sessionRole,
+      sessionName = name,
+      sessionIdentity = resolvedIdentity,
+      createdEpochMs = now,
+      handoverDate = LocalDate.now().toString(),
+      handoverTime = "",
+      lastProtocolDate = entry.handoverDate,
+      parties = entry.parties.map { party ->
+        if (party.role == sessionRole) party.copy(name = name, phone = resolvedIdentity.phone) else party
+      },
+      rooms = entry.rooms.map { room -> room.copy(items = room.items.map { it.copy(grade = Grade.NotChecked) }) },
       defects = emptyList(),
       remarks = "",
       chargesStatementBy = "",
@@ -329,8 +402,12 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
   }
 
   fun deleteProtocol(id: String) {
+    val deleted = protocols.firstOrNull { it.id == id } ?: store.load(id)
     store.delete(id)
     protocols = store.list()
+    // A draft belongs to the person who started this one handover. Once it is discarded,
+    // ask who holds the phone again instead of carrying that session's side forward.
+    if (deleted?.isFinalized() == false) clearProfile()
   }
 
   fun closeFlow() {
@@ -355,7 +432,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     val record = p ?: return emptyList()
     return buildList {
       if (record.oneSided) {
-        myRole?.let(::add)
+        (record.sessionRole ?: myRole)?.let(::add)
       } else {
         add(Role.Tenant)
         add(Role.Landlord)
@@ -375,9 +452,12 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
       if (listOf(Role.Tenant, Role.Landlord).any { role ->
           record.parties.firstOrNull { it.role == role }?.name.isNullOrBlank()
         }) add(FinalizationIssue.Parties)
-      val flagged = record.defects.mapNotNull { it.item }.toSet()
       if (record.rooms.isEmpty() || record.rooms.any { room ->
-          room.items.any { it.grade == Grade.NotChecked && it.key !in flagged }
+          room.items.any { item ->
+            item.grade == Grade.NotChecked && record.defects.none { defect ->
+              defect.roomId == room.id && defectBelongsToItem(defect, item)
+            }
+          }
         }) add(FinalizationIssue.RoomChecks)
       if (record.defects.any { it.text.isBlank() }) add(FinalizationIssue.DefectText)
       if (requiredRecordRoles(record).any { role ->
@@ -490,7 +570,8 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     when (flowStep) {
       FlowStep.Setup -> closeFlow()
       FlowStep.Rooms -> flowStep = FlowStep.Setup
-      FlowStep.Review -> flowStep = FlowStep.Rooms
+      FlowStep.Extras -> flowStep = FlowStep.Rooms
+      FlowStep.Review -> flowStep = FlowStep.Extras
       FlowStep.Sign -> flowStep = FlowStep.Review
       FlowStep.Export -> flowStep = FlowStep.Sign
     }
@@ -500,35 +581,17 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     roomIndex = index.coerceIn(0, (working?.rooms?.size ?: 1) - 1)
   }
 
-  /**
-   * One tap on an item row: binary style toggles the tick, the romand style walks the
-   * grade ladder. NotChecked stays the honest resting state either way.
-   */
+  /** One tap records an item as in order, or returns it to not checked. */
   fun cycleGrade(roomId: String, index: Int) {
     edit { p ->
       p.copy(rooms = p.rooms.map { r ->
         if (r.id != roomId) r
         else r.copy(items = r.items.mapIndexed { i, item ->
           if (i != index) item
-          else item.copy(
-            grade = when (p.style) {
-              GradeStyle.Binary ->
-                if (item.grade == Grade.Ok) Grade.NotChecked else Grade.Ok
-              GradeStyle.Grades -> when (item.grade) {
-                Grade.NotChecked -> Grade.VeryGood
-                Grade.VeryGood -> Grade.Good
-                Grade.Good -> Grade.Fair
-                Grade.Fair -> Grade.Poor
-                else -> Grade.NotChecked
-              }
-            }
-          )
+          else item.copy(grade = if (item.grade == Grade.Ok) Grade.NotChecked else Grade.Ok)
         })
       })
     }
-    val s = Str(lang)
-    val room = working?.rooms?.firstOrNull { it.id == roomId }
-    val item = room?.items?.getOrNull(index)
   }
 
   fun addRoom(kind: RoomKind, name: String = "") {
@@ -536,14 +599,15 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
       val id = "r${System.currentTimeMillis()}"
       p.copy(rooms = p.rooms + Room(
         id = id, kind = kind, name = name,
-        items = Templates.itemsFor(kind).map { RoomItem(it) },
+        items = Templates.itemRowsFor(kind),
       ))
     }
     roomIndex = (working?.rooms?.size ?: 1) - 1
   }
 
   fun removeRoom(roomId: String) {
-    val gone = working?.rooms?.firstOrNull { it.id == roomId }
+    val gone = working?.defects?.filter { it.roomId == roomId }.orEmpty()
+    deleteDefectPhotos(gone)
     edit { p ->
       p.copy(
         rooms = p.rooms.filterNot { it.id == roomId },
@@ -553,12 +617,73 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     roomIndex = roomIndex.coerceIn(0, ((working?.rooms?.size ?: 1) - 1).coerceAtLeast(0))
   }
 
+  /** Adds a user-named row to this room; duplicates are distinct, not merged by label. */
+  fun addRoomItem(roomId: String, label: String) {
+    val clean = label.trim()
+    if (clean.isBlank()) return
+    edit { p ->
+      p.copy(rooms = p.rooms.map { room ->
+        if (room.id != roomId) room
+        else room.copy(
+          items = room.items + RoomItem(
+            key = ItemKey.Custom,
+            label = clean,
+            itemId = "custom-${System.currentTimeMillis()}",
+          ),
+        )
+      })
+    }
+  }
+
+  /** A removed item takes its finding and evidence with it, so no invisible defect remains. */
+  fun removeRoomItem(roomId: String, index: Int) {
+    val item = working?.rooms?.firstOrNull { it.id == roomId }?.items?.getOrNull(index) ?: return
+    val gone = working?.defects?.filter { defect ->
+      defect.roomId == roomId && defectBelongsToItem(defect, item)
+    }.orEmpty()
+    deleteDefectPhotos(gone)
+    edit { p ->
+      p.copy(
+        rooms = p.rooms.map { room ->
+          if (room.id != roomId) room
+          else room.copy(items = room.items.filterIndexed { i, _ -> i != index })
+        },
+        defects = p.defects.filterNot { it in gone },
+      )
+    }
+  }
+
+  /** Restores the canonical template and clears every finding and key count in this room. */
+  fun resetRoom(roomId: String) {
+    val current = working?.rooms?.firstOrNull { it.id == roomId } ?: return
+    val gone = working?.defects?.filter { it.roomId == roomId }.orEmpty()
+    deleteDefectPhotos(gone)
+    edit { p ->
+      p.copy(
+        rooms = p.rooms.map { room ->
+          if (room.id != roomId) room
+          else room.copy(
+            items = Templates.itemRowsFor(current.kind),
+            keysCount = 0,
+            freshPaintedWalls = false,
+            freshPaintedWoodwork = false,
+            newFloor = false,
+            fixtures = emptySet(),
+          )
+        },
+        defects = p.defects.filterNot { it.roomId == roomId },
+      )
+    }
+  }
+
   // ── Defects ──────────────────────────────────────────────────────────────────────────
 
-  fun openDefect(roomId: String, item: ItemKey?) {
+  fun openDefect(roomId: String, item: ItemKey?, itemId: String = "") {
     if (working?.isFinalized() == true) return
     val id = "d${System.currentTimeMillis()}"
-    edit { p -> p.copy(defects = p.defects + Defect(id = id, roomId = roomId, item = item)) }
+    edit {
+      p -> p.copy(defects = p.defects + Defect(id = id, roomId = roomId, item = item, itemId = itemId))
+    }
     editingDefectId = id
   }
 
@@ -584,15 +709,21 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
 
   fun removeDefect(id: String) {
     if (working?.isFinalized() == true) return
-    val dir = photoDir()
     val gone = working?.defects?.firstOrNull { it.id == id }
-    gone?.photos?.forEach { name ->
-      if (dir != null) File(dir, name).delete()
-    }
+    gone?.let { deleteDefectPhotos(listOf(it)) }
     edit { p -> p.copy(defects = p.defects.filterNot { it.id == id }) }
     if (editingDefectId == id) editingDefectId = null
     if (gone != null && (gone.text.isNotBlank() || gone.photos.isNotEmpty())) {
     }
+  }
+
+  private fun defectBelongsToItem(defect: Defect, item: RoomItem): Boolean =
+    defect.item == item.key &&
+      (defect.itemId.isBlank() || item.itemId.isBlank() || defect.itemId == item.itemId)
+
+  private fun deleteDefectPhotos(defects: List<Defect>) {
+    val dir = photoDir() ?: return
+    defects.flatMap(Defect::photos).forEach { name -> File(dir, name).delete() }
   }
 
   private fun defectWhere(d: Defect): String {
@@ -808,10 +939,6 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
   }
 
   // ── Controls ─────────────────────────────────────────────────────────────────────────
-
-  fun selectMode(mode: AppMode) {
-    appMode = mode
-  }
 
   fun selectLang(l: Lang) {
     lang = l

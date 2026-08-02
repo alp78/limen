@@ -37,13 +37,11 @@ import dev.verso.limen.theme.Limen
 import java.util.Locale
 
 /**
- * The Zeitwert face: the arithmetic every deposit dispute turns on, on one screen. Pick a
- * thing or type a lifespan, say how old it is and what the repair costs, and read off the
- * tenant's share. The iron rules stand under the number, and the share wears the seal
- * green only when it is ZERO, because that is the settled outcome the table exists for.
+ * The Zeitwert calculation belongs to a specific charged defect, not the home screen. Pick
+ * the item, state its age and repair cost, then use the tenant share in that defect's record.
  */
 @Composable
-fun ValueScreen(modifier: Modifier = Modifier, vm: LimenViewModel, s: Str) {
+fun WearAssessment(s: Str, modifier: Modifier = Modifier) {
   var picked by rememberSaveable { mutableStateOf<String?>(null) }
   var lifespan by rememberSaveable { mutableStateOf("8") }
   var age by rememberSaveable { mutableStateOf("") }
@@ -51,17 +49,7 @@ fun ValueScreen(modifier: Modifier = Modifier, vm: LimenViewModel, s: Str) {
   var showTable by rememberSaveable { mutableStateOf(false) }
   val play = rememberTick()
 
-  Column(modifier.fillMaxSize().padding(horizontal = 20.dp)) {
-    AppHeader(vm, s)
-    Spacer(Modifier.height(12.dp))
-
-    Column(
-      Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
-      verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-      Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-        LimenMark(size = 76.dp)
-      }
+  Column(modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
       Panel(label = s.faceValue, info = s.tipZeitwert()) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
           // The picked thing, or the way into the table.
@@ -155,8 +143,5 @@ fun ValueScreen(modifier: Modifier = Modifier, vm: LimenViewModel, s: Str) {
           }
         }
       }
-
-      Spacer(Modifier.height(12.dp))
-    }
   }
 }

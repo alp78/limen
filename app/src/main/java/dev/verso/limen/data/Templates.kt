@@ -51,7 +51,7 @@ object Templates {
 
   private val shell = listOf(
     ItemKey.Floor, ItemKey.Walls, ItemKey.Ceiling, ItemKey.Skirtings,
-    ItemKey.Door, ItemKey.DoorLock, ItemKey.Windows, ItemKey.WindowSills,
+    ItemKey.Door, ItemKey.Windows, ItemKey.WindowSills,
     ItemKey.Blinds, ItemKey.BlindStraps, ItemKey.CurtainRails,
     ItemKey.Radiator, ItemKey.SocketsSwitches, ItemKey.Lighting,
   )
@@ -74,7 +74,7 @@ object Templates {
         )
       RoomKind.SepWC ->
         listOf(
-          ItemKey.Floor, ItemKey.Walls, ItemKey.Ceiling, ItemKey.Door, ItemKey.DoorLock,
+          ItemKey.Floor, ItemKey.Walls, ItemKey.Ceiling, ItemKey.Door,
           ItemKey.Tiles, ItemKey.WC, ItemKey.Cistern, ItemKey.WCSeat, ItemKey.Washbasin,
           ItemKey.Tap, ItemKey.Ventilation, ItemKey.SocketsSwitches, ItemKey.Lighting,
         )
@@ -82,13 +82,11 @@ object Templates {
         listOf(ItemKey.Floor, ItemKey.Walls, ItemKey.Door, ItemKey.Windows, ItemKey.Lighting)
       RoomKind.Cellar ->
         listOf(
-          ItemKey.Floor, ItemKey.Walls, ItemKey.Door, ItemKey.DoorLock,
+          ItemKey.Floor, ItemKey.Walls, ItemKey.Door,
           ItemKey.CellarRack, ItemKey.Lighting,
         )
-      RoomKind.Attic ->
-        listOf(ItemKey.Floor, ItemKey.Walls, ItemKey.Door, ItemKey.DoorLock, ItemKey.Lighting)
-      RoomKind.Garage ->
-        listOf(ItemKey.Floor, ItemKey.Walls, ItemKey.Door, ItemKey.DoorLock, ItemKey.Lighting)
+      RoomKind.Attic -> listOf(ItemKey.Floor, ItemKey.Walls, ItemKey.Door, ItemKey.Lighting)
+      RoomKind.Garage -> listOf(ItemKey.Floor, ItemKey.Walls, ItemKey.Door, ItemKey.Lighting)
       RoomKind.LaundryRoom ->
         listOf(
           ItemKey.Floor, ItemKey.Walls, ItemKey.Door, ItemKey.WashingMachine, ItemKey.Dryer,
@@ -98,4 +96,8 @@ object Templates {
       // Hall, living room, bedrooms, hobby room, custom: the shell carries them.
       else -> shell
     }
+
+  /** A blank room always begins with its complete, editable canonical list. */
+  fun itemRowsFor(kind: RoomKind): List<RoomItem> =
+    itemsFor(kind).map { key -> RoomItem(key = key, itemId = key.name) }
 }

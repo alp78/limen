@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,13 +11,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.activity.compose.BackHandler
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -31,98 +33,142 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.verso.limen.data.Kind
 import dev.verso.limen.data.Protocol
-import dev.verso.limen.data.Role
 import dev.verso.limen.theme.Limen
 
-/**
- * The case, ordered the way the handover actually goes: who you are, how it works, the
- * dossier you are in the middle of, the way into a new one, and only then the side tools.
- * The first thing a lost user reads is the four steps, at full body size.
- */
+private enum class HomePage { Landing, NewSession, Sessions }
+
+/** The landing offers choices, not an identity gate or a partially exposed case list. */
 @Composable
 fun HomeScreen(modifier: Modifier = Modifier, vm: LimenViewModel = viewModel(), s: Str) {
-  var showProfile by remember { mutableStateOf(false) }
+  var page by remember { mutableStateOf(HomePage.Landing) }
+  var entryToSeed by remember { mutableStateOf<Protocol?>(null) }
+  BackHandler(enabled = page != HomePage.Landing) {
+    page = HomePage.Landing
+    entryToSeed = null
+  }
 
-  Box(modifier.fillMaxSize()) {
-    Column(Modifier.fillMaxSize()) {
-      Row(
-        Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-      ) {
-        LimenMark(size = 46.dp)
-        Spacer(Modifier.weight(1f))
-        vm.myRole?.let { role ->
-          Chip(
-            listOf(vm.profileName, s.role(role)).filter { it.isNotBlank() }.joinToString(" · "),
-            dim = false,
-          ) { showProfile = true }
-        }
-        LangMenu(vm.lang, vm::selectLang)
-        ThemeToggle(vm.darkTheme, vm::toggleTheme)
-      }
+  when (page) {
+    HomePage.Landing -> LandingScreen(
+      modifier = modifier,
+      vm = vm,
+      s = s,
+      onNewSession = { entryToSeed = null; page = HomePage.NewSession },
+      onSessions = { page = HomePage.Sessions },
+    )
+    HomePage.NewSession -> NewSessionScreen(
+      vm = vm,
+      s = s,
+      entryToSeed = entryToSeed,
+      onBack = { entryToSeed = null; page = HomePage.Landing },
+    )
+    HomePage.Sessions -> SessionsScreen(
+      modifier = modifier,
+      vm = vm,
+      s = s,
+      onBack = { page = HomePage.Landing },
+      onEmpty = { page = HomePage.Landing },
+      onSeedExit = { entry -> entryToSeed = entry; page = HomePage.NewSession },
+    )
+  }
+}
 
-      Spacer(Modifier.height(12.dp))
-      Column(
-        Modifier.fillMaxWidth().weight(1f).padding(horizontal = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-      ) {
-        if (vm.protocols.isEmpty()) {
-          // First contact: what this is and how it goes, before any control.
-          Panel(label = s.howItWorks) {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-              Text(s.welcomeLead, style = MaterialTheme.typography.bodyLarge, color = Limen.colors.ink)
-              GuideSteps(s)
-            }
-          }
-          Spacer(Modifier.weight(1f))
-        } else {
-          Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-              s.protocolsLabel,
-              style = MaterialTheme.typography.titleMedium,
-              color = Limen.colors.ink,
-              modifier = Modifier.weight(1f),
-            )
-            InfoTip(Tip(s.welcomeLead, s.guideSteps))
-          }
-          LazyColumn(
-            Modifier.fillMaxWidth().weight(1f),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-          ) {
-            items(vm.protocols, key = { it.id }) { p ->
-              ProtocolCard(vm, s, p)
-            }
-          }
-        }
-
-        // Both ways over the threshold, side by side. The exit from a stored entry
-        // protocol has its own key on the entry's card.
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-          BigKey("+ ${s.entry.uppercase()}", active = true, Modifier.weight(1f)) {
-            vm.createProtocol(Kind.Entry)
-          }
-          BigKey("+ ${s.exit.uppercase()}", active = true, Modifier.weight(1f)) {
-            vm.createProtocol(Kind.Exit)
-          }
-        }
-
-        // The side tools, clearly apart from the main way through.
-        Text(
-          s.toolsLabel,
-          style = MaterialTheme.typography.labelSmall,
-          color = Limen.colors.inkDim,
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-          SmallKey(s.faceValue, Modifier.weight(1f)) { vm.selectMode(AppMode.Value) }
-          SmallKey(s.faceClocks, Modifier.weight(1f)) { vm.selectMode(AppMode.Clocks) }
-        }
-      }
-      Spacer(Modifier.height(12.dp))
+@Composable
+private fun LandingScreen(
+  modifier: Modifier,
+  vm: LimenViewModel,
+  s: Str,
+  onNewSession: () -> Unit,
+  onSessions: () -> Unit,
+) {
+  Column(
+    modifier
+      .fillMaxSize()
+      .background(Limen.colors.landing)
+      .safeDrawingPadding()
+      .padding(horizontal = 24.dp),
+    horizontalAlignment = Alignment.CenterHorizontally,
+  ) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+      LangMenu(vm.lang, vm::selectLang)
+      Spacer(Modifier.weight(1f))
+      ThemeToggle(vm.darkTheme, vm::toggleTheme)
     }
+    Spacer(Modifier.weight(1f))
+    LimenMark(size = 172.dp)
+    Spacer(Modifier.height(20.dp))
+    Text("LIMEN", style = MaterialTheme.typography.displayLarge, color = Limen.colors.onInk)
+    Spacer(Modifier.height(10.dp))
+    Text(
+      s.welcomeLead,
+      style = MaterialTheme.typography.bodyLarge,
+      color = Limen.colors.onInk.copy(alpha = 0.88f),
+    )
+    Spacer(Modifier.weight(1f))
+    LandingKey(s.startNewSession, onPress = onNewSession)
+    Spacer(Modifier.height(10.dp))
+    LandingKey(s.allSessions, enabled = vm.protocols.isNotEmpty(), onPress = onSessions)
+    Spacer(Modifier.height(24.dp))
+  }
+}
 
-    if (showProfile) {
-      ProfileOverlay(vm, s) { showProfile = false }
+@Composable
+private fun LandingKey(label: String, enabled: Boolean = true, onPress: () -> Unit) {
+  KeySurface(
+    modifier = Modifier.fillMaxWidth(),
+    enabled = enabled,
+    shape = RoundedCornerShape(12.dp),
+    fillColor = Limen.colors.plate,
+    outlineColor = Limen.colors.onInk,
+    onPress = onPress,
+  ) {
+    Text(
+      label,
+      style = MaterialTheme.typography.labelLarge,
+      color = if (enabled) Limen.colors.ink else Limen.colors.disabledInk,
+      modifier = Modifier.padding(vertical = 18.dp),
+    )
+  }
+}
+
+@Composable
+private fun SessionsScreen(
+  modifier: Modifier,
+  vm: LimenViewModel,
+  s: Str,
+  onBack: () -> Unit,
+  onEmpty: () -> Unit,
+  onSeedExit: (Protocol) -> Unit,
+) {
+  LaunchedEffect(vm.protocols.isEmpty()) {
+    if (vm.protocols.isEmpty()) onEmpty()
+  }
+  Column(
+    modifier
+      .fillMaxSize()
+      .background(Limen.colors.plate)
+      .safeDrawingPadding()
+      .padding(horizontal = 20.dp),
+  ) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+      IconKey(ButtonGlyph.Back, s.back, Modifier.width(48.dp), onPress = onBack)
+      Spacer(Modifier.width(10.dp))
+      Text(s.allSessions, style = MaterialTheme.typography.titleMedium, color = Limen.colors.ink, modifier = Modifier.weight(1f))
+      LangMenu(vm.lang, vm::selectLang)
+      Spacer(Modifier.width(4.dp))
+      ThemeToggle(vm.darkTheme, vm::toggleTheme)
+    }
+    Spacer(Modifier.height(14.dp))
+    if (vm.protocols.isEmpty()) {
+      Text(s.sessionsEmpty, style = MaterialTheme.typography.bodyLarge, color = Limen.colors.inkDim)
+    } else {
+      LazyColumn(
+        Modifier.fillMaxWidth().weight(1f),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+      ) {
+        items(vm.protocols, key = { it.id }) { p ->
+          ProtocolCard(vm, s, p, onSeedExit)
+        }
+      }
     }
   }
 }
@@ -146,42 +192,14 @@ fun GuideSteps(s: Str) {
   }
 }
 
-/**
- * The profile, one tap from the case: name, side, and the way to hand the phone to
- * someone else entirely. Nothing else in the app talks about accounts, because there are
- * none: the profile is this phone's answer to the first question.
- */
-@Composable
-private fun ProfileOverlay(vm: LimenViewModel, s: Str, onClose: () -> Unit) {
-  Box(
-    Modifier
-      .fillMaxSize()
-      .background(Limen.colors.plate.copy(alpha = 0.94f))
-      .clickable(onClick = onClose),
-    contentAlignment = Alignment.Center,
-  ) {
-    Box(Modifier.padding(20.dp).clickable(enabled = false) {}) {
-      Panel(label = s.profileKey, info = s.tipRole()) {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-          Field(s.profileName, vm.profileName) { vm.updateProfileName(it) }
-          PillRow(
-            listOf(Role.Tenant, Role.Landlord).map { it to s.role(it) },
-            vm.myRole ?: Role.Tenant,
-          ) { r -> vm.chooseRole(r, vm.profileName) }
-          BigKey(s.doneKey, active = true, Modifier.fillMaxWidth()) { onClose() }
-          SmallKey(s.resetProfile, Modifier.fillMaxWidth()) {
-            vm.clearProfile()
-            onClose()
-          }
-        }
-      }
-    }
-  }
-}
-
 /** One dossier: what, where, when, and how far it got. Delete asks twice, quietly. */
 @Composable
-private fun ProtocolCard(vm: LimenViewModel, s: Str, p: Protocol) {
+private fun ProtocolCard(
+  vm: LimenViewModel,
+  s: Str,
+  p: Protocol,
+  onSeedExit: (Protocol) -> Unit,
+) {
   val shape = RoundedCornerShape(14.dp)
   var armed by remember(p.id) { mutableStateOf(false) }
   Column(
@@ -238,10 +256,15 @@ private fun ProtocolCard(vm: LimenViewModel, s: Str, p: Protocol) {
           if (canCreateExit) s.exitFromThis else s.finalizeEntryFirst,
           dim = !canCreateExit,
           enabled = canCreateExit,
-        ) { vm.seedExitFrom(p) }
+        ) { onSeedExit(p) }
       }
       Spacer(Modifier.weight(1f))
-      Chip(if (armed) s.sure else s.delete, tick = if (armed) Tick.Reject else Tick.Key) {
+      Chip(
+        if (armed) s.sure else s.delete,
+        active = armed,
+        tick = if (armed) Tick.Reject else Tick.Key,
+        destructive = true,
+      ) {
         if (armed) vm.deleteProtocol(p.id) else armed = true
       }
     }

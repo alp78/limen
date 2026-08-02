@@ -73,6 +73,7 @@ object PdfExport {
     parties(sheet, p, s)
     deposit(sheet, p, s)
     metersAndKeys(sheet, p, s)
+    flatExtras(sheet, p, s)
     rooms(sheet, p, s)
     defects(sheet, p, s)
     remarks(sheet, p, s)
@@ -323,16 +324,19 @@ object PdfExport {
     if (p.selfMadeKeys) sheet.wrapped(s.selfMadeKeys, sheet.body)
   }
 
+  private fun flatExtras(sheet: Sheet, p: Protocol, s: Str) {
+    val appliances = p.extras.appliances.sortedBy { it.ordinal }.map(s::appliance) + p.extras.customAppliances
+    val furniture = p.extras.furniture.sortedBy { it.ordinal }.map(s::furniture) + p.extras.customFurniture
+    if (appliances.isEmpty() && furniture.isEmpty()) return
+    sheet.sectionTitle(s.stepExtras)
+    if (appliances.isNotEmpty()) sheet.wrapped("${s.appliances}: ${appliances.joinToString(" · ")}", sheet.body)
+    if (furniture.isNotEmpty()) sheet.wrapped("${s.furniture}: ${furniture.joinToString(" · ")}", sheet.body)
+  }
+
   private fun rooms(sheet: Sheet, p: Protocol, s: Str) {
     val defectMarks = p.defects.groupBy { it.roomId }
     p.rooms.forEach { room ->
       sheet.sectionTitle(room.name.ifBlank { s.room(room.kind) })
-      val flags = buildList {
-        if (room.freshPaintedWalls) add(s.freshWalls)
-        if (room.freshPaintedWoodwork) add(s.freshWood)
-        if (room.newFloor) add(s.newFloor)
-      }
-      if (flags.isNotEmpty()) sheet.wrapped(flags.joinToString(" · "), sheet.small)
 
       // Two columns of item lines: the form look, at half the paper.
       val colWidth = (W - 2 * MARGIN - 40f) / 2f
@@ -340,7 +344,10 @@ object PdfExport {
         val name =
           if (item.key == ItemKey.Custom && item.label.isNotBlank()) item.label else s.item(item.key)
         val defectNos = p.defects.withIndex()
-          .filter { (_, d) -> d.roomId == room.id && d.item == item.key }
+          .filter { (_, d) ->
+            d.roomId == room.id && d.item == item.key &&
+              (d.itemId.isBlank() || item.itemId.isBlank() || d.itemId == item.itemId)
+          }
           .map { (i, _) -> i + 1 }
         val state = when {
           defectNos.isNotEmpty() -> "! " + defectNos.joinToString(",")
@@ -383,7 +390,7 @@ object PdfExport {
       sheet.ensure(80f)
       val where = buildList {
         room?.let { add(it.name.ifBlank { s.room(it.kind) }) }
-        d.item?.let { add(s.item(it)) }
+        defectItemLabel(p, d, s)?.let(::add)
       }.joinToString(" · ")
       sheet.canvas.drawText("${i + 1}.", MARGIN, sheet.y + sheet.value.textSize, sheet.value)
       sheet.canvas.drawText(where, MARGIN + 60f, sheet.y + sheet.small.textSize + 2f, sheet.small)
@@ -414,6 +421,15 @@ object PdfExport {
       }
       sheet.gap(8f)
     }
+  }
+
+  private fun defectItemLabel(p: Protocol, defect: Defect, s: Str): String? {
+    val key = defect.item ?: return null
+    val item = p.rooms.firstOrNull { it.id == defect.roomId }?.items?.firstOrNull {
+      it.key == key &&
+        (defect.itemId.isBlank() || it.itemId.isBlank() || defect.itemId == it.itemId)
+    }
+    return if (item?.key == ItemKey.Custom && item.label.isNotBlank()) item.label else s.item(key)
   }
 
   private fun remarks(sheet: Sheet, p: Protocol, s: Str) {

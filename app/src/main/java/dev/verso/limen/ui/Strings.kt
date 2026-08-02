@@ -1,7 +1,9 @@
 package dev.verso.limen.ui
 
+import dev.verso.limen.data.Appliance
 import dev.verso.limen.data.CautionProvider
 import dev.verso.limen.data.DepositKind
+import dev.verso.limen.data.Furniture
 import dev.verso.limen.data.Grade
 import dev.verso.limen.data.ItemKey
 import dev.verso.limen.data.KeyKind
@@ -105,37 +107,18 @@ class Str(val lang: Lang) {
   val done = pick("DONE", "TERMINÉ", "FERTIG", "FATTO", "FINÌ")
   val delete = pick("DELETE", "SUPPRIMER", "LÖSCHEN", "ELIMINA", "STIZZAR")
   val add = pick("ADD", "AJOUTER", "HINZUFÜGEN", "AGGIUNGI", "AGIUNTAR")
+  val editDefect = pick("EDIT DEFECT", "MODIFIER LE DÉFAUT", "MANGEL BEARBEITEN", "MODIFICA DIFETTO", "MODIFITGAR LA MANCANZA")
 
   // The stepper's stations.
   val stepSetup = pick("Setup", "Préparation", "Kopfdaten", "Impostazione", "Preparaziun")
   val stepRooms = pick("Rooms", "Pièces", "Räume", "Locali", "Locals")
+  val stepExtras = pick("Extras", "Équipements", "Ausstattung", "Dotazioni", "Dotaziun")
   val stepReview = pick("Review", "Relecture", "Durchsicht", "Riesame", "Controlla")
   val stepSign = pick("Signatures", "Signatures", "Unterschriften", "Firme", "Suttascripziuns")
   val stepExport = pick("Export", "Export", "Export", "Esporta", "Export")
 
   // Setup.
   val protocolKind = pick("Protocol", "État des lieux", "Protokoll", "Verbale", "Protocol")
-  val styleLabel = pick(
-    "How each item is graded",
-    "Comment chaque poste est noté",
-    "Wie jede Position bewertet wird",
-    "Come si valuta ogni posizione",
-    "Co che mintga posiziun vegn valitada",
-  )
-  val styleBinary = pick(
-    "In order, or a defect",
-    "Conforme, ou un défaut",
-    "In Ordnung, oder ein Mangel",
-    "In ordine, o un difetto",
-    "En urden, u ina mancanza",
-  )
-  val styleGrades = pick(
-    "Four grades TB B M O",
-    "Quatre notes TB B M O",
-    "Vier Noten TB B M O",
-    "Quattro voti TB B M O",
-    "Quatter notas TB B M O",
-  )
   val objectLabel = pick("Object", "Objet loué", "Mietobjekt", "Ente locato", "Object da locaziun")
   val address = pick("Street and number", "Rue et numéro", "Strasse und Nummer", "Via e numero", "Via e numer")
   val place = pick("Postcode and place", "NPA et localité", "PLZ und Ort", "NAP e località", "NPA e lieu")
@@ -258,6 +241,28 @@ class Str(val lang: Lang) {
     ItemKey.Custom -> pick("Other", "Autre", "Weiteres", "Altro", "Auter")
   }
 
+  fun appliance(a: Appliance) = when (a) {
+    Appliance.Fridge -> pick("Fridge", "Réfrigérateur", "Kühlschrank", "Frigorifero", "Frigorifer")
+    Appliance.Freezer -> pick("Freezer", "Congélateur", "Tiefkühler", "Congelatore", "Congelatur")
+    Appliance.Oven -> pick("Oven", "Four", "Backofen", "Forno", "Furn")
+    Appliance.Hob -> pick("Hob", "Plaques de cuisson", "Kochfeld", "Piano cottura", "Plaun da cuschinar")
+    Appliance.Microwave -> pick("Microwave", "Micro-ondes", "Mikrowelle", "Microonde", "Microondas")
+    Appliance.Dishwasher -> pick("Dishwasher", "Lave-vaisselle", "Geschirrspüler", "Lavastoviglie", "Maschina da lavar plats")
+    Appliance.WashingMachine -> pick("Washing machine", "Lave-linge", "Waschmaschine", "Lavatrice", "Maschina da lavar")
+    Appliance.Dryer -> pick("Dryer", "Sèche-linge", "Tumbler", "Asciugatrice", "Sitgentadur")
+  }
+
+  fun furniture(f: Furniture) = when (f) {
+    Furniture.Bed -> pick("Bed", "Lit", "Bett", "Letto", "Letg")
+    Furniture.Wardrobe -> pick("Wardrobe", "Armoire", "Kleiderschrank", "Armadio", "Stgaffa da vestgadira")
+    Furniture.Table -> pick("Table", "Table", "Tisch", "Tavolo", "Maisa")
+    Furniture.Chairs -> pick("Chairs", "Chaises", "Stühle", "Sedie", "Sutgas")
+    Furniture.Sofa -> pick("Sofa", "Canapé", "Sofa", "Divano", "Sofa")
+    Furniture.Desk -> pick("Desk", "Bureau", "Schreibtisch", "Scrivania", "Maisa da scriver")
+    Furniture.Shelving -> pick("Shelving", "Étagères", "Regale", "Scaffali", "Regals")
+    Furniture.Bookcase -> pick("Bookcase", "Bibliothèque", "Bücherregal", "Libreria", "Regal da cudeschs")
+  }
+
   // Grades: the romand canon's letters, spelled out where there is room.
   fun grade(g: Grade) = when (g) {
     Grade.NotChecked -> pick("Not checked", "Non contrôlé", "Nicht geprüft", "Non controllato", "Betg controllà")
@@ -295,19 +300,43 @@ class Str(val lang: Lang) {
 
   // Rooms walk.
   val roomKeys = pick("Keys of this room", "Clés de cette pièce", "Schlüssel dieses Raums", "Chiavi di questo locale", "Clavs da quest local")
-  val freshWalls = pick("Walls freshly painted", "Murs repeints à neuf", "Wände frisch gestrichen", "Pareti ridipinte", "Paraids frestg pittiradas")
-  val freshWood = pick("Woodwork freshly painted", "Boiseries repeintes", "Holzwerk frisch gestrichen", "Boiserie ridipinte", "Lain frestg pittirà")
-  val newFloor = pick("Floor new at entry", "Sol neuf à l'entrée", "Bodenbelag neu bei Einzug", "Pavimento nuovo alla consegna", "Plaun nov tar l'entrada")
   val addRoom = pick("ADD ROOM", "AJOUTER UNE PIÈCE", "RAUM HINZUFÜGEN", "AGGIUNGI LOCALE", "AGIUNTAR IN LOCAL")
   val addDefect = pick("Note a defect", "Noter un défaut", "Mangel erfassen", "Annotare un difetto", "Registrar ina mancanza")
+  val addRoomItem = pick("Add an item", "Ajouter un élément", "Element hinzufügen", "Aggiungi un elemento", "Agiuntar in element")
+  val roomItemName = pick("Item name", "Nom de l'élément", "Name des Elements", "Nome dell'elemento", "Num da l'element")
+  val resetRoom = pick("RESET ROOM", "RÉINITIALISER LA PIÈCE", "RAUM ZURÜCKSETZEN", "REIMPOSTA LOCALE", "REINITIALISAR IL LOCAL")
+  val resetRoomQuestion = pick("ARE YOU SURE?", "ÊTES-VOUS SÛR·E ?", "SIND SIE SICHER?", "SIETE SICURI?", "ESSAS VUS SEGIR?")
+  val resetRoomBody = pick(
+    "This clears the room's checks, defects, photos and keys, then restores its default items.",
+    "Cette action efface les contrôles, défauts, photos et clés de la pièce, puis rétablit ses éléments par défaut.",
+    "Dadurch werden die Prüfungen, Mängel, Fotos und Schlüssel des Raums gelöscht und die Standardelemente wiederhergestellt.",
+    "Questa azione cancella controlli, difetti, foto e chiavi del locale, quindi ripristina gli elementi predefiniti.",
+    "Quai stizza ils controlls, las mancanzas, las novitads e las clavs dal local e restaurescha ils elements da standard.",
+  )
+  val yes = pick("YES", "OUI", "JA", "SÌ", "GEA")
+  val no = pick("NO", "NON", "NEIN", "NO", "NA")
   val defects = pick("Defects", "Défauts", "Mängel", "Difetti", "Mancanzas")
-  val entryBaseline = pick(
-    "Entry record alongside this exit walk", "État d'entrée à côté de cette sortie", "Einzugsprotokoll neben diesem Auszugsrundgang", "Verbale d'entrata accanto a questa riconsegna", "Protocol d'entrada sper questa sortida",
+
+  // Flat extras. These are recorded once for the whole object, never assigned to a room.
+  val appliances = pick("Appliances", "Appareils", "Geräte", "Elettrodomestici", "Apparats")
+  val appliancesHint = pick(
+    "Select the appliances supplied with the flat.",
+    "Sélectionnez les appareils fournis avec le logement.",
+    "Wählen Sie die mit der Wohnung gelieferten Geräte.",
+    "Selezionate gli elettrodomestici forniti con l'alloggio.",
+    "Tschernei ils apparats mess a disposiziun cun l'abitaziun.",
   )
+  val furniture = pick("Furniture", "Mobilier", "Möbel", "Arredi", "Mobigliar")
+  val furnitureHint = pick(
+    "Select the furniture supplied with the flat.",
+    "Sélectionnez le mobilier fourni avec le logement.",
+    "Wählen Sie die mit der Wohnung gelieferten Möbel.",
+    "Selezionate gli arredi forniti con l'alloggio.",
+    "Tschernei il mobigliar mess a disposiziun cun l'abitaziun.",
+  )
+  val addCustomAppliance = pick("Add another appliance", "Ajouter un autre appareil", "Weiteres Gerät hinzufügen", "Aggiungi un altro apparecchio", "Agiuntar in auter apparat")
+  val addCustomFurniture = pick("Add another piece of furniture", "Ajouter un autre meuble", "Weiteres Möbelstück hinzufügen", "Aggiungi un altro arredo", "Agiuntar in auter mobigliar")
   val atEntry = pick("At entry", "À l'entrée", "Bei Einzug", "All'entrata", "Tar l'entrada")
-  val noEntryBaseline = pick(
-    "No linked entry record", "Aucun état d'entrée lié", "Kein verknüpftes Einzugsprotokoll", "Nessun verbale d'entrata collegato", "Nagin protocol d'entrada collià",
-  )
 
   // The defect editor.
   val defectText = pick(
@@ -477,6 +506,7 @@ class Str(val lang: Lang) {
 
   // Export.
   val exportPdf = pick("EXPORT PDF", "EXPORTER LE PDF", "PDF EXPORTIEREN", "ESPORTA PDF", "EXPORTAR PDF")
+  val saveAsDraft = pick("SAVE AS DRAFT", "ENREGISTRER LE BROUILLON", "ALS ENTWURF SPEICHERN", "SALVA COME BOZZA", "MEMORISAR SCO SBOZ")
   val pdfLanguage = pick("Language of the PDF", "Langue du PDF", "Sprache des PDF", "Lingua del PDF", "Lingua dal PDF")
   val open = pick("OPEN", "OUVRIR", "ÖFFNEN", "APRI", "AVRIR")
   val share = pick("SHARE", "PARTAGER", "TEILEN", "CONDIVIDI", "CUNDIVIDER")
@@ -1137,6 +1167,70 @@ class Str(val lang: Lang) {
     "I vostri verbali",
     "Voss protocols",
   )
+  val startNewSession = pick(
+    "START NEW SESSION",
+    "COMMENCER UNE NOUVELLE SESSION",
+    "NEUE SITZUNG STARTEN",
+    "AVVIA NUOVA SESSIONE",
+    "NOVA SESIUN CUMENZAR",
+  )
+  val allSessions = pick(
+    "ALL SESSIONS",
+    "TOUTES LES SESSIONS",
+    "ALLE SITZUNGEN",
+    "TUTTE LE SESSIONI",
+    "TUTTAS LAS SESIUNS",
+  )
+  val sessionIdentity = pick("Your identity", "Votre identité", "Ihre Identität", "La vostra identità", "Vossa identitad")
+  val firstName = pick("First name", "Prénom", "Vorname", "Nome", "Prenum")
+  val lastName = pick("Last name", "Nom", "Nachname", "Cognome", "Num")
+  val identityAddress = pick("Address", "Adresse", "Adresse", "Indirizzo", "Adressa")
+  val addressType = pick("Address type", "Type d'adresse", "Adresstyp", "Tipo di indirizzo", "Tip d'adressa")
+  val swissAddress = pick("Swiss address", "Adresse suisse", "Schweizer Adresse", "Indirizzo svizzero", "Adressa svizra")
+  val foreignAddress = pick("Foreign address", "Adresse étrangère", "Ausländische Adresse", "Indirizzo estero", "Adressa estra")
+  val addressCountry = pick("Address country", "Pays de l'adresse", "Adressland", "Paese dell'indirizzo", "Pajais da l'adressa")
+  val selectCountry = pick("Select country", "Sélectionnez un pays", "Land auswählen", "Selezionate un paese", "Tscherner pajais")
+  val foreignAddressHint = pick(
+    "Enter the address as printed. Swiss official lookup is not used for foreign addresses.",
+    "Saisissez l'adresse telle qu'elle est écrite. La recherche officielle suisse ne s'applique pas aux adresses étrangères.",
+    "Geben Sie die Adresse wie geschrieben ein. Die offizielle Schweizer Suche gilt nicht für ausländische Adressen.",
+    "Inserite l'indirizzo come riportato. La ricerca ufficiale svizzera non viene usata per gli indirizzi esteri.",
+    "Endatai l'adressa sco stampada. La tschertga uffiziala svizra na vegn betg duvrada per adressas estras.",
+  )
+  val street = pick("Street", "Rue", "Strasse", "Via", "Via")
+  val flatNumber = pick("House / flat no.", "N° de maison / logement", "Haus- / Wohnungsnr.", "N. civico / appartamento", "Nr. da chasa / abitaziun")
+  val postalCode = pick("Postcode", "NPA", "PLZ", "NPA", "NPA")
+  val city = pick("City", "Localité", "Ort", "Località", "Lieu")
+  val phoneCountry = pick("Phone country / code", "Pays / indicatif téléphonique", "Telefonland / Vorwahl", "Paese / prefisso telefonico", "Pajais / code da telefon")
+  val countryNoMatches = pick("No matching country", "Aucun pays correspondant", "Kein passendes Land", "Nessun paese corrispondente", "Nagìn pajais adattà")
+  val phoneNumber = pick("Phone number", "Numéro de téléphone", "Telefonnummer", "Numero di telefono", "Numer da telefon")
+  val addressLookupHint = pick(
+    "Type an address, then choose its official suggestion.",
+    "Saisissez une adresse, puis choisissez la suggestion officielle.",
+    "Adresse eingeben und den offiziellen Vorschlag wählen.",
+    "Inserite un indirizzo, poi scegliete il suggerimento ufficiale.",
+    "Endatai ina adressa e tschernai il recumandament uffizial.",
+  )
+  val addressSearching = pick("Searching official addresses...", "Recherche d'adresses officielles...", "Offizielle Adressen werden gesucht...", "Ricerca di indirizzi ufficiali...", "Tschertgar adressas uffizialas...")
+  val addressVerified = pick("Official address selected", "Adresse officielle sélectionnée", "Offizielle Adresse ausgewählt", "Indirizzo ufficiale selezionato", "Adressa uffiziala tschernida")
+  val validPhoneNumber = pick("Valid number", "Numéro valide", "Gültige Nummer", "Numero valido", "Numer valid")
+  val invalidPhoneNumber = pick("Check the number for the selected country", "Vérifiez le numéro pour le pays sélectionné", "Prüfen Sie die Nummer für das ausgewählte Land", "Controllate il numero per il paese selezionato", "Controllai il numer per il pajais tschernì")
+  fun phoneExample(example: String) = pick(
+    "Example: $example",
+    "Exemple : $example",
+    "Beispiel: $example",
+    "Esempio: $example",
+    "Exempel: $example",
+  )
+  val userType = pick("Your role", "Votre rôle", "Ihre Rolle", "Il vostro ruolo", "Vossa rolla")
+  val sessionKind = pick("Type of handover", "Type de remise", "Art der Übergabe", "Tipo di consegna", "Tip da surdada")
+  val sessionsEmpty = pick(
+    "No sessions saved on this phone.",
+    "Aucune session enregistrée sur ce téléphone.",
+    "Keine Sitzungen auf diesem Telefon gespeichert.",
+    "Nessuna sessione salvata su questo telefono.",
+    "Nagina sesiun memorisada sin quest telefon.",
+  )
   val welcomeLead = pick(
     "Limen records the apartment handover, from the first meter reading to a final PDF both sides receive.",
     "Limen consigne l'état des lieux, du premier relevé au PDF final remis aux deux parties.",
@@ -1190,11 +1284,18 @@ class Str(val lang: Lang) {
       "Emplenì il rom ensemen avant il gir: l'object, las persunas, la cauziun, ils dumbraders, las clavs.",
     )
     FlowStep.Rooms -> pick(
-      "Walk the flat room by room. Tap the state on each line; the + records a defect with photos.",
-      "Parcourez le logement pièce par pièce. Touchez l'état sur chaque ligne ; le + enregistre un défaut avec photos.",
-      "Geht Raum für Raum durch. Tippt den Zustand auf jeder Zeile an; das + erfasst einen Mangel mit Fotos.",
-      "Percorrete l'alloggio locale per locale. Toccate lo stato su ogni riga; il + registra un difetto con foto.",
-      "Giai tras l'abitaziun local per local. Tutgai il stadi sin mintga lingia; il + registrescha in defect cun fotos.",
+      "Walk the flat room by room. Tap Not checked to record the condition; + records a defect with photos. Use the pencil on a yellow item to edit its defect.",
+      "Parcourez le logement pièce par pièce. Touchez Non contrôlé pour enregistrer l'état ; le + enregistre un défaut avec photos. Utilisez le crayon sur un élément jaune pour modifier son défaut.",
+      "Geht Raum für Raum durch. Tippt auf Nicht geprüft, um den Zustand zu erfassen; das + erfasst einen Mangel mit Fotos. Mit dem Stift auf einem gelben Element bearbeitet ihr seinen Mangel.",
+      "Percorrete l'alloggio locale per locale. Toccate Non controllato per registrare lo stato; il + registra un difetto con foto. Usate la matita su un elemento giallo per modificare il suo difetto.",
+      "Giai tras l'abitaziun local per local. Tutgai Betg controllà per registrar il stadi; il + registrescha in defect cun fotos. Duvrar il rispli sin in element mellen per modifitgar ses defect.",
+    )
+    FlowStep.Extras -> pick(
+      "Record appliances and furniture supplied with the flat once, including anything not on the list.",
+      "Consignez une seule fois les appareils et le mobilier fournis avec le logement, y compris ce qui n'est pas dans la liste.",
+      "Erfassen Sie die mit der Wohnung gelieferten Geräte und Möbel einmal, auch Einträge ausserhalb der Liste.",
+      "Registrate una volta sola gli elettrodomestici e gli arredi forniti con l'alloggio, compresi quelli non in elenco.",
+      "Registrai ina giada ils apparats ed il mobigliar mess a disposiziun cun l'abitaziun, inclus quai che na figurescha betg sin la glista.",
     )
     FlowStep.Review -> pick(
       "Read the findings aloud together. Mark who carries each defect before anyone signs.",
@@ -1218,42 +1319,6 @@ class Str(val lang: Lang) {
       "Exportai il PDF e surdatti immediat ina copia a mintga vart.",
     )
   }
-
-
-
-  fun tipStyle() = Tip(
-    pick(
-      "The two grading canons of the Swiss protocol. Set from your language; change it to match the form the other side brought.",
-      "Les deux manières suisses de noter un état des lieux. Réglée d'après votre langue ; changez-la pour suivre le formulaire apporté par l'autre partie.",
-      "Die zwei Bewertungskanons des Schweizer Protokolls. Nach Ihrer Sprache gesetzt; ändern Sie ihn, wenn die Gegenseite ein anderes Formular bringt.",
-      "I due canoni di valutazione del verbale svizzero. Impostato secondo la vostra lingua; cambiatelo per seguire il modulo portato dall'altra parte.",
-      "Ils dus canons da valitaziun dal protocol svizzer. Fixà tenor Vossa lingua; midai el per suandar il formular da l'autra vart.",
-    ),
-    listOf(
-      pick(
-        "In order or a defect: one tap ticks the item, the Deutschschweiz canon of the MV and HEV forms",
-        "Conforme ou défaut : une pression coche le poste, le canon alémanique des formulaires ASLOCA et HEV",
-        "In Ordnung oder Mangel: ein Tippen hakt die Position ab, der Deutschschweizer Kanon der MV- und HEV-Formulare",
-        "In ordine o difetto: un tocco spunta la posizione, il canone svizzero tedesco dei moduli ASI e HEV",
-        "En urden u mancanza: in tip marchescha la posiziun, il canon tudestg-svizzer dals formulars MV e HEV",
-      ),
-      pick(
-        "Four grades: each tap walks TB, B, M, O, the romand canon of the régie forms",
-        "Quatre notes : chaque pression passe TB, B, M, O, le canon romand des formulaires de régie",
-        "Vier Noten: jedes Tippen geht TB, B, M, O durch, der Westschweizer Kanon der Verwaltungsformulare",
-        "Quattro voti: ogni tocco passa TB, B, M, O, il canone romando dei moduli delle amministrazioni",
-        "Quatter notas: mintga tip va TB, B, M, O, il canon romand dals formulars da las administraziuns",
-      ),
-      pick(
-        "A defect can be written on any item either way; the grade is only the quick state",
-        "Un défaut peut être écrit sur n'importe quel poste dans les deux cas ; la note n'est que l'état rapide",
-        "Ein Mangel lässt sich in beiden Fällen zu jeder Position schreiben; die Note ist nur der schnelle Zustand",
-        "Un difetto si può scrivere su ogni posizione in entrambi i casi; il voto è solo lo stato rapido",
-        "Ina mancanza po vegnir scritta a mintga posiziun en omadus cas; la nota è mo il stadi svelt",
-      ),
-    ),
-  )
-
   /** Said on the paper, because two signed originals are what both parties go home with. */
   val pdfTwoCopies = pick(
     "Established in two identical copies, one for each party.",

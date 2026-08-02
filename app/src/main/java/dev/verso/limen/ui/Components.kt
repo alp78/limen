@@ -53,11 +53,14 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -258,11 +261,19 @@ fun KeySurface(
     !enabled && !active -> Limen.colors.plateEdge
     outlineColor != null -> outlineColor
     active -> Limen.colors.action
-    else -> Limen.colors.actionOutline
+    // Neutral keys stay neutral in both schemes. Using the action outline here was the
+    // source of the stray light-blue lower rule on dark secondary buttons.
+    else -> Limen.colors.plateEdge
   }
   val interactionSource = remember { MutableInteractionSource() }
   val pressed by interactionSource.collectIsPressedAsState()
-  val depth = if (enabled) 3.dp else 2.dp
+  // A smaller lower edge in night mode keeps the visible face the same weight as an
+  // active blue key, without the light lower rule that made neutral keys look shorter.
+  val depth = when {
+    !enabled -> 2.dp
+    Limen.colors.isDark -> 2.dp
+    else -> 3.dp
+  }
   val faceOffset by animateDpAsState(
     targetValue = if (pressed && enabled) depth else 0.dp,
     animationSpec = tween(durationMillis = 90),
@@ -271,13 +282,9 @@ fun KeySurface(
   val topLight = fill.lifted(if (Limen.colors.isDark) 0.18f else 0.30f)
   val lowerTone = fill.shaded(if (Limen.colors.isDark) 0.18f else 0.12f)
   val edge = fill.shaded(if (enabled) 0.16f else 0.08f)
-  val faceOutline = if (
-    !Limen.colors.isDark && !active && fillColor == null && outlineColor == null
-  ) {
-    Limen.colors.plateEdge
-  } else {
-    outline
-  }
+  // A full stroke includes a horizontal rule at the lower face edge. On dark fills it
+  // read as a stray blue or white line, so the night treatment relies on the tonal edge.
+  val drawFaceOutline = !Limen.colors.isDark
   val face = remember(topLight, fill, lowerTone) {
     Brush.verticalGradient(
       0.0f to topLight,
@@ -301,15 +308,16 @@ fun KeySurface(
         val corner = CornerRadius(radius, radius)
         withTransform({ translate(top = faceOffsetPx) }) {
           drawRoundRect(brush = face, size = faceSize, cornerRadius = corner)
-          drawRoundRect(
-            color = faceOutline,
-            size = faceSize,
-            cornerRadius = corner,
-            style = Stroke(width = 1.dp.toPx()),
-          )
+          if (drawFaceOutline) {
+            drawRoundRect(
+              color = outline,
+              size = faceSize,
+              cornerRadius = corner,
+              style = Stroke(width = 1.dp.toPx()),
+            )
+          }
         }
       }
-      .border(1.dp, edge, shape)
       .clickable(
         interactionSource = interactionSource,
         indication = null,
@@ -410,7 +418,7 @@ fun BigKey(
 ) {
   KeySurface(
     modifier,
-    active = active,
+    active = active && enabled,
     enabled = enabled,
     shape = RoundedCornerShape(12.dp),
     tick = tick,
@@ -425,7 +433,7 @@ fun BigKey(
       textAlign = TextAlign.Center,
       maxLines = 1,
       color = when {
-        active -> Limen.colors.onInk
+        active && enabled -> Limen.colors.onInk
         !enabled -> Limen.colors.disabledInk
         else -> Limen.colors.ink
       },
@@ -608,14 +616,19 @@ fun Field(
   modifier: Modifier = Modifier,
   singleLine: Boolean = true,
   hint: String? = null,
+  keyboardType: KeyboardType = KeyboardType.Text,
+  isError: Boolean = false,
+  onFocusChanged: ((Boolean) -> Unit)? = null,
   onChange: (String) -> Unit,
 ) {
   androidx.compose.material3.OutlinedTextField(
     value = value,
     onValueChange = onChange,
-    modifier = modifier.fillMaxWidth(),
+    modifier = modifier.fillMaxWidth().onFocusChanged { onFocusChanged?.invoke(it.isFocused) },
     shape = RoundedCornerShape(10.dp),
     singleLine = singleLine,
+    isError = isError,
+    keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
     label = { Text(label, style = MaterialTheme.typography.labelSmall) },
     placeholder = hint?.let { { Text(it, style = MaterialTheme.typography.bodyMedium, color = Limen.colors.inkDim) } },
     textStyle = MaterialTheme.typography.bodyMedium.copy(color = Limen.colors.ink),

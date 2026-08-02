@@ -1,6 +1,8 @@
 package dev.verso.limen.data
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
 
 /**
  * The protocol on disk, one JSON file per handover, written by this app and read back
@@ -18,7 +20,19 @@ data class Protocol(
   val schema: Int = 2,
   val id: String,
   val kind: Kind,
-  /** How items are graded: the Deutschschweiz binary tick or the romand four grades. */
+  /** The person who started this handover; immutable once the session exists. */
+  @OptIn(ExperimentalSerializationApi::class)
+  @EncodeDefault(EncodeDefault.Mode.NEVER)
+  val sessionRole: Role? = null,
+  /** The starter's declared name, kept with this record rather than only on the device. */
+  @OptIn(ExperimentalSerializationApi::class)
+  @EncodeDefault(EncodeDefault.Mode.NEVER)
+  val sessionName: String = "",
+  /** The starter's verified contact details, retained with this handover rather than on the phone. */
+  @OptIn(ExperimentalSerializationApi::class)
+  @EncodeDefault(EncodeDefault.Mode.NEVER)
+  val sessionIdentity: SessionIdentity = SessionIdentity(),
+  /** Retained to export historic drafts; new Limen protocols use a simple condition check. */
   val style: GradeStyle = GradeStyle.Binary,
   /** Street and number. */
   val address: String = "",
@@ -40,6 +54,10 @@ data class Protocol(
   /** Whether the tenant declared having had copies made, the question everyone forgets. */
   val selfMadeKeys: Boolean = false,
   val rooms: List<Room> = emptyList(),
+  /** Appliances and furniture supplied with the flat, recorded once for the whole object. */
+  @OptIn(ExperimentalSerializationApi::class)
+  @EncodeDefault(EncodeDefault.Mode.NEVER)
+  val extras: FlatExtras = FlatExtras(),
   val defects: List<Defect> = emptyList(),
   /** Free remarks, including the reservation lines a party dictates. */
   val remarks: String = "",
@@ -74,7 +92,7 @@ data class Protocol(
 @Serializable
 enum class Kind { Entry, Exit }
 
-/** The two grading canons a Swiss protocol is written in. */
+/** Historic grading scales retained so older saved protocols can still be read and exported. */
 @Serializable
 enum class GradeStyle {
   /** Deutschschweiz: each item "in Ordnung" or carrying a defect. */
@@ -105,6 +123,34 @@ data class Party(
   val phone: String = "",
   val email: String = "",
 )
+
+/** The person who opened this session and their contact address for this handover. */
+@Serializable
+data class SessionIdentity(
+  val firstName: String = "",
+  val lastName: String = "",
+  val street: String = "",
+  /** Building number, with an optional flat supplement supplied by the person. */
+  val flatNumber: String = "",
+  val postalCode: String = "",
+  val city: String = "",
+  /** ISO 3166-1 alpha-2 country of the contact address. */
+  val addressCountry: String = "CH",
+  /** Swiss contact addresses are selected from swisstopo; foreign addresses are entered directly. */
+  val usesSwissAddress: Boolean = true,
+  val phone: String = "",
+  /** ISO 3166-1 alpha-2 region used to validate and format [phone]. */
+  val phoneRegion: String = "CH",
+) {
+  val fullName: String get() = listOf(firstName, lastName).filter { it.isNotBlank() }.joinToString(" ")
+  val addressLine: String get() = listOf(street, flatNumber).filter { it.isNotBlank() }.joinToString(" ")
+  val placeLine: String
+    get() = listOf(
+      postalCode,
+      city,
+      CountryDirectory.name(addressCountry).takeIf { !usesSwissAddress },
+    ).filterNotNull().filter { it.isNotBlank() }.joinToString(" ")
+}
 
 /**
  * The deposit, asked once at entry and carried to exit, because the exit protocol ends
@@ -177,11 +223,31 @@ data class Room(
   val items: List<RoomItem> = emptyList(),
   /** Keys of this room's own door, the way every MV room block ends. */
   val keysCount: Int = 0,
-  /** The form header's per-room flags: what was new when the tenant arrived. */
+  /** Legacy v2 value retained solely to verify finalized v2 records; no longer shown or exported. */
   val freshPaintedWalls: Boolean = false,
   val freshPaintedWoodwork: Boolean = false,
   val newFloor: Boolean = false,
+  /** Legacy v2 value retained solely to verify finalized v2 records; no longer shown or exported. */
+  val fixtures: Set<RoomFixture> = emptySet(),
 )
+
+@Serializable
+enum class RoomFixture { Fridge, Freezer, Dishwasher, WashingMachine, Dryer, Furniture }
+
+/** The supplied extras are about the flat, not an artificial attachment to one room. */
+@Serializable
+data class FlatExtras(
+  val appliances: Set<Appliance> = emptySet(),
+  val furniture: Set<Furniture> = emptySet(),
+  val customAppliances: List<String> = emptyList(),
+  val customFurniture: List<String> = emptyList(),
+)
+
+@Serializable
+enum class Appliance { Fridge, Freezer, Oven, Hob, Microwave, Dishwasher, WashingMachine, Dryer }
+
+@Serializable
+enum class Furniture { Bed, Wardrobe, Table, Chairs, Sofa, Desk, Shelving, Bookcase }
 
 @Serializable
 data class RoomItem(
@@ -189,6 +255,10 @@ data class RoomItem(
   /** Names a [ItemKey.Custom] row; empty otherwise. */
   val label: String = "",
   val grade: Grade = Grade.NotChecked,
+  /** Stable row identity: permits repeated custom rows to carry separate defects. */
+  @OptIn(ExperimentalSerializationApi::class)
+  @EncodeDefault(EncodeDefault.Mode.NEVER)
+  val itemId: String = "",
 )
 
 /**
@@ -219,6 +289,10 @@ data class Defect(
   /** The tenant can state a position without the app treating it as an admission. */
   val tenantResponse: TenantResponse = TenantResponse.NotStated,
   val tenantComment: String = "",
+  /** The exact [RoomItem] this finding belongs to; blank retains historic key-only records. */
+  @OptIn(ExperimentalSerializationApi::class)
+  @EncodeDefault(EncodeDefault.Mode.NEVER)
+  val itemId: String = "",
 )
 
 @Serializable

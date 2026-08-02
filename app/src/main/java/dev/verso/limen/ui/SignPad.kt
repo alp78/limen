@@ -149,18 +149,22 @@ fun SignPadOverlay(
 
       Spacer(Modifier.height(12.dp))
       Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        SmallKey(s.clearInk, Modifier.weight(1f)) {
+        IconKey(ButtonGlyph.Clear, s.clearInk, Modifier.weight(1f), destructive = true) {
           strokes.clear()
           live = emptyList()
         }
-        SmallKey(s.cancel, Modifier.weight(1f), onPress = onCancel)
+        IconKey(ButtonGlyph.Cancel, s.cancel, Modifier.weight(1f), onPress = onCancel)
         // Keeping the ink is one of the two moments that end something, so it is felt
         // differently from the keys that only move you along.
-        SmallKey(
+        IconKey(
+          ButtonGlyph.Confirm,
           s.saveInk,
           Modifier.weight(1.4f),
           tick = Tick.Confirm,
           enabled = strokes.isNotEmpty() && padSize.width > 0 && padSize.height > 0,
+          fillColor = Limen.colors.action,
+          outlineColor = Limen.colors.action,
+          tint = Limen.colors.onInk,
         ) {
           val bmp = renderStrokes(strokes, padSize)
           if (bmp != null) onKeep(bmp)

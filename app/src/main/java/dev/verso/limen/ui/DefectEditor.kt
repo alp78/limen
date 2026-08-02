@@ -10,7 +10,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,6 +24,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -114,16 +114,7 @@ fun DefectEditor(vm: LimenViewModel, s: Str, p: Protocol, defectId: String) {
       verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
       Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(
-          "‹",
-          fontFamily = FontFamily.Monospace,
-          fontSize = 24.sp,
-          color = Limen.colors.ink,
-          modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
-            .clickable { vm.closeDefect() }
-            .padding(horizontal = 12.dp, vertical = 2.dp),
-        )
+        IconKey(ButtonGlyph.Back, s.back) { vm.closeDefect() }
         Column(Modifier.weight(1f)) {
           val room = p.rooms.firstOrNull { it.id == d.roomId }
           Text(
@@ -131,13 +122,21 @@ fun DefectEditor(vm: LimenViewModel, s: Str, p: Protocol, defectId: String) {
             style = MaterialTheme.typography.labelLarge,
             color = Limen.colors.ink,
           )
-          d.item?.let {
-            Text(s.item(it), style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
+          d.item?.let { key ->
+            val item = room?.items?.firstOrNull {
+              it.key == key &&
+                (d.itemId.isBlank() || it.itemId.isBlank() || d.itemId == it.itemId)
+            }
+            Text(
+              if (item?.key == ItemKey.Custom && item.label.isNotBlank()) item.label else s.item(key),
+              style = MaterialTheme.typography.labelSmall,
+              color = Limen.colors.inkDim,
+            )
           }
         }
       }
 
-      Panel(label = s.defects) {
+      Panel(label = s.defects, warning = true) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
           Field(s.defectText, d.text, singleLine = false, hint = s.defectHint) { v ->
             vm.updateDefect(defectId) { it.copy(text = v) }
@@ -148,8 +147,8 @@ fun DefectEditor(vm: LimenViewModel, s: Str, p: Protocol, defectId: String) {
       Panel(label = s.photos) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
           Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            SmallKey(s.photo, Modifier.weight(1f)) { launchCamera() }
-            SmallKey(s.gallery, Modifier.weight(1f)) {
+            IconKey(ButtonGlyph.Camera, s.photo, Modifier.weight(1f)) { launchCamera() }
+            IconKey(ButtonGlyph.Gallery, s.gallery, Modifier.weight(1f)) {
               pickPhoto.launch(
                 PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
               )
@@ -161,7 +160,7 @@ fun DefectEditor(vm: LimenViewModel, s: Str, p: Protocol, defectId: String) {
               horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
               d.photos.forEach { name ->
-                PhotoThumb(vm, defectId, name)
+                PhotoThumb(vm, s, defectId, name)
               }
             }
           }
@@ -175,7 +174,14 @@ fun DefectEditor(vm: LimenViewModel, s: Str, p: Protocol, defectId: String) {
               TenantResponse.entries.map { it to s.tenantResponse(it) },
               d.tenantResponse,
               dense = true,
-            ) { response -> vm.updateDefect(defectId) { it.copy(tenantResponse = response) } }
+            ) { response ->
+              vm.updateDefect(defectId) {
+                it.copy(
+                  tenantResponse = response,
+                  chargedToTenant = if (response == TenantResponse.NormalWear) false else it.chargedToTenant,
+                )
+              }
+            }
             Field(s.tenantComment, d.tenantComment, singleLine = false) { value ->
               vm.updateDefect(defectId) { it.copy(tenantComment = value) }
             }
@@ -183,7 +189,7 @@ fun DefectEditor(vm: LimenViewModel, s: Str, p: Protocol, defectId: String) {
           }
         }
 
-        Panel(label = s.chargedToTenant, info = s.tipCharged()) {
+        if (d.tenantResponse != TenantResponse.NormalWear) Panel(label = s.chargedToTenant, info = s.tipCharged()) {
           Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Toggle(s.chargedToTenant, d.chargedToTenant, Modifier.fillMaxWidth()) {
               vm.updateDefect(defectId) { it.copy(chargedToTenant = !it.chargedToTenant) }
@@ -211,6 +217,7 @@ fun DefectEditor(vm: LimenViewModel, s: Str, p: Protocol, defectId: String) {
             }
           }
         }
+        if (d.chargedToTenant) WearAssessment(s)
       }
 
       if (p.kind == Kind.Entry) {
@@ -222,8 +229,22 @@ fun DefectEditor(vm: LimenViewModel, s: Str, p: Protocol, defectId: String) {
       }
 
       Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        SmallKey(s.delete, Modifier.weight(1f)) { vm.removeDefect(defectId) }
-        SmallKey(s.done, Modifier.weight(1.6f)) { vm.closeDefect() }
+        IconKey(
+          ButtonGlyph.Delete,
+          s.delete,
+          Modifier.weight(1f),
+          destructive = true,
+          tick = Tick.Reject,
+        ) { vm.removeDefect(defectId) }
+        IconKey(
+          ButtonGlyph.Confirm,
+          s.done,
+          Modifier.weight(1.6f),
+          fillColor = Limen.colors.action,
+          outlineColor = Limen.colors.action,
+          tint = Limen.colors.onInk,
+          tick = Tick.Confirm,
+        ) { vm.closeDefect() }
       }
       Spacer(Modifier.height(12.dp))
     }
@@ -235,7 +256,7 @@ private fun captureDir(context: android.content.Context): File =
 
 /** A small look at one photo, and the way to take it back off the record. */
 @Composable
-private fun PhotoThumb(vm: LimenViewModel, defectId: String, name: String) {
+private fun PhotoThumb(vm: LimenViewModel, s: Str, defectId: String, name: String) {
   val dir = vm.photoDir() ?: return
   val file = File(dir, name)
   // Decoded off this thread. Done inside the composition, as it was, opening a defect that
@@ -265,19 +286,21 @@ private fun PhotoThumb(vm: LimenViewModel, defectId: String, name: String) {
         .clip(RoundedCornerShape(8.dp))
         .border(1.5.dp, Limen.colors.actionOutline, RoundedCornerShape(10.dp)),
     )
-    Text(
-      "×",
-      fontFamily = FontFamily.Monospace,
-      fontSize = 14.sp,
-      color = Limen.colors.onInk,
-      modifier = Modifier
-        .align(Alignment.TopEnd)
-        .padding(3.dp)
-        .clip(RoundedCornerShape(6.dp))
-        .background(Limen.colors.ink)
-        .clickable { vm.removePhoto(defectId, name) }
-        .padding(horizontal = 7.dp, vertical = 1.dp),
-    )
+    KeySurface(
+      modifier = Modifier.align(Alignment.TopEnd).padding(3.dp).size(32.dp),
+      shape = RoundedCornerShape(8.dp),
+      fillColor = Limen.colors.danger,
+      outlineColor = Limen.colors.dangerOutline,
+      tick = Tick.Reject,
+      onPress = { vm.removePhoto(defectId, name) },
+    ) {
+      Icon(
+        ButtonGlyph.Delete.vector(),
+        contentDescription = s.delete,
+        tint = Limen.colors.dangerOutline,
+        modifier = Modifier.size(16.dp),
+      )
+    }
   }
 }
 
