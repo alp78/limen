@@ -303,20 +303,6 @@ internal fun ExportStep(vm: LimenViewModel, s: Str, p: Protocol) {
       }
     }
 
-    // The dispute's letter: a neutral official invited to record the facts. It appears
-    // only when there is something to dispute, a charged defect or a refused signature.
-    // A handover where both sides agree should not be handed an escalation form.
-    val contested = p.defects.any { it.chargedToTenant } || p.signatures.any { it.refused }
-    if (contested) Panel(label = s.befundTitle, info = s.tipBefund()) {
-      var commune by androidx.compose.runtime.saveable.rememberSaveable {
-        androidx.compose.runtime.mutableStateOf("")
-      }
-      Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Field(s.communeLabel, commune) { commune = it }
-        SmallKey(s.befundKey, Modifier.fillMaxWidth()) { vm.exportBefund(commune) }
-      }
-    }
-
     Panel(label = s.amendRecord) {
       Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(s.amendLead, style = MaterialTheme.typography.bodyMedium, color = Limen.colors.ink)

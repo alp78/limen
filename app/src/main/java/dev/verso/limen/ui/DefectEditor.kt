@@ -1,15 +1,7 @@
 package dev.verso.limen.ui
 
-import android.content.ActivityNotFoundException
-import android.graphics.BitmapFactory
-import android.widget.Toast
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,88 +12,31 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.core.content.FileProvider
 import dev.verso.limen.data.FixBy
-import dev.verso.limen.data.ItemKey
 import dev.verso.limen.data.Kind
-import dev.verso.limen.data.PhotoSource
 import dev.verso.limen.data.Protocol
+import dev.verso.limen.data.Role
 import dev.verso.limen.data.TenantResponse
 import dev.verso.limen.theme.Limen
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import java.io.File
 
 /**
  * The defect editor, over the whole screen: a finding deserves the room a dialog does not
- * give it. The photos come from the SYSTEM camera through the FileProvider grant, into a
- * fresh cache slot per shot; the slot path survives in saveable state because the camera
- * app routinely kills this process while the shutter is open.
+ * give it. It serves a room finding and a finding about a supplied object alike, since
+ * everything below the heading is the same question either way.
  */
 @Composable
 fun DefectEditor(vm: LimenViewModel, s: Str, p: Protocol, defectId: String) {
   val d = p.defects.firstOrNull { it.id == defectId } ?: return
-  val context = LocalContext.current
-  var cameraSlot by rememberSaveable { mutableStateOf<String?>(null) }
-
-  val takePicture =
-    rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
-      val slot = cameraSlot?.let(::File)
-      cameraSlot = null
-      if (ok && slot != null && slot.exists()) vm.attachPhoto(defectId, slot, PhotoSource.Camera)
-    }
-
-  val pickPhoto =
-    rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-      if (uri != null) {
-        val slot = File(captureDir(context), "pick${System.currentTimeMillis()}.jpg")
-        runCatching {
-          context.contentResolver.openInputStream(uri)?.use { input ->
-            slot.outputStream().use { input.copyTo(it) }
-          }
-        }
-        if (slot.exists()) vm.attachPhoto(defectId, slot, PhotoSource.Gallery)
-      }
-    }
-
-  fun launchCamera() {
-    val dir = captureDir(context)
-    // Old slots are swept rather than reused: a fixed name plus a camera crash equals a
-    // stale photo silently attached to the wrong defect.
-    dir.listFiles()?.forEach { it.delete() }
-    val slot = File.createTempFile("cap", ".jpg", dir)
-    cameraSlot = slot.absolutePath
-    val uri = FileProvider.getUriForFile(context, "dev.verso.limen.files", slot)
-    try {
-      takePicture.launch(uri)
-    } catch (e: ActivityNotFoundException) {
-      cameraSlot = null
-      Toast.makeText(context, s.cameraOpenFailed, Toast.LENGTH_SHORT).show()
-    }
-  }
+  val intake = rememberPhotoIntake(s) { file, source -> vm.attachPhoto(defectId, file, source) }
 
   BackHandler { vm.closeDefect() }
 
@@ -115,23 +50,15 @@ fun DefectEditor(vm: LimenViewModel, s: Str, p: Protocol, defectId: String) {
     ) {
       Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         IconKey(ButtonGlyph.Back, s.back) { vm.closeDefect() }
+        Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-          val room = p.rooms.firstOrNull { it.id == d.roomId }
           Text(
-            (room?.let { r -> r.name.ifBlank { s.room(r.kind) } } ?: "").uppercase(),
+            p.defectPlace(d, s).uppercase(),
             style = MaterialTheme.typography.labelLarge,
             color = Limen.colors.ink,
           )
-          d.item?.let { key ->
-            val item = room?.items?.firstOrNull {
-              it.key == key &&
-                (d.itemId.isBlank() || it.itemId.isBlank() || d.itemId == it.itemId)
-            }
-            Text(
-              if (item?.key == ItemKey.Custom && item.label.isNotBlank()) item.label else s.item(key),
-              style = MaterialTheme.typography.labelSmall,
-              color = Limen.colors.inkDim,
-            )
+          p.defectItemLabel(d, s)?.let { label ->
+            Text(label, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
           }
         }
       }
@@ -147,12 +74,8 @@ fun DefectEditor(vm: LimenViewModel, s: Str, p: Protocol, defectId: String) {
       Panel(label = s.photos) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
           Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            IconKey(ButtonGlyph.Camera, s.photo, Modifier.weight(1f)) { launchCamera() }
-            IconKey(ButtonGlyph.Gallery, s.gallery, Modifier.weight(1f)) {
-              pickPhoto.launch(
-                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-              )
-            }
+            IconKey(ButtonGlyph.Camera, s.photo, Modifier.weight(1f), onPress = intake.takePhoto)
+            IconKey(ButtonGlyph.Gallery, s.gallery, Modifier.weight(1f), onPress = intake.pickPhoto)
           }
           if (d.photos.isNotEmpty()) {
             Row(
@@ -160,7 +83,7 @@ fun DefectEditor(vm: LimenViewModel, s: Str, p: Protocol, defectId: String) {
               horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
               d.photos.forEach { name ->
-                PhotoThumb(vm, s, defectId, name)
+                PhotoThumb(vm, s, name) { vm.removePhoto(defectId, name) }
               }
             }
           }
@@ -198,8 +121,8 @@ fun DefectEditor(vm: LimenViewModel, s: Str, p: Protocol, defectId: String) {
             PillRow(
               listOf(
                 FixBy.Open to s.fixOpen,
-                FixBy.Tenant to s.role(dev.verso.limen.data.Role.Tenant),
-                FixBy.Landlord to s.role(dev.verso.limen.data.Role.Landlord),
+                FixBy.Tenant to s.role(Role.Tenant),
+                FixBy.Landlord to s.role(Role.Landlord),
               ),
               d.fixBy,
               dense = true,
@@ -249,70 +172,4 @@ fun DefectEditor(vm: LimenViewModel, s: Str, p: Protocol, defectId: String) {
       Spacer(Modifier.height(12.dp))
     }
   }
-}
-
-private fun captureDir(context: android.content.Context): File =
-  File(context.cacheDir, "captures").apply { mkdirs() }
-
-/** A small look at one photo, and the way to take it back off the record. */
-@Composable
-private fun PhotoThumb(vm: LimenViewModel, s: Str, defectId: String, name: String) {
-  val dir = vm.photoDir() ?: return
-  val file = File(dir, name)
-  // Decoded off this thread. Done inside the composition, as it was, opening a defect that
-  // already carried three photos stalled the frame for as long as three JPEGs take, which
-  // is the editor feeling heavy exactly when a hand is holding the phone up to a wall.
-  val bitmap by produceState<android.graphics.Bitmap?>(null, file.absolutePath, file.length()) {
-    value = withContext(Dispatchers.IO) { decodeThumb(file) }
-  }
-  val shown = bitmap
-  if (shown == null) {
-    // The same square, empty, so nothing jumps when the picture arrives.
-    Box(
-      Modifier
-        .size(84.dp)
-        .clip(RoundedCornerShape(8.dp))
-        .border(1.5.dp, Limen.colors.actionOutline, RoundedCornerShape(10.dp)),
-    )
-    return
-  }
-  Box {
-    Image(
-      bitmap = shown.asImageBitmap(),
-      contentDescription = name,
-      contentScale = ContentScale.Crop,
-      modifier = Modifier
-        .size(84.dp)
-        .clip(RoundedCornerShape(8.dp))
-        .border(1.5.dp, Limen.colors.actionOutline, RoundedCornerShape(10.dp)),
-    )
-    KeySurface(
-      modifier = Modifier.align(Alignment.TopEnd).padding(3.dp).size(32.dp),
-      shape = RoundedCornerShape(8.dp),
-      fillColor = Limen.colors.danger,
-      outlineColor = Limen.colors.dangerOutline,
-      tick = Tick.Reject,
-      onPress = { vm.removePhoto(defectId, name) },
-    ) {
-      Icon(
-        ButtonGlyph.Delete.vector(),
-        contentDescription = s.delete,
-        tint = Limen.colors.dangerOutline,
-        modifier = Modifier.size(16.dp),
-      )
-    }
-  }
-}
-
-/** The thumbnail read: bounds first, then a sample big enough for an 84 dp square. */
-private fun decodeThumb(file: File): android.graphics.Bitmap? {
-  if (!file.exists()) return null
-  val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-  BitmapFactory.decodeFile(file.absolutePath, bounds)
-  if (bounds.outWidth <= 0) return null
-  val sample = (maxOf(bounds.outWidth, bounds.outHeight) / 320).coerceAtLeast(1)
-  return BitmapFactory.decodeFile(
-    file.absolutePath,
-    BitmapFactory.Options().apply { inSampleSize = sample },
-  )
 }

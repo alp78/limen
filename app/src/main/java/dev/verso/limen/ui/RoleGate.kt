@@ -47,67 +47,6 @@ import dev.verso.limen.data.hasRequiredFields
 import dev.verso.limen.theme.Limen
 import kotlinx.coroutines.delay
 
-/**
- * The welcome: the first page anyone sees, so it speaks their language from the first
- * line (the menu sits over the mark) and says in four numbered steps what the instrument
- * is for. Then the one question it needs answered: who holds this phone. The answer sets
- * whose deadlines come first; it never gates the one-phone handover walk, and it can be
- * changed any time from the profile on the case.
- */
-@Composable
-fun RoleGate(vm: LimenViewModel, s: Str) {
-  var name by rememberSaveable { mutableStateOf("") }
-
-  Column(
-    // The background paints edge to edge; the content stays out of the status bar.
-    Modifier
-      .fillMaxSize()
-      .background(Limen.colors.plate)
-      .safeDrawingPadding()
-      .padding(horizontal = 24.dp),
-  ) {
-    Spacer(Modifier.height(12.dp))
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-      Spacer(Modifier.weight(1f))
-      LangMenu(vm.lang, vm::selectLang)
-    }
-    Column(
-      Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
-      verticalArrangement = Arrangement.Center,
-    ) {
-      Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-        LimenMark(size = 96.dp)
-      }
-      Spacer(Modifier.height(24.dp))
-      Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(
-          s.roleQuestion,
-          style = MaterialTheme.typography.titleMedium,
-          color = Limen.colors.ink,
-          modifier = Modifier.weight(1f),
-        )
-        InfoTip(s.tipRole())
-      }
-      Spacer(Modifier.height(8.dp))
-      Text(s.welcomeLead, style = MaterialTheme.typography.bodyMedium, color = Limen.colors.inkDim)
-      Spacer(Modifier.height(14.dp))
-      Field(s.profileName, name) { name = it }
-      Spacer(Modifier.height(18.dp))
-      Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        BigKey(s.role(Role.Tenant).uppercase(), active = false, Modifier.fillMaxWidth()) {
-          vm.chooseRole(Role.Tenant, name)
-        }
-        BigKey(s.role(Role.Landlord).uppercase(), active = false, Modifier.fillMaxWidth()) {
-          vm.chooseRole(Role.Landlord, name)
-        }
-      }
-      Spacer(Modifier.height(18.dp))
-      GuideSteps(s)
-      Spacer(Modifier.height(24.dp))
-    }
-  }
-}
-
 /** Identity and handover type are chosen together, immediately before a new session starts. */
 @Composable
 fun NewSessionScreen(

@@ -3,10 +3,12 @@ package dev.verso.limen.ui
 import dev.verso.limen.data.Appliance
 import dev.verso.limen.data.CautionProvider
 import dev.verso.limen.data.DepositKind
+import dev.verso.limen.data.DossierCard
 import dev.verso.limen.data.Furniture
 import dev.verso.limen.data.Grade
 import dev.verso.limen.data.ItemKey
 import dev.verso.limen.data.KeyKind
+import dev.verso.limen.data.ObjectGroup
 import dev.verso.limen.data.Role
 import dev.verso.limen.data.RoomKind
 import dev.verso.limen.data.TenantResponse
@@ -109,13 +111,43 @@ class Str(val lang: Lang) {
   val add = pick("ADD", "AJOUTER", "HINZUFÜGEN", "AGGIUNGI", "AGIUNTAR")
   val editDefect = pick("EDIT DEFECT", "MODIFIER LE DÉFAUT", "MANGEL BEARBEITEN", "MODIFICA DIFETTO", "MODIFITGAR LA MANCANZA")
 
-  // The stepper's stations.
-  val stepSetup = pick("Setup", "Préparation", "Kopfdaten", "Impostazione", "Preparaziun")
-  val stepRooms = pick("Rooms", "Pièces", "Räume", "Locali", "Locals")
-  val stepExtras = pick("Extras", "Équipements", "Ausstattung", "Dotazioni", "Dotaziun")
+  // The flow's places. Not stations: nothing here is gated behind anything else.
+  val stepHub = pick("Handover", "Remise", "Übergabe", "Consegna", "Surdada")
+  val stepInspection = pick("Inspection", "Inspection", "Begehung", "Sopralluogo", "Inspecziun")
+  val stepObjects = pick("Objects", "Objets", "Gegenstände", "Oggetti", "Objects")
+  val stepDossier = pick("Dossier", "Dossier", "Dossier", "Dossier", "Dossier")
   val stepReview = pick("Review", "Relecture", "Durchsicht", "Riesame", "Controlla")
   val stepSign = pick("Signatures", "Signatures", "Unterschriften", "Firme", "Suttascripziuns")
   val stepExport = pick("Export", "Export", "Export", "Esporta", "Export")
+
+  // The hub.
+  val hubInspectionLead = pick(
+    "Rooms, damage and everything supplied with the flat",
+    "Pièces, dégâts et tout ce qui est fourni avec le logement",
+    "Räume, Schäden und alles, was zur Wohnung gehört",
+    "Locali, danni e tutto ciò che è fornito con l'alloggio",
+    "Locals, donns e tut quai che vegn cun l'abitaziun",
+  )
+  val hubDossierLead = pick(
+    "Contract, deposit, meters, keys and the people",
+    "Contrat, garantie, compteurs, clés et les personnes",
+    "Vertrag, Kaution, Zähler, Schlüssel und die Personen",
+    "Contratto, deposito, contatori, chiavi e le persone",
+    "Contract, cauziun, dumbraders, clavs e las persunas",
+  )
+  val hubClose = pick("CLOSE THE RECORD", "CLORE LE CONSTAT", "PROTOKOLL ABSCHLIESSEN", "CHIUDI IL VERBALE", "SERRAR IL PROTOCOL")
+  // Readouts name the thing and then count it, the way an instrument's dial is labelled.
+  // That also sidesteps five languages' plural rules, which "1 rooms" was getting wrong.
+  private val countRooms = pick("ROOMS", "PIÈCES", "RÄUME", "LOCALI", "LOCALS")
+  private val countDefects = pick("DEFECTS", "DÉFAUTS", "MÄNGEL", "DIFETTI", "MANCANZAS")
+  private val countObjects = pick("OBJECTS", "OBJETS", "GEGENSTÄNDE", "OGGETTI", "OBJECTS")
+  private val countComponents = pick("COMPONENTS", "RUBRIQUES", "RUBRIKEN", "RUBRICHE", "RUBRICAS")
+  fun countRooms(n: Int) = "$countRooms $n"
+  fun countDefects(n: Int) = "$countDefects $n"
+  fun countObjects(n: Int) = "$countObjects $n"
+  fun countComponents(n: Int) = "$countComponents $n"
+  val nothingYet = pick("Nothing recorded yet", "Rien de consigné", "Noch nichts erfasst", "Ancora nulla", "Anc nagut registrà")
+  val stillMissing = pick("Still missing", "Encore manquant", "Noch offen", "Ancora mancante", "Anc mancant")
 
   // Setup.
   val protocolKind = pick("Protocol", "État des lieux", "Protokoll", "Verbale", "Protocol")
@@ -125,6 +157,13 @@ class Str(val lang: Lang) {
   val objectDetail = pick("Floor and position", "Étage et position", "Stockwerk und Lage", "Piano e posizione", "Plaun ed posiziun")
   val handoverDate = pick("Date of handover", "Date de la remise", "Datum der Übergabe", "Data della consegna", "Data da la surdada")
   val handoverTime = pick("Time", "Heure", "Uhrzeit", "Ora", "Ura")
+  val lastProtocol = pick(
+    "Date of the previous protocol",
+    "Date de l'état des lieux précédent",
+    "Datum des letzten Protokolls",
+    "Data del verbale precedente",
+    "Data dal protocol precedent",
+  )
   val parties = pick("Parties", "Parties", "Parteien", "Parti", "Partidas")
   val meters = pick("Meter readings", "Relevé des compteurs", "Zählerstände", "Letture dei contatori", "Posiziuns dals contaturs")
   val keysLabel = pick("Keys", "Clés", "Schlüssel", "Chiavi", "Clavs")
@@ -298,45 +337,93 @@ class Str(val lang: Lang) {
     CautionProvider.Other -> otherCautionProvider
   }
 
-  // Rooms walk.
+  // The inspection.
   val roomKeys = pick("Keys of this room", "Clés de cette pièce", "Schlüssel dieses Raums", "Chiavi di questo locale", "Clavs da quest local")
   val addRoom = pick("ADD ROOM", "AJOUTER UNE PIÈCE", "RAUM HINZUFÜGEN", "AGGIUNGI LOCALE", "AGIUNTAR IN LOCAL")
   val addDefect = pick("Note a defect", "Noter un défaut", "Mangel erfassen", "Annotare un difetto", "Registrar ina mancanza")
-  val addRoomItem = pick("Add an item", "Ajouter un élément", "Element hinzufügen", "Aggiungi un elemento", "Agiuntar in element")
-  val roomItemName = pick("Item name", "Nom de l'élément", "Name des Elements", "Nome dell'elemento", "Num da l'element")
-  val resetRoom = pick("RESET ROOM", "RÉINITIALISER LA PIÈCE", "RAUM ZURÜCKSETZEN", "REIMPOSTA LOCALE", "REINITIALISAR IL LOCAL")
-  val resetRoomQuestion = pick("ARE YOU SURE?", "ÊTES-VOUS SÛR·E ?", "SIND SIE SICHER?", "SIETE SICURI?", "ESSAS VUS SEGIR?")
-  val resetRoomBody = pick(
-    "This clears the room's checks, defects, photos and keys, then restores its default items.",
-    "Cette action efface les contrôles, défauts, photos et clés de la pièce, puis rétablit ses éléments par défaut.",
-    "Dadurch werden die Prüfungen, Mängel, Fotos und Schlüssel des Raums gelöscht und die Standardelemente wiederhergestellt.",
-    "Questa azione cancella controlli, difetti, foto e chiavi del locale, quindi ripristina gli elementi predefiniti.",
-    "Quai stizza ils controlls, las mancanzas, las novitads e las clavs dal local e restaurescha ils elements da standard.",
+  val roomName = pick("Name of this room", "Nom de cette pièce", "Name dieses Raums", "Nome di questo locale", "Num da quest local")
+  val recordDefect = pick("RECORD A DEFECT", "CONSIGNER UN DÉFAUT", "MANGEL ERFASSEN", "REGISTRA UN DIFETTO", "REGISTRAR INA MANCANZA")
+  val pickItem = pick("Which item", "Quel élément", "Welches Element", "Quale elemento", "Tge element")
+  val otherItem = pick("Something else", "Autre chose", "Etwas anderes", "Qualcos'altro", "Insatge auter")
+  val otherItemName = pick("Name it", "Nommez-le", "Benennen", "Nominatelo", "Numnai el")
+  val roomClean = pick(
+    "No defect recorded in this room",
+    "Aucun défaut consigné dans cette pièce",
+    "In diesem Raum kein Mangel erfasst",
+    "Nessun difetto registrato in questo locale",
+    "Nagina mancanza registrada en quest local",
+  )
+  val clearRoom = pick("CLEAR ROOM", "VIDER LA PIÈCE", "RAUM LEEREN", "SVUOTA IL LOCALE", "SVIDAR IL LOCAL")
+  val removeRoom = pick("REMOVE ROOM", "RETIRER LA PIÈCE", "RAUM ENTFERNEN", "RIMUOVI IL LOCALE", "ALLONTANAR IL LOCAL")
+  val areYouSure = pick("ARE YOU SURE?", "ÊTES-VOUS SÛR·E ?", "SIND SIE SICHER?", "SIETE SICURI?", "ESSAS VUS SEGIR?")
+  val clearRoomBody = pick(
+    "This deletes every defect and photo recorded in this room. The room itself stays.",
+    "Cette action supprime tous les défauts et photos consignés dans cette pièce. La pièce reste.",
+    "Dadurch werden alle in diesem Raum erfassten Mängel und Fotos gelöscht. Der Raum bleibt.",
+    "Questa azione elimina tutti i difetti e le foto registrati in questo locale. Il locale resta.",
+    "Quai stizza tut las mancanzas e las fotos registradas en quest local. Il local resta.",
+  )
+  val removeRoomBody = pick(
+    "This removes the room and everything recorded in it.",
+    "Cette action retire la pièce et tout ce qui y est consigné.",
+    "Dadurch werden der Raum und alles darin Erfasste entfernt.",
+    "Questa azione rimuove il locale e tutto ciò che vi è registrato.",
+    "Quai allontanescha il local e tut quai ch'è registrà en el.",
   )
   val yes = pick("YES", "OUI", "JA", "SÌ", "GEA")
   val no = pick("NO", "NON", "NEIN", "NO", "NA")
   val defects = pick("Defects", "Défauts", "Mängel", "Difetti", "Mancanzas")
 
-  // Flat extras. These are recorded once for the whole object, never assigned to a room.
+  // Objects supplied with the flat. One row each, so a row can carry its own photograph.
+  val objects = pick("Objects", "Objets", "Gegenstände", "Oggetti", "Objects")
   val appliances = pick("Appliances", "Appareils", "Geräte", "Elettrodomestici", "Apparats")
-  val appliancesHint = pick(
-    "Select the appliances supplied with the flat.",
-    "Sélectionnez les appareils fournis avec le logement.",
-    "Wählen Sie die mit der Wohnung gelieferten Geräte.",
-    "Selezionate gli elettrodomestici forniti con l'alloggio.",
-    "Tschernei ils apparats mess a disposiziun cun l'abitaziun.",
-  )
   val furniture = pick("Furniture", "Mobilier", "Möbel", "Arredi", "Mobigliar")
-  val furnitureHint = pick(
-    "Select the furniture supplied with the flat.",
-    "Sélectionnez le mobilier fourni avec le logement.",
-    "Wählen Sie die mit der Wohnung gelieferten Möbel.",
-    "Selezionate gli arredi forniti con l'alloggio.",
-    "Tschernei il mobigliar mess a disposiziun cun l'abitaziun.",
+  fun objectGroup(group: ObjectGroup) = when (group) {
+    ObjectGroup.Appliance -> appliances
+    ObjectGroup.Furniture -> furniture
+    ObjectGroup.Other -> pick("Other", "Autres", "Weitere", "Altro", "Auter")
+  }
+  val addObject = pick("Add something else", "Ajouter autre chose", "Weiteres hinzufügen", "Aggiungi altro", "Agiuntar insatge auter")
+  val addCategory = pick("ADD A CATEGORY", "AJOUTER UNE CATÉGORIE", "KATEGORIE HINZUFÜGEN", "AGGIUNGI UNA CATEGORIA", "AGIUNTAR INA CATEGORIA")
+  val categoryName = pick("Category name", "Nom de la catégorie", "Name der Kategorie", "Nome della categoria", "Num da la categoria")
+  val objectNote = pick("Make, model, serial number", "Marque, modèle, numéro de série", "Marke, Modell, Seriennummer", "Marca, modello, numero di serie", "Marca, model, numer da seria")
+  val objectRoom = pick("Where it stands", "Où il se trouve", "Wo er steht", "Dove si trova", "Nua ch'el sa chatta")
+  val wholeFlat = pick("The flat", "Le logement", "Die Wohnung", "L'alloggio", "L'abitaziun")
+  val noObjects = pick(
+    "Nothing supplied with the flat yet",
+    "Rien de fourni avec le logement",
+    "Noch nichts zur Wohnung erfasst",
+    "Nulla fornito con l'alloggio",
+    "Anc nagut mess a disposiziun cun l'abitaziun",
   )
-  val addCustomAppliance = pick("Add another appliance", "Ajouter un autre appareil", "Weiteres Gerät hinzufügen", "Aggiungi un altro apparecchio", "Agiuntar in auter apparat")
-  val addCustomFurniture = pick("Add another piece of furniture", "Ajouter un autre meuble", "Weiteres Möbelstück hinzufügen", "Aggiungi un altro arredo", "Agiuntar in auter mobigliar")
   val atEntry = pick("At entry", "À l'entrée", "Bei Einzug", "All'entrata", "Tar l'entrada")
+
+  // The dossier's components.
+  val identity = pick("Your details", "Vos coordonnées", "Ihre Angaben", "I vostri dati", "Vossas indicaziuns")
+  val addComponent = pick("Add a component", "Ajouter une rubrique", "Rubrik hinzufügen", "Aggiungi una rubrica", "Agiuntar ina rubrica")
+  val removeComponentBody = pick(
+    "This removes the component and clears everything entered in it.",
+    "Cette action retire la rubrique et efface tout ce qui y a été saisi.",
+    "Dadurch wird die Rubrik entfernt und alles darin Erfasste gelöscht.",
+    "Questa azione rimuove la rubrica e cancella tutto ciò che vi è stato inserito.",
+    "Quai allontanescha la rubrica e stizza tut quai ch'è vegnì endatà en ella.",
+  )
+  val contract = pick("Contract", "Contrat", "Mietvertrag", "Contratto", "Contract")
+  val monthlyRent = pick("Monthly rent CHF", "Loyer mensuel CHF", "Nettomietzins CHF", "Pigione mensile CHF", "Fittanza mensila CHF")
+  val serviceCharges = pick("Service charges CHF", "Charges CHF", "Nebenkosten CHF", "Spese accessorie CHF", "Custs accessoris CHF")
+  val tenancyStart = pick("Tenancy from", "Bail depuis le", "Mietbeginn", "Locazione dal", "Locaziun dapi ils")
+  val tenancyEnd = pick("Tenancy until", "Bail jusqu'au", "Mietende", "Locazione fino al", "Locaziun enfin ils")
+  val noticeDate = pick("Notice given on", "Résiliation notifiée le", "Kündigung erfolgt am", "Disdetta notificata il", "Disditga dada ils")
+  val notes = pick("Notes", "Observations", "Bemerkungen", "Osservazioni", "Remartgas")
+  fun dossierCard(card: DossierCard) = when (card) {
+    DossierCard.Contract -> contract
+    DossierCard.Deposit -> deposit
+    DossierCard.Meters -> meters
+    DossierCard.Keys -> keysLabel
+    DossierCard.Notes -> notes
+  }
+  val addKeyKind = pick("Add a kind of key", "Ajouter un type de clé", "Schlüsselart hinzufügen", "Aggiungi un tipo di chiave", "Agiuntar in tip da clav")
+  val keyLabel = pick("Which key", "Quelle clé", "Welcher Schlüssel", "Quale chiave", "Tge clav")
 
   // The defect editor.
   val defectText = pick(
@@ -499,7 +586,6 @@ class Str(val lang: Lang) {
     FinalizationIssue.HandoverDate -> pick("Add the handover date", "Indiquez la date de remise", "Übergabedatum ergänzen", "Indicate la data di consegna", "Agiuntai la data da surdada")
     FinalizationIssue.HandoverTime -> pick("Add the handover time", "Indiquez l'heure de remise", "Übergabezeit ergänzen", "Indicate l'ora di consegna", "Agiuntai l'ura da surdada")
     FinalizationIssue.Parties -> pick("Name both tenant and landlord / agency", "Nommez le locataire et le bailleur / la régie", "Mieterschaft und Vermieterschaft / Verwaltung benennen", "Indicate conduttore e locatore / amministrazione", "Numnai locatari e locatur / administraziun")
-    FinalizationIssue.RoomChecks -> pick("Check every room item or add its defect", "Contrôlez chaque poste ou ajoutez son défaut", "Jede Position prüfen oder ihren Mangel erfassen", "Controllate ogni elemento o aggiungete il difetto", "Controllai mintga posiziun u agiuntai sia mancanza")
     FinalizationIssue.DefectText -> pick("Describe every defect precisely", "Décrivez chaque défaut précisément", "Jeden Mangel präzise beschreiben", "Descrivete ogni difetto con precisione", "Descrivai mintga mancanza precis")
     FinalizationIssue.RecordOutcomes -> pick("Record each required signature or refusal", "Consignez chaque signature ou refus requis", "Jede erforderliche Unterschrift oder Verweigerung erfassen", "Registrate ogni firma o rifiuto richiesto", "Registrai mintga suttascripziun u refusa necessaria")
   }
@@ -1007,105 +1093,6 @@ class Str(val lang: Lang) {
     ),
   )
 
-  // ── The official finding ──────────────────────────────────────────────────────────────
-  val befundTitle = pick(
-    "Official finding",
-    "Constat officiel",
-    "Amtlicher Befund",
-    "Constatazione ufficiale",
-    "Constataziun uffiziala",
-  )
-  val befundKey = pick(
-    "GENERATE THE REQUEST",
-    "GÉNÉRER LA REQUÊTE",
-    "GESUCH ERSTELLEN",
-    "GENERA LA RICHIESTA",
-    "GENERAR LA DUMONDA",
-  )
-  val communeLabel = pick(
-    "Commune / competent office",
-    "Commune / office compétent",
-    "Gemeinde / zuständiges Amt",
-    "Comune / ufficio competente",
-    "Vischnanca / uffizi cumpetent",
-  )
-
-  fun tipBefund() = Tip(
-    pick(
-      "When the parties cannot agree on the facts, a neutral official can record them.",
-      "Quand les parties ne s'accordent pas sur les faits, un officier neutre peut les constater.",
-      "Wenn sich die Parteien über die Fakten nicht einigen, kann eine neutrale Amtsperson sie festhalten.",
-      "Quando le parti non concordano sui fatti, un pubblico ufficiale neutrale può constatarli.",
-      "Sche las partidas na s'accordan betg sur dals fatgs, po ina persuna uffiziala neutrala als constatar.",
-    ),
-    listOf(
-      pick(
-        "Zurich: the Gemeindeammann's official finding, about 180 CHF per hour, request it early",
-        "Zurich : le constat du Gemeindeammann, env. 180 CHF l'heure, à demander tôt",
-        "Zürich: der amtliche Befund des Gemeindeammanns, ca. 180 CHF pro Stunde, früh beantragen",
-        "Zurigo: la constatazione del Gemeindeammann, ca. 180 CHF l'ora, da chiedere per tempo",
-        "Turitg: la constataziun dal Gemeindeammann, ca. 180 CHF l'ura, da dumandar baud",
-      ),
-      pick(
-        "Elsewhere: precautionary taking of evidence through the court, Art. 182 CPC",
-        "Ailleurs : preuve à futur par le tribunal, art. 182 CPC",
-        "Anderswo: vorsorgliche Beweisführung über das Gericht, Art. 182 ZPO",
-        "Altrove: assunzione cautelare delle prove tramite il giudice, art. 182 CPC",
-        "Autrur: registraziun precauziunala da cumprovas tras il tribunal, art. 182 CPC",
-      ),
-      pick(
-        "The letter carries the protocol's fingerprint and photo annex as the factual base",
-        "La lettre porte l'empreinte du protocole et l'annexe photos comme base factuelle",
-        "Der Brief trägt den Fingerabdruck des Protokolls und den Fotoanhang als Faktenbasis",
-        "La lettera porta l'impronta del verbale e l'allegato foto come base fattuale",
-        "La brev porta l'impronta dal protocol e l'agiunta da fotos sco basa dals fatgs",
-      ),
-      pick(
-        "Conciliation stays free everywhere and comes first in every dispute",
-        "La conciliation reste gratuite partout et précède tout procès",
-        "Die Schlichtung bleibt überall kostenlos und kommt vor jedem Prozess",
-        "La conciliazione resta gratuita ovunque e precede ogni processo",
-        "La mediaziun resta gratuita dapertut e vegn avant mintga process",
-      ),
-    ),
-  )
-
-  val befundSubject = pick(
-    "Request for an official finding of the condition of the rented object",
-    "Requête de constat officiel de l'état de l'objet loué",
-    "Gesuch um amtlichen Befund über den Zustand des Mietobjekts",
-    "Richiesta di constatazione ufficiale dello stato dell'ente locato",
-    "Dumonda d'ina constataziun uffiziala dal stadi da l'object da locaziun",
-  )
-  val befundBody = pick(
-    "The undersigned requests an official finding of the present condition of the rented object named below. The handover protocol drawn up on site, with its photo annex, is enclosed as the factual record; its content fingerprint is stated beneath. The parties named in the protocol are to be invited to the finding.",
-    "La partie soussignée requiert le constat officiel de l'état actuel de l'objet loué désigné ci-dessous. L'état des lieux dressé sur place, avec son annexe photos, est joint comme pièce ; son empreinte de contenu figure ci-dessous. Les parties nommées dans le protocole sont à convoquer au constat.",
-    "Die unterzeichnende Partei ersucht um den amtlichen Befund über den gegenwärtigen Zustand des nachstehend bezeichneten Mietobjekts. Das vor Ort erstellte Übergabeprotokoll mit Fotoanhang liegt als Beleg bei; sein Inhalts-Fingerabdruck steht darunter. Die im Protokoll genannten Parteien sind zum Befund einzuladen.",
-    "La parte sottoscritta chiede la constatazione ufficiale dello stato attuale dell'ente locato sotto indicato. Il verbale di consegna redatto sul posto, con il suo allegato foto, è accluso come documento; la sua impronta del contenuto figura sotto. Le parti nominate nel verbale sono da invitare alla constatazione.",
-    "La partida suttascrivada dumonda la constataziun uffiziala dal stadi actual da l'object da locaziun inditgà sutvart. Il protocol da surdada fatg sin plaz, cun sia agiunta da fotos, è agiuntà sco document; sia impronta dal cuntegn stat sutvart. Las partidas numnadas en il protocol èn d'envidar a la constataziun.",
-  )
-  val befundLegal = pick(
-    "Canton of Zurich: official finding by the Gemeindeammann, § 143 GOG ZH. Other cantons: precautionary taking of evidence, Art. 182 of the Civil Procedure Code, through the competent court.",
-    "Canton de Zurich : constat officiel du Gemeindeammann, § 143 GOG ZH. Autres cantons : preuve à futur, art. 182 CPC, par le tribunal compétent.",
-    "Kanton Zürich: amtlicher Befund durch den Gemeindeammann, § 143 GOG ZH. Übrige Kantone: vorsorgliche Beweisführung, Art. 182 ZPO, über das zuständige Gericht.",
-    "Canton Zurigo: constatazione ufficiale del Gemeindeammann, § 143 GOG ZH. Altri cantoni: assunzione cautelare delle prove, art. 182 CPC, tramite il giudice competente.",
-    "Chantun Turitg: constataziun uffiziala dal Gemeindeammann, § 143 GOG ZH. Auters chantuns: registraziun precauziunala da cumprovas, art. 182 CPC, tras il tribunal cumpetent.",
-  )
-  val befundDesiredDate = pick(
-    "Desired date of the finding",
-    "Date souhaitée du constat",
-    "Gewünschter Termin des Befunds",
-    "Data desiderata della constatazione",
-    "Data giavischada da la constataziun",
-  )
-  val placeDateSignature = pick(
-    "Place, date and signature",
-    "Lieu, date et signature",
-    "Ort, Datum und Unterschrift",
-    "Luogo, data e firma",
-    "Lieu, data e suttascripziun",
-  )
-
   // ── Role: which side of the threshold holds this phone ────────────────────────────────
   val roleQuestion = pick(
     "Who holds this phone?",
@@ -1276,26 +1263,33 @@ class Str(val lang: Lang) {
     ),
   )
   fun stepLead(step: FlowStep) = when (step) {
-    FlowStep.Setup -> pick(
-      "Fill in the frame together before the walk: the object, the people, the deposit, the meters, the keys.",
-      "Remplissez le cadre ensemble avant la visite : l'objet, les personnes, la garantie, les compteurs, les clés.",
-      "Füllt den Rahmen gemeinsam aus, bevor ihr durch die Wohnung geht: Objekt, Personen, Kaution, Zähler, Schlüssel.",
-      "Compilate il quadro insieme prima del giro: l'oggetto, le persone, il deposito, i contatori, le chiavi.",
-      "Emplenì il rom ensemen avant il gir: l'object, las persunas, la cauziun, ils dumbraders, las clavs.",
+    FlowStep.Hub -> pick(
+      "Two halves, in whatever order suits you: what you can see and touch, and what is on paper.",
+      "Deux moitiés, dans l'ordre qui vous convient : ce qui se voit et se touche, et ce qui est sur papier.",
+      "Zwei Hälften, in beliebiger Reihenfolge: was sichtbar und greifbar ist, und was auf dem Papier steht.",
+      "Due metà, nell'ordine che preferite: ciò che si vede e si tocca, e ciò che è sulla carta.",
+      "Duas mitads, en l'urden che vus vulais: quai ch'ins vesa e tutga, e quai ch'è sin palpiri.",
     )
-    FlowStep.Rooms -> pick(
-      "Walk the flat room by room. Tap Not checked to record the condition; + records a defect with photos. Use the pencil on a yellow item to edit its defect.",
-      "Parcourez le logement pièce par pièce. Touchez Non contrôlé pour enregistrer l'état ; le + enregistre un défaut avec photos. Utilisez le crayon sur un élément jaune pour modifier son défaut.",
-      "Geht Raum für Raum durch. Tippt auf Nicht geprüft, um den Zustand zu erfassen; das + erfasst einen Mangel mit Fotos. Mit dem Stift auf einem gelben Element bearbeitet ihr seinen Mangel.",
-      "Percorrete l'alloggio locale per locale. Toccate Non controllato per registrare lo stato; il + registra un difetto con foto. Usate la matita su un elemento giallo per modificare il suo difetto.",
-      "Giai tras l'abitaziun local per local. Tutgai Betg controllà per registrar il stadi; il + registrescha in defect cun fotos. Duvrar il rispli sin in element mellen per modifitgar ses defect.",
+    FlowStep.Inspection -> pick(
+      "Go through the flat in your own order. A room you never enter is a room with nothing wrong in it.",
+      "Parcourez le logement dans votre ordre. Une pièce où vous n'entrez pas est une pièce sans défaut.",
+      "Geht in eurer eigenen Reihenfolge durch. Ein Raum, den ihr nicht betretet, ist ein Raum ohne Mangel.",
+      "Percorrete l'alloggio nel vostro ordine. Un locale in cui non entrate è un locale senza difetti.",
+      "Giai tras l'abitaziun en voss agen urden. In local che vus n'entrais betg è in local senza mancanzas.",
     )
-    FlowStep.Extras -> pick(
-      "Record appliances and furniture supplied with the flat once, including anything not on the list.",
-      "Consignez une seule fois les appareils et le mobilier fournis avec le logement, y compris ce qui n'est pas dans la liste.",
-      "Erfassen Sie die mit der Wohnung gelieferten Geräte und Möbel einmal, auch Einträge ausserhalb der Liste.",
-      "Registrate una volta sola gli elettrodomestici e gli arredi forniti con l'alloggio, compresi quelli non in elenco.",
-      "Registrai ina giada ils apparats ed il mobigliar mess a disposiziun cun l'abitaziun, inclus quai che na figurescha betg sin la glista.",
+    FlowStep.Objects -> pick(
+      "One row per thing handed over, with a photograph of it. A photo now settles the argument later.",
+      "Une ligne par objet remis, avec sa photo. Une photo aujourd'hui tranche la discussion plus tard.",
+      "Eine Zeile je übergebenem Gegenstand, mit Foto. Ein Foto heute beendet die Diskussion später.",
+      "Una riga per ogni oggetto consegnato, con la sua foto. Una foto oggi chiude la discussione domani.",
+      "Ina lingia per mintga object surdà, cun sia foto. Ina foto oz finescha la discussiun pli tard.",
+    )
+    FlowStep.Dossier -> pick(
+      "The paperwork around the handover. Add a component only when this handover has it.",
+      "Les documents autour de la remise. N'ajoutez une rubrique que si elle concerne cette remise.",
+      "Das Papier rund um die Übergabe. Fügt eine Rubrik nur hinzu, wenn sie diese Übergabe betrifft.",
+      "I documenti attorno alla consegna. Aggiungete una rubrica solo se riguarda questa consegna.",
+      "Ils documents enturn la surdada. Agiuntai ina rubrica mo sch'ella pertutga questa surdada.",
     )
     FlowStep.Review -> pick(
       "Read the findings aloud together. Mark who carries each defect before anyone signs.",

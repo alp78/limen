@@ -22,12 +22,13 @@ object ProtocolIntegrity {
     digest.update(json.encodeToString(Protocol.serializer(), canonical).toByteArray(Charsets.UTF_8))
 
     protocol.defects
-      .flatMap { defect ->
-        (defect.photos + defect.photoEvidence.map { it.file })
-          .filter { it.isNotBlank() }
-          .distinct()
-          .map { name -> "photo/$name" to File(photoDir, name) }
-      }
+      .flatMap { defect -> defect.photoFiles().map { name -> "photo/$name" to File(photoDir, name) } }
+      // Object photos hash under the same label scheme, so a record with no objects, which is
+      // every record written before they existed, produces the identical fingerprint it always did.
+      .plus(
+        protocol.objects
+          .flatMap { entry -> entry.photoFiles().map { name -> "photo/$name" to File(photoDir, name) } }
+      )
       .plus(
         protocol.signatures
           .filter { it.file.isNotBlank() }

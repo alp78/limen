@@ -1,10 +1,14 @@
 package dev.verso.limen.ui
 
+import dev.verso.limen.data.Appliance
 import dev.verso.limen.data.CautionProvider
 import dev.verso.limen.data.DepositKind
+import dev.verso.limen.data.DossierCard
+import dev.verso.limen.data.Furniture
 import dev.verso.limen.data.Grade
 import dev.verso.limen.data.ItemKey
 import dev.verso.limen.data.KeyKind
+import dev.verso.limen.data.ObjectGroup
 import dev.verso.limen.data.Role
 import dev.verso.limen.data.RoomKind
 import org.junit.Assert.assertTrue
@@ -23,6 +27,17 @@ class StringsTest {
       KeyKind.entries.forEach { assertTrue("$lang key $it", s.keyKind(it).isNotBlank()) }
       DepositKind.entries.forEach { assertTrue("$lang deposit $it", s.depositKind(it).isNotBlank()) }
       CautionProvider.entries.forEach { assertTrue("$lang caution $it", s.cautionProvider(it).isNotBlank()) }
+      Appliance.entries.forEach { assertTrue("$lang appliance $it", s.appliance(it).isNotBlank()) }
+      Furniture.entries.forEach { assertTrue("$lang furniture $it", s.furniture(it).isNotBlank()) }
+      ObjectGroup.entries.forEach { assertTrue("$lang group $it", s.objectGroup(it).isNotBlank()) }
+      DossierCard.entries.forEach { assertTrue("$lang card $it", s.dossierCard(it).isNotBlank()) }
+      FinalizationIssue.entries.forEach {
+        assertTrue("$lang issue $it", s.finalizationIssue(it).isNotBlank())
+      }
+      ExportIssue.entries.forEach { assertTrue("$lang export $it", s.exportIssue(it).isNotBlank()) }
+      // Every place in the flow says what it is for; a place with no lead is a place a
+      // person is standing in without being told why.
+      FlowStep.entries.forEach { assertTrue("$lang lead $it", s.stepLead(it).isNotBlank()) }
     }
   }
 

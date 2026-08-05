@@ -52,6 +52,26 @@ class StoreTest {
       ),
       Room(id = "r2", kind = RoomKind.Room, name = "Chambre 2"),
     ),
+    objects = listOf(
+      ObjectEntry(
+        id = "o1",
+        group = ObjectGroup.Appliance,
+        catalogue = Appliance.Fridge.name,
+        roomId = "r1",
+        note = "Bosch, no de série 4471",
+        photos = listOf("o1-1.jpg"),
+        photoEvidence = listOf(PhotoEvidence("o1-1.jpg", sha256 = "AB", source = PhotoSource.Camera)),
+      ),
+      ObjectEntry(id = "o2", group = ObjectGroup.Other, groupLabel = "Jardin", label = "Tondeuse"),
+    ),
+    contract = Contract(
+      monthlyRentChf = "1890",
+      serviceChargesChf = "220",
+      startDate = "2019-04-01",
+      endDate = "2026-09-30",
+      noticeDate = "2026-06-28",
+    ),
+    dossier = listOf(DossierCard.Contract, DossierCard.Deposit, DossierCard.Meters, DossierCard.Keys),
     defects = listOf(
       Defect(
         id = "d1",
@@ -62,7 +82,14 @@ class StoreTest {
         chargedToTenant = true,
         fixBy = FixBy.Landlord,
         costNote = "Sous réserve d'un devis",
-      )
+      ),
+      Defect(
+        id = "d2",
+        objectId = "o1",
+        item = ItemKey.Custom,
+        itemLabel = "Joint de porte",
+        text = "Joint fendu sur 4 cm",
+      ),
     ),
     remarks = "Signature du locataire: ne vaut pas reconnaissance de dette.",
     chargesStatementBy = "2027-03-31",

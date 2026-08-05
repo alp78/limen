@@ -54,10 +54,22 @@ data class Protocol(
   /** Whether the tenant declared having had copies made, the question everyone forgets. */
   val selfMadeKeys: Boolean = false,
   val rooms: List<Room> = emptyList(),
-  /** Appliances and furniture supplied with the flat, recorded once for the whole object. */
+  /** Legacy set-of-toggles inventory, superseded by [objects]; read only to export old records. */
   @OptIn(ExperimentalSerializationApi::class)
   @EncodeDefault(EncodeDefault.Mode.NEVER)
   val extras: FlatExtras = FlatExtras(),
+  /** Supplied appliances and furniture, one row each, so a row can carry its own photo. */
+  @OptIn(ExperimentalSerializationApi::class)
+  @EncodeDefault(EncodeDefault.Mode.NEVER)
+  val objects: List<ObjectEntry> = emptyList(),
+  /** The tenancy's money and dates, present only when the handover has the contract to hand. */
+  @OptIn(ExperimentalSerializationApi::class)
+  @EncodeDefault(EncodeDefault.Mode.NEVER)
+  val contract: Contract = Contract(),
+  /** The optional dossier components this handover carries, held sorted by ordinal. */
+  @OptIn(ExperimentalSerializationApi::class)
+  @EncodeDefault(EncodeDefault.Mode.NEVER)
+  val dossier: List<DossierCard> = emptyList(),
   val defects: List<Defect> = emptyList(),
   /** Free remarks, including the reservation lines a party dictates. */
   val remarks: String = "",
@@ -234,6 +246,56 @@ data class Room(
 @Serializable
 enum class RoomFixture { Fridge, Freezer, Dishwasher, WashingMachine, Dryer, Furniture }
 
+/**
+ * One supplied appliance, piece of furniture or anything else handed over with the flat.
+ *
+ * A row, not a toggle, because two identical fridges are two facts and each needs its own
+ * photo. [catalogue] names an [Appliance] or [Furniture] entry when the row came from the
+ * shipped list, so it stays translatable; [label] carries the rest verbatim.
+ */
+@Serializable
+data class ObjectEntry(
+  val id: String,
+  val group: ObjectGroup,
+  /** Names an [ObjectGroup.Other] group: "Garden tools", "Cellar shelving". */
+  val groupLabel: String = "",
+  /** [Appliance] or [Furniture] entry name when the row came from the shipped list. */
+  val catalogue: String = "",
+  /** Free text name when no shipped entry stands behind the row. */
+  val label: String = "",
+  /** Which room it stands in. Blank means the object as a whole. */
+  val roomId: String = "",
+  val note: String = "",
+  /** File names under the protocol's photo directory, in the order they were taken. */
+  val photos: List<String> = emptyList(),
+  val photoEvidence: List<PhotoEvidence> = emptyList(),
+)
+
+@Serializable
+enum class ObjectGroup { Appliance, Furniture, Other }
+
+/**
+ * The tenancy itself: what is paid and from when to when. Amounts are held as typed for the
+ * same reason [Deposit.amountChf] is, and dates are free text because a contract's dates are
+ * copied off paper that does not always agree with ISO.
+ */
+@Serializable
+data class Contract(
+  val monthlyRentChf: String = "",
+  val serviceChargesChf: String = "",
+  val startDate: String = "",
+  val endDate: String = "",
+  /** When notice was given, the date every deposit argument eventually turns on. */
+  val noticeDate: String = "",
+)
+
+/**
+ * A dossier component the person adds only when this handover has it. Address, parties and
+ * identity are not here: a protocol without them is not a protocol, so they are always shown.
+ */
+@Serializable
+enum class DossierCard { Contract, Deposit, Meters, Keys, Notes }
+
 /** The supplied extras are about the flat, not an artificial attachment to one room. */
 @Serializable
 data class FlatExtras(
@@ -270,7 +332,8 @@ data class RoomItem(
 @Serializable
 data class Defect(
   val id: String,
-  val roomId: String,
+  /** The room it belongs to, or blank when [objectId] carries the location instead. */
+  val roomId: String = "",
   /** The item row it hangs on, or null for a whole-room finding. */
   val item: ItemKey? = null,
   val text: String = "",
@@ -293,6 +356,14 @@ data class Defect(
   @OptIn(ExperimentalSerializationApi::class)
   @EncodeDefault(EncodeDefault.Mode.NEVER)
   val itemId: String = "",
+  /** Names an [ItemKey.Custom] finding, where no template row carries the wording. */
+  @OptIn(ExperimentalSerializationApi::class)
+  @EncodeDefault(EncodeDefault.Mode.NEVER)
+  val itemLabel: String = "",
+  /** Set instead of [roomId] when the finding is about a supplied [ObjectEntry]. */
+  @OptIn(ExperimentalSerializationApi::class)
+  @EncodeDefault(EncodeDefault.Mode.NEVER)
+  val objectId: String = "",
 )
 
 @Serializable
@@ -342,3 +413,44 @@ data class Signature(
 
 @Serializable
 enum class Plane { Record, Costs }
+
+/** Nothing was read off any dial. */
+fun Meters.isBlank(): Boolean =
+  listOf(electricity1, electricity2, gas, water, hotWater, heatingOil).all { it.isBlank() }
+
+/**
+ * Which dossier components this record carries.
+ *
+ * Records written before the dossier existed answer from their content instead, and the
+ * derived answer is never written back: [Protocol.schema] cannot identify them (the store
+ * omits defaulted fields, so no file ever carried it), and writing a derived value into a
+ * finalized record would change its canonical JSON and void its fingerprint.
+ */
+fun Protocol.dossierCards(): List<DossierCard> {
+  if (dossier.isNotEmpty()) return dossier
+  return buildList {
+    if (contract != Contract()) add(DossierCard.Contract)
+    if (deposit.kind != DepositKind.None) add(DossierCard.Deposit)
+    if (!meters.isBlank()) add(DossierCard.Meters)
+    if (selfMadeKeys || keys.any { it.count > 0 } || rooms.any { it.keysCount > 0 }) {
+      add(DossierCard.Keys)
+    }
+    if (remarks.isNotBlank() || chargesStatementBy.isNotBlank() || oneSided) add(DossierCard.Notes)
+  }
+}
+
+fun Protocol.carries(card: DossierCard): Boolean = card in dossierCards()
+
+/**
+ * True when this room was recorded with the exhaustive item grid, which the export still
+ * prints so a signed record keeps showing the parties what they signed. New rooms hold no
+ * items at all: a room's record is its defects.
+ */
+fun Room.hasLegacyGrid(): Boolean = items.isNotEmpty()
+
+/** Every photo file this defect points at, from either list, once each. */
+fun Defect.photoFiles(): List<String> =
+  (photos + photoEvidence.map { it.file }).filter { it.isNotBlank() }.distinct()
+
+fun ObjectEntry.photoFiles(): List<String> =
+  (photos + photoEvidence.map { it.file }).filter { it.isNotBlank() }.distinct()

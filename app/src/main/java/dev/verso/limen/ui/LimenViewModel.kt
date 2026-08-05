@@ -3,18 +3,22 @@ package dev.verso.limen.ui
 import android.app.Application
 import android.content.Context
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import dev.verso.limen.data.Contract
 import dev.verso.limen.data.Defect
 import dev.verso.limen.data.DeliveryReceipt
-import dev.verso.limen.data.Grade
+import dev.verso.limen.data.Deposit
+import dev.verso.limen.data.DossierCard
 import dev.verso.limen.data.ItemKey
 import dev.verso.limen.data.KeyCount
 import dev.verso.limen.data.KeyKind
 import dev.verso.limen.data.Kind
+import dev.verso.limen.data.Meters
+import dev.verso.limen.data.ObjectEntry
+import dev.verso.limen.data.ObjectGroup
 import dev.verso.limen.data.Party
 import dev.verso.limen.data.PhotoEvidence
 import dev.verso.limen.data.PhotoSource
@@ -23,12 +27,13 @@ import dev.verso.limen.data.Protocol
 import dev.verso.limen.data.ProtocolIntegrity
 import dev.verso.limen.data.Role
 import dev.verso.limen.data.Room
-import dev.verso.limen.data.RoomItem
 import dev.verso.limen.data.RoomKind
 import dev.verso.limen.data.SessionIdentity
 import dev.verso.limen.data.Store
 import dev.verso.limen.data.Templates
+import dev.verso.limen.data.dossierCards
 import dev.verso.limen.data.hasRequiredFields
+import dev.verso.limen.data.photoFiles
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -50,9 +55,30 @@ private const val SAVE_DELAY_MS = 400L
 /**
  * The protocol flow opens from the case and owns the screen until it is closed. It is restored
  * after a process death because the camera app can interrupt a handover mid-walk.
+ *
+ * Not a stepper. A handover is walked in the order the flat is built, not the order an app
+ * imagines, so [Hub] is the home everything returns to and nothing is gated behind anything
+ * else. [Sign] and [Export] are the exception: they follow [Review] because a signature that
+ * saw no review is worth nothing.
  */
-/** The stepper's stations, in walking order. */
-enum class FlowStep { Setup, Rooms, Extras, Review, Sign, Export }
+enum class FlowStep {
+  Hub,
+  Inspection,
+  Objects,
+  Dossier,
+  Review,
+  Sign,
+  Export;
+
+  /** Where back goes from here. Null leaves the flow entirely. */
+  val parent: FlowStep?
+    get() = when (this) {
+      Hub -> null
+      Inspection, Objects, Dossier, Review -> Hub
+      Sign -> Review
+      Export -> Sign
+    }
+}
 
 /** What still prevents a protocol from becoming the frozen record both parties reviewed. */
 enum class FinalizationIssue {
@@ -61,7 +87,6 @@ enum class FinalizationIssue {
   HandoverDate,
   HandoverTime,
   Parties,
-  RoomChecks,
   DefectText,
   RecordOutcomes,
 }
@@ -132,11 +157,14 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
   var entryBaseline by mutableStateOf<Protocol?>(null)
     private set
 
-  var flowStep by mutableStateOf(FlowStep.Setup)
+  var flowStep by mutableStateOf(FlowStep.Hub)
     private set
 
-  /** Which room of the walk is open. */
-  var roomIndex by mutableIntStateOf(0)
+  /**
+   * The room being inspected, or null while the grid of rooms is showing. Held by id rather
+   * than by index so removing a room cannot silently open a different one.
+   */
+  var openRoomId by mutableStateOf<String?>(null)
     private set
 
   /** The defect being edited, or null. A new defect is created on opening the editor. */
@@ -261,9 +289,9 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
         sessionIdentity.phoneRegion,
       ),
     )
-    val rooms = Templates.defaultRooms.mapIndexed { i, rk ->
-      Room(id = "r$i", kind = rk, items = Templates.itemRowsFor(rk))
-    }
+    // Rooms start empty. A room's record is its defects, and the walking order is only a
+    // suggestion: every one of these is removable and any other kind can be added.
+    val rooms = Templates.defaultRooms.mapIndexed { i, rk -> Room(id = "r$i", kind = rk) }
     val p = Protocol(
       id = "p$now",
       kind = kind,
@@ -298,8 +326,8 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     )
     store.save(p)
     setActiveProtocol(p)
-    flowStep = FlowStep.Setup
-    roomIndex = 0
+    flowStep = FlowStep.Hub
+    openRoomId = null
     prefs.edit().putString(KEY_OPEN, p.id).apply()
   }
 
@@ -326,7 +354,8 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
       handoverDate = LocalDate.now().toString(),
       handoverTime = "",
       lastProtocolDate = entry.handoverDate,
-      rooms = entry.rooms.map { r -> r.copy(items = r.items.map { it.copy(grade = Grade.NotChecked) }) },
+      rooms = entry.rooms.map(::freshRoom),
+      objects = entry.objects.map(::freshObject),
       defects = emptyList(),
       remarks = "",
       chargesStatementBy = "",
@@ -339,14 +368,25 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
       evidenceFingerprint = "",
       deliveryReceipts = emptyList(),
       exportedEpochMs = 0,
-      meters = dev.verso.limen.data.Meters(),
+      meters = Meters(),
     )
     store.save(p)
     setActiveProtocol(p)
-    flowStep = FlowStep.Setup
-    roomIndex = 0
+    flowStep = FlowStep.Hub
+    openRoomId = null
     prefs.edit().putString(KEY_OPEN, p.id).apply()
   }
+
+  /**
+   * The flat's rooms carry over as the buttons of the exit walk; nothing recorded inside them
+   * does. An older entry's item grid is dropped rather than reopened: the exit is a new record
+   * and records only what it finds.
+   */
+  private fun freshRoom(room: Room): Room = room.copy(items = emptyList(), keysCount = 0)
+
+  /** The supplied object is still supplied; the photographs of it at entry are not its exit state. */
+  private fun freshObject(entry: ObjectEntry): ObjectEntry =
+    entry.copy(photos = emptyList(), photoEvidence = emptyList())
 
   /** Opens an exit from its entry baseline while retaining the new starter's verified contact data. */
   fun seedExitFrom(entry: Protocol, sessionRole: Role, identity: SessionIdentity) {
@@ -372,7 +412,8 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
       parties = entry.parties.map { party ->
         if (party.role == sessionRole) party.copy(name = name, phone = resolvedIdentity.phone) else party
       },
-      rooms = entry.rooms.map { room -> room.copy(items = room.items.map { it.copy(grade = Grade.NotChecked) }) },
+      rooms = entry.rooms.map(::freshRoom),
+      objects = entry.objects.map(::freshObject),
       defects = emptyList(),
       remarks = "",
       chargesStatementBy = "",
@@ -385,12 +426,12 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
       evidenceFingerprint = "",
       deliveryReceipts = emptyList(),
       exportedEpochMs = 0,
-      meters = dev.verso.limen.data.Meters(),
+      meters = Meters(),
     )
     store.save(p)
     setActiveProtocol(p)
-    flowStep = FlowStep.Setup
-    roomIndex = 0
+    flowStep = FlowStep.Hub
+    openRoomId = null
     prefs.edit().putString(KEY_OPEN, p.id).apply()
   }
 
@@ -398,8 +439,8 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     flush()
     val p = store.load(id) ?: return
     setActiveProtocol(p)
-    flowStep = if (p.isFinalized()) FlowStep.Export else FlowStep.Setup
-    roomIndex = 0
+    flowStep = if (p.isFinalized()) FlowStep.Export else FlowStep.Hub
+    openRoomId = null
     prefs.edit().putString(KEY_OPEN, id).apply()
   }
 
@@ -416,6 +457,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     flush()
     setActiveProtocol(null)
     editingDefectId = null
+    openRoomId = null
     exported = null
     exportIssue = null
     finalizationIssues = emptyList()
@@ -454,13 +496,8 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
       if (listOf(Role.Tenant, Role.Landlord).any { role ->
           record.parties.firstOrNull { it.role == role }?.name.isNullOrBlank()
         }) add(FinalizationIssue.Parties)
-      if (record.rooms.isEmpty() || record.rooms.any { room ->
-          room.items.any { item ->
-            item.grade == Grade.NotChecked && record.defects.none { defect ->
-              defect.roomId == room.id && defectBelongsToItem(defect, item)
-            }
-          }
-        }) add(FinalizationIssue.RoomChecks)
+      // No room-by-room gate. A flat with nothing wrong in it is a complete finding, and
+      // demanding a tap on every undamaged surface only teaches people to tap without looking.
       if (record.defects.any { it.text.isBlank() }) add(FinalizationIssue.DefectText)
       if (requiredRecordRoles(record).any { role ->
           record.signatures.none { signature ->
@@ -559,133 +596,172 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     }
   }
 
-  /** Back inside the flow: one station up, or out to the case from the first. */
+  /** Back inside the flow: out of the open room, then up the one branch a step has. */
   fun flowBack() {
     if (editingDefectId != null) {
-      editingDefectId = null
+      // Through [closeDefect], not by clearing the id: leaving the editor by the masthead
+      // key used to strand an empty finding on the record, which now counts in a room's
+      // total and blocks finalization for a defect nobody meant to write.
+      closeDefect()
       return
     }
     if (working?.isFinalized() == true) {
       closeFlow()
       return
     }
-    when (flowStep) {
-      FlowStep.Setup -> closeFlow()
-      FlowStep.Rooms -> flowStep = FlowStep.Setup
-      FlowStep.Extras -> flowStep = FlowStep.Rooms
-      FlowStep.Review -> flowStep = FlowStep.Extras
-      FlowStep.Sign -> flowStep = FlowStep.Review
-      FlowStep.Export -> flowStep = FlowStep.Sign
+    if (flowStep == FlowStep.Inspection && openRoomId != null) {
+      openRoomId = null
+      return
     }
+    val parent = flowStep.parent
+    if (parent == null) closeFlow() else flowStep = parent
   }
 
-  fun selectRoom(index: Int) {
-    roomIndex = index.coerceIn(0, (working?.rooms?.size ?: 1) - 1)
+  // ── Rooms ────────────────────────────────────────────────────────────────────────────
+
+  fun openRoom(roomId: String) {
+    if (working?.rooms?.none { it.id == roomId } == true) return
+    openRoomId = roomId
+    flowStep = FlowStep.Inspection
   }
 
-  /** One tap records an item as in order, or returns it to not checked. */
-  fun cycleGrade(roomId: String, index: Int) {
-    edit { p ->
-      p.copy(rooms = p.rooms.map { r ->
-        if (r.id != roomId) r
-        else r.copy(items = r.items.mapIndexed { i, item ->
-          if (i != index) item
-          else item.copy(grade = if (item.grade == Grade.Ok) Grade.NotChecked else Grade.Ok)
-        })
-      })
-    }
+  fun closeRoom() {
+    openRoomId = null
   }
 
   fun addRoom(kind: RoomKind, name: String = "") {
+    val id = "r${System.currentTimeMillis()}"
+    edit { p -> p.copy(rooms = p.rooms + Room(id = id, kind = kind, name = name.trim())) }
+    if (working?.rooms?.any { it.id == id } == true) openRoomId = id
+  }
+
+  fun renameRoom(roomId: String, name: String) {
     edit { p ->
-      val id = "r${System.currentTimeMillis()}"
-      p.copy(rooms = p.rooms + Room(
-        id = id, kind = kind, name = name,
-        items = Templates.itemRowsFor(kind),
-      ))
+      p.copy(rooms = p.rooms.map { if (it.id == roomId) it.copy(name = name) else it })
     }
-    roomIndex = (working?.rooms?.size ?: 1) - 1
   }
 
   fun removeRoom(roomId: String) {
     val gone = working?.defects?.filter { it.roomId == roomId }.orEmpty()
-    deleteDefectPhotos(gone)
+    deletePhotosOf(gone.flatMap(Defect::photoFiles))
     edit { p ->
       p.copy(
         rooms = p.rooms.filterNot { it.id == roomId },
         defects = p.defects.filterNot { it.roomId == roomId },
+        objects = p.objects.map { if (it.roomId == roomId) it.copy(roomId = "") else it },
       )
     }
-    roomIndex = roomIndex.coerceIn(0, ((working?.rooms?.size ?: 1) - 1).coerceAtLeast(0))
+    if (openRoomId == roomId) openRoomId = null
   }
 
-  /** Adds a user-named row to this room; duplicates are distinct, not merged by label. */
-  fun addRoomItem(roomId: String, label: String) {
-    val clean = label.trim()
-    if (clean.isBlank()) return
-    edit { p ->
-      p.copy(rooms = p.rooms.map { room ->
-        if (room.id != roomId) room
-        else room.copy(
-          items = room.items + RoomItem(
-            key = ItemKey.Custom,
-            label = clean,
-            itemId = "custom-${System.currentTimeMillis()}",
-          ),
-        )
-      })
-    }
-  }
-
-  /** A removed item takes its finding and evidence with it, so no invisible defect remains. */
-  fun removeRoomItem(roomId: String, index: Int) {
-    val item = working?.rooms?.firstOrNull { it.id == roomId }?.items?.getOrNull(index) ?: return
-    val gone = working?.defects?.filter { defect ->
-      defect.roomId == roomId && defectBelongsToItem(defect, item)
-    }.orEmpty()
-    deleteDefectPhotos(gone)
-    edit { p ->
-      p.copy(
-        rooms = p.rooms.map { room ->
-          if (room.id != roomId) room
-          else room.copy(items = room.items.filterIndexed { i, _ -> i != index })
-        },
-        defects = p.defects.filterNot { it in gone },
-      )
-    }
-  }
-
-  /** Restores the canonical template and clears every finding and key count in this room. */
-  fun resetRoom(roomId: String) {
-    val current = working?.rooms?.firstOrNull { it.id == roomId } ?: return
+  /** Clears every finding in this room, leaving the room itself on the walk. */
+  fun clearRoom(roomId: String) {
     val gone = working?.defects?.filter { it.roomId == roomId }.orEmpty()
-    deleteDefectPhotos(gone)
+    deletePhotosOf(gone.flatMap(Defect::photoFiles))
+    edit { p -> p.copy(defects = p.defects.filterNot { it.roomId == roomId }) }
+  }
+
+  // ── Objects ──────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Appends a row. Pressing the same catalogue key twice records two of the thing, because
+   * two fridges in a flat are two facts, each with its own photograph.
+   */
+  fun addObject(
+    group: ObjectGroup,
+    catalogue: String = "",
+    label: String = "",
+    groupLabel: String = "",
+    roomId: String = "",
+  ) {
+    if (group == ObjectGroup.Other && groupLabel.isBlank()) return
+    if (catalogue.isBlank() && label.isBlank()) return
+    edit { p ->
+      p.copy(objects = p.objects + ObjectEntry(
+        id = "o${System.currentTimeMillis()}",
+        group = group,
+        groupLabel = groupLabel.trim(),
+        catalogue = catalogue,
+        label = label.trim(),
+        roomId = roomId,
+      ))
+    }
+  }
+
+  fun updateObject(id: String, transform: (ObjectEntry) -> ObjectEntry) {
+    edit { p -> p.copy(objects = p.objects.map { if (it.id == id) transform(it) else it }) }
+  }
+
+  /** A removed object takes its photographs and any finding recorded on it with it. */
+  fun removeObject(id: String) {
+    val entry = working?.objects?.firstOrNull { it.id == id }
+    val gone = working?.defects?.filter { it.objectId == id }.orEmpty()
+    deletePhotosOf(entry?.photoFiles().orEmpty() + gone.flatMap(Defect::photoFiles))
     edit { p ->
       p.copy(
-        rooms = p.rooms.map { room ->
-          if (room.id != roomId) room
-          else room.copy(
-            items = Templates.itemRowsFor(current.kind),
-            keysCount = 0,
-            freshPaintedWalls = false,
-            freshPaintedWoodwork = false,
-            newFloor = false,
-            fixtures = emptySet(),
-          )
-        },
-        defects = p.defects.filterNot { it.roomId == roomId },
+        objects = p.objects.filterNot { it.id == id },
+        defects = p.defects.filterNot { it.objectId == id },
       )
+    }
+  }
+
+  /** Every custom group on this record, in the order the person created them. */
+  fun customGroups(p: Protocol? = working): List<String> =
+    p?.objects.orEmpty()
+      .filter { it.group == ObjectGroup.Other }
+      .map { it.groupLabel }
+      .filter { it.isNotBlank() }
+      .distinct()
+
+  // ── The dossier ──────────────────────────────────────────────────────────────────────
+
+  fun addDossierCard(card: DossierCard) = setDossier { it + card }
+
+  /** Removing a component takes its content with it, so the record never prints a stale field. */
+  fun removeDossierCard(card: DossierCard) {
+    setDossier { it - card }
+    edit { p ->
+      when (card) {
+        DossierCard.Contract -> p.copy(contract = Contract())
+        DossierCard.Deposit -> p.copy(deposit = Deposit())
+        DossierCard.Meters -> p.copy(meters = Meters())
+        DossierCard.Keys -> p.copy(keys = emptyList(), selfMadeKeys = false)
+        DossierCard.Notes -> p.copy(remarks = "", chargesStatementBy = "", oneSided = false)
+      }
+    }
+  }
+
+  /**
+   * Seeds from the content-derived answer before applying the change, so a draft written
+   * before the dossier existed does not lose its deposit the moment a meter is added.
+   */
+  private fun setDossier(transform: (List<DossierCard>) -> List<DossierCard>) {
+    edit { p ->
+      p.copy(dossier = transform(p.dossierCards()).distinct().sortedBy { it.ordinal })
     }
   }
 
   // ── Defects ──────────────────────────────────────────────────────────────────────────
 
-  fun openDefect(roomId: String, item: ItemKey?, itemId: String = "") {
+  fun openDefect(roomId: String, item: ItemKey?, itemLabel: String = "") {
     if (working?.isFinalized() == true) return
     val id = "d${System.currentTimeMillis()}"
-    edit {
-      p -> p.copy(defects = p.defects + Defect(id = id, roomId = roomId, item = item, itemId = itemId))
+    edit { p ->
+      p.copy(defects = p.defects + Defect(
+        id = id,
+        roomId = roomId,
+        item = item,
+        itemLabel = itemLabel.trim(),
+      ))
     }
+    editingDefectId = id
+  }
+
+  /** A finding about a supplied object rather than a surface of the flat. */
+  fun openObjectDefect(objectId: String) {
+    if (working?.isFinalized() == true) return
+    val id = "d${System.currentTimeMillis()}"
+    edit { p -> p.copy(defects = p.defects + Defect(id = id, objectId = objectId)) }
     editingDefectId = id
   }
 
@@ -702,68 +778,83 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
   fun closeDefect() {
     val id = editingDefectId ?: return
     val d = working?.defects?.firstOrNull { it.id == id }
-    if (d != null && d.text.isBlank() && d.photos.isEmpty()) {
-      removeDefect(id)
-    } else if (d != null) {
-    }
+    if (d != null && d.text.isBlank() && d.photos.isEmpty()) removeDefect(id)
     editingDefectId = null
   }
 
   fun removeDefect(id: String) {
     if (working?.isFinalized() == true) return
     val gone = working?.defects?.firstOrNull { it.id == id }
-    gone?.let { deleteDefectPhotos(listOf(it)) }
+    deletePhotosOf(gone?.photoFiles().orEmpty())
     edit { p -> p.copy(defects = p.defects.filterNot { it.id == id }) }
     if (editingDefectId == id) editingDefectId = null
-    if (gone != null && (gone.text.isNotBlank() || gone.photos.isNotEmpty())) {
-    }
   }
 
-  private fun defectBelongsToItem(defect: Defect, item: RoomItem): Boolean =
-    defect.item == item.key &&
-      (defect.itemId.isBlank() || item.itemId.isBlank() || defect.itemId == item.itemId)
-
-  private fun deleteDefectPhotos(defects: List<Defect>) {
+  private fun deletePhotosOf(names: List<String>) {
     val dir = photoDir() ?: return
-    defects.flatMap(Defect::photos).forEach { name -> File(dir, name).delete() }
+    names.distinct().forEach { name -> File(dir, name).delete() }
   }
 
-  private fun defectWhere(d: Defect): String {
-    val s = Str(lang)
-    val room = working?.rooms?.firstOrNull { it.id == d.roomId }
-    return listOfNotNull(
-      room?.let { it.name.ifBlank { s.room(it.kind) } },
-      d.item?.let { s.item(it) },
-    ).joinToString(" · ")
-  }
+  // ── Photographs ──────────────────────────────────────────────────────────────────────
 
-  /** A photo the camera or picker delivered, preserved byte-for-byte beside the protocol. */
-  fun attachPhoto(defectId: String, source: File, photoSource: PhotoSource = PhotoSource.Unknown) {
-    if (working?.isFinalized() == true) return
-    val dir = photoDir() ?: return
-    val count = working?.defects?.firstOrNull { it.id == defectId }?.photos?.size ?: 0
-    val name = "$defectId-${System.currentTimeMillis()}-${count + 1}.jpg"
+  /**
+   * A photo the camera or picker delivered, preserved byte-for-byte beside the protocol and
+   * hashed at once, because the hash is what the fingerprint later covers. The owner is a
+   * defect or a supplied object; the file is named after it either way.
+   */
+  private fun copyPhoto(ownerId: String, existing: Int, source: File, photoSource: PhotoSource): PhotoEvidence? {
+    val dir = photoDir() ?: return null
+    val name = "$ownerId-${System.currentTimeMillis()}-${existing + 1}.jpg"
     val target = File(dir, name)
-    runCatching { source.copyTo(target, overwrite = true) }.getOrElse { return }
-    val evidence = PhotoEvidence(
+    runCatching { source.copyTo(target, overwrite = true) }.getOrElse { return null }
+    source.delete()
+    return PhotoEvidence(
       file = name,
       sha256 = ProtocolIntegrity.fileHash(target),
       capturedEpochMs = System.currentTimeMillis(),
       source = photoSource,
     )
-    source.delete()
+  }
+
+  fun attachPhoto(defectId: String, source: File, photoSource: PhotoSource = PhotoSource.Unknown) {
+    if (working?.isFinalized() == true) return
+    val had = working?.defects?.firstOrNull { it.id == defectId }?.photos?.size ?: 0
+    val evidence = copyPhoto(defectId, had, source, photoSource) ?: return
     updateDefect(defectId) {
       it.copy(
-        photos = it.photos + name,
-        photoEvidence = it.photoEvidence.filterNot { photo -> photo.file == name } + evidence,
+        photos = it.photos + evidence.file,
+        photoEvidence = it.photoEvidence.filterNot { photo -> photo.file == evidence.file } + evidence,
       )
     }
   }
 
   fun removePhoto(defectId: String, name: String) {
     if (working?.isFinalized() == true) return
-    photoDir()?.let { File(it, name).delete() }
+    deletePhotosOf(listOf(name))
     updateDefect(defectId) {
+      it.copy(
+        photos = it.photos - name,
+        photoEvidence = it.photoEvidence.filterNot { photo -> photo.file == name },
+      )
+    }
+  }
+
+  fun attachObjectPhoto(objectId: String, source: File, photoSource: PhotoSource = PhotoSource.Unknown) {
+    if (working?.isFinalized() == true) return
+    val had = working?.objects?.firstOrNull { it.id == objectId }?.photos?.size ?: 0
+    val evidence = copyPhoto(objectId, had, source, photoSource) ?: return
+    updateObject(objectId) {
+      it.copy(
+        photos = it.photos + evidence.file,
+        photoEvidence = it.photoEvidence.filterNot { photo -> photo.file == evidence.file } + evidence,
+      )
+    }
+  }
+
+  fun removeObjectPhoto(objectId: String, name: String) {
+    if (working?.isFinalized() == true) return
+    deletePhotosOf(listOf(name))
+    updateObject(objectId) {
       it.copy(
         photos = it.photos - name,
         photoEvidence = it.photoEvidence.filterNot { photo -> photo.file == name },
@@ -891,38 +982,6 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
             exported = out
             editMetadata { q -> q.copy(exportedEpochMs = System.currentTimeMillis()) }
           },
-          onFailure = {
-            exportIssue = ExportIssue.Failed
-          },
-        )
-      }
-    }
-  }
-
-  /** The letter asking a neutral official to record the facts, for the dispute that came. */
-  fun exportBefund(commune: String) {
-    val p = working ?: return
-    if (!p.isFinalized()) {
-      exportIssue = ExportIssue.NotFinalized
-      return
-    }
-    if (exporting) return
-    exporting = true
-    exportIssue = null
-    val docLang = pdfLang ?: lang
-    viewModelScope.launch {
-      val result = withContext(Dispatchers.IO) {
-        if (!ProtocolIntegrity.matches(p, store.photoDir(p.id), store.signatureDir(p.id))) null
-        else runCatching {
-          dev.verso.limen.data.Befund.export(getApplication(), p, Str(docLang), commune)
-        }
-      }
-      exporting = false
-      if (result == null) {
-        exportIssue = ExportIssue.IntegrityMismatch
-      } else {
-        result.fold(
-          onSuccess = { exported = it },
           onFailure = {
             exportIssue = ExportIssue.Failed
           },

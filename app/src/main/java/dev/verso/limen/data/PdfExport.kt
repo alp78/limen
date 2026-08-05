@@ -14,9 +14,17 @@ import java.io.File
 /**
  * The protocol as an A4 document, drawn with the platform's own PdfDocument: no library,
  * no fonts to embed, black ink on white paper. The layout follows the paper canon it will
- * be compared against at a conciliation hearing: header, parties, deposit, meters, keys,
- * rooms, the numbered defect ledger with the explicit charge column, the TWO separate
- * signature blocks, the deposit release instruction, and the photo annex.
+ * be compared against at a conciliation hearing: header, parties, the money and meter
+ * rubrics this handover actually carries, the supplied objects, the findings numbered by
+ * room with the explicit charge column, the TWO separate signature blocks, the deposit
+ * release instruction, and the photo annex.
+ *
+ * The paper prints what was recorded and nothing else. Undamaged surfaces do not appear,
+ * because a page of "in order" lines beside three real findings buries the three; and a
+ * dossier rubric nobody filled in does not appear either, because an empty field on a
+ * signed document reads as an unanswered question. Records written before this, which do
+ * carry an exhaustive item grid, still print theirs: those grades are part of what the
+ * parties put their names to.
  *
  * The language of the document is the [Str] handed in, independent of the UI language:
  * a Lausanne regie hands a German-speaking tenant a French protocol or the reverse, and
@@ -67,16 +75,19 @@ object PdfExport {
   ): PdfDocument {
     val doc = PdfDocument()
     val sheet = Sheet(doc, s, reference, total)
+    val cards = p.dossierCards()
     title(sheet, p, s, context)
     header(sheet, p, s)
     integrity(sheet, p, s)
     parties(sheet, p, s)
-    deposit(sheet, p, s)
-    metersAndKeys(sheet, p, s)
-    flatExtras(sheet, p, s)
+    if (DossierCard.Contract in cards) contract(sheet, p, s)
+    if (DossierCard.Deposit in cards) deposit(sheet, p, s)
+    if (DossierCard.Meters in cards) meters(sheet, p, s)
+    if (DossierCard.Keys in cards) keys(sheet, p, s)
     rooms(sheet, p, s)
-    defects(sheet, p, s)
-    remarks(sheet, p, s)
+    objects(sheet, p, s)
+    findings(sheet, p, s)
+    if (DossierCard.Notes in cards) remarks(sheet, p, s)
     signatures(sheet, p, s, signatureDir)
     release(sheet, p, s)
     annex(sheet, p, s, photoDir, measuring = total == 0)
@@ -300,7 +311,21 @@ object PdfExport {
     }
   }
 
-  private fun metersAndKeys(sheet: Sheet, p: Protocol, s: Str) {
+  private fun contract(sheet: Sheet, p: Protocol, s: Str) {
+    sheet.sectionTitle(s.contract)
+    sheet.labeledRow(
+      listOf(
+        s.monthlyRent to p.contract.monthlyRentChf,
+        s.serviceCharges to p.contract.serviceChargesChf,
+        s.noticeDate to p.contract.noticeDate,
+      )
+    )
+    sheet.labeledRow(
+      listOf(s.tenancyStart to p.contract.startDate, s.tenancyEnd to p.contract.endDate)
+    )
+  }
+
+  private fun meters(sheet: Sheet, p: Protocol, s: Str) {
     sheet.sectionTitle(s.meters)
     sheet.labeledRow(
       listOf(s.meterElec1 to p.meters.electricity1, s.meterElec2 to p.meters.electricity2, s.meterGas to p.meters.gas)
@@ -308,12 +333,17 @@ object PdfExport {
     sheet.labeledRow(
       listOf(s.meterWater to p.meters.water, s.meterHotWater to p.meters.hotWater, s.meterOil to p.meters.heatingOil)
     )
+  }
+
+  private fun keys(sheet: Sheet, p: Protocol, s: Str) {
     sheet.sectionTitle(s.keysLabel)
     val keyText = p.keys.filter { it.count > 0 }.joinToString("   ") { k ->
       val label = if (k.kind == KeyKind.Other && k.label.isNotBlank()) k.label else s.keyKind(k.kind)
       "$label: ${k.count}"
     }
     sheet.wrapped(keyText.ifBlank { "–" }, sheet.value)
+    // Older records counted a room's own door keys inside the room. Those still print,
+    // once, here rather than twice as they used to.
     val roomKeys = p.rooms.filter { it.keysCount > 0 }
     if (roomKeys.isNotEmpty()) {
       sheet.wrapped(
@@ -324,112 +354,228 @@ object PdfExport {
     if (p.selfMadeKeys) sheet.wrapped(s.selfMadeKeys, sheet.body)
   }
 
-  private fun flatExtras(sheet: Sheet, p: Protocol, s: Str) {
+  /** Everything supplied with the flat, one line each, grouped the way it was entered. */
+  private fun objects(sheet: Sheet, p: Protocol, s: Str) {
+    if (p.objects.isEmpty()) {
+      legacyExtras(sheet, p, s)
+      return
+    }
+    sheet.sectionTitle(s.objects)
+    p.objects
+      .groupBy { it.group to it.groupLabel }
+      .forEach { (heading, rows) ->
+        val (group, groupLabel) = heading
+        sheet.ensure(50f)
+        sheet.wrapped(groupLabel.ifBlank { s.objectGroup(group) }.uppercase(), sheet.label)
+        rows.forEach { entry ->
+          val detail = buildList {
+            p.rooms.firstOrNull { it.id == entry.roomId }
+              ?.let { add(it.name.ifBlank { s.room(it.kind) }) }
+            if (entry.note.isNotBlank()) add(entry.note)
+            if (entry.photos.isNotEmpty()) add("${s.photos}: ${entry.photos.size}")
+          }.joinToString(" · ")
+          sheet.wrapped(
+            entry.displayName(s) + if (detail.isNotBlank()) "   $detail" else "",
+            sheet.body,
+            MARGIN + 30f,
+            W - 2 * MARGIN - 30f,
+          )
+        }
+        sheet.gap(6f)
+      }
+  }
+
+  /** The set-of-toggles inventory older records carry, printed the way they were signed. */
+  private fun legacyExtras(sheet: Sheet, p: Protocol, s: Str) {
     val appliances = p.extras.appliances.sortedBy { it.ordinal }.map(s::appliance) + p.extras.customAppliances
     val furniture = p.extras.furniture.sortedBy { it.ordinal }.map(s::furniture) + p.extras.customFurniture
     if (appliances.isEmpty() && furniture.isEmpty()) return
-    sheet.sectionTitle(s.stepExtras)
+    sheet.sectionTitle(s.objects)
     if (appliances.isNotEmpty()) sheet.wrapped("${s.appliances}: ${appliances.joinToString(" · ")}", sheet.body)
     if (furniture.isNotEmpty()) sheet.wrapped("${s.furniture}: ${furniture.joinToString(" · ")}", sheet.body)
   }
 
+  /** The rooms the record covers, named once, so the reader knows the shape of the flat. */
   private fun rooms(sheet: Sheet, p: Protocol, s: Str) {
-    val defectMarks = p.defects.groupBy { it.roomId }
-    p.rooms.forEach { room ->
-      sheet.sectionTitle(room.name.ifBlank { s.room(room.kind) })
-
-      // Two columns of item lines: the form look, at half the paper.
-      val colWidth = (W - 2 * MARGIN - 40f) / 2f
-      val lines = room.items.map { item ->
-        val name =
-          if (item.key == ItemKey.Custom && item.label.isNotBlank()) item.label else s.item(item.key)
-        val defectNos = p.defects.withIndex()
-          .filter { (_, d) ->
-            d.roomId == room.id && d.item == item.key &&
-              (d.itemId.isBlank() || item.itemId.isBlank() || d.itemId == item.itemId)
-          }
-          .map { (i, _) -> i + 1 }
-        val state = when {
-          defectNos.isNotEmpty() -> "! " + defectNos.joinToString(",")
-          item.grade == Grade.NotChecked -> ""
-          p.style == GradeStyle.Binary -> s.grade(Grade.Ok)
-          else -> s.gradeShort(item.grade)
-        }
-        name to state
-      }
-      val rowsPerCol = (lines.size + 1) / 2
-      var i = 0
-      while (i < rowsPerCol) {
-        sheet.ensure(30f)
-        listOf(0, 1).forEach { col ->
-          val idx = i + col * rowsPerCol
-          if (idx < lines.size) {
-            val (name, state) = lines[idx]
-            val x = MARGIN + col * (colWidth + 40f)
-            sheet.canvas.drawText(sheet.ellipsize(name, sheet.body, colWidth - 130f), x, sheet.y + sheet.body.textSize, sheet.body)
-            sheet.canvas.drawText(state, x + colWidth - 110f, sheet.y + sheet.body.textSize, sheet.value)
-          }
-        }
-        sheet.y += sheet.body.textSize + 8f
-        i++
-      }
-      if (room.keysCount > 0) {
-        sheet.wrapped("${s.roomKeys}: ${room.keysCount}", sheet.small)
-      }
+    if (p.rooms.isEmpty()) return
+    sheet.sectionTitle(s.stepInspection)
+    sheet.wrapped(
+      p.rooms.joinToString(" · ") { it.name.ifBlank { s.room(it.kind) } },
+      sheet.body,
+    )
+    p.rooms.filter { it.hasLegacyGrid() }.forEach { room ->
+      sheet.ensure(60f)
+      sheet.wrapped(room.name.ifBlank { s.room(room.kind) }.uppercase(), sheet.label)
+      legacyGrid(sheet, p, s, room)
     }
   }
 
-  private fun defects(sheet: Sheet, p: Protocol, s: Str) {
+  /**
+   * The findings, by room and then by object.
+   *
+   * Each is numbered by its position in the whole record rather than within its room, so
+   * the number under a photograph in the annex names exactly one finding on exactly one
+   * page.
+   *
+   * A room with nothing recorded in it prints nothing at all. It would be easy to give it
+   * a heading and a dash, and it would be a lie: the rooms are seeded, not visited, so a
+   * dash under BALCONY would state that a balcony was inspected and found in order in a
+   * flat that has no balcony. Silence claims nothing. The rooms themselves are named once
+   * in [rooms], which is a fact the record does hold.
+   */
+  private fun findings(sheet: Sheet, p: Protocol, s: Str) {
     sheet.sectionTitle("${s.defects} (${p.defects.size})")
-    if (p.defects.isEmpty()) {
-      sheet.wrapped("–", sheet.body)
-      return
+    if (p.defects.isEmpty()) sheet.wrapped("–", sheet.body)
+    p.rooms.forEach { room ->
+      val found = Report.roomFindings(p, room.id)
+      if (found.isEmpty()) return@forEach
+      sheet.ensure(60f)
+      sheet.wrapped(room.name.ifBlank { s.room(room.kind) }.uppercase(), sheet.label)
+      found.forEach { finding(sheet, p, s, it.defect, it.number) }
+      sheet.gap(6f)
     }
-    p.defects.forEachIndexed { i, d ->
-      val room = p.rooms.firstOrNull { it.id == d.roomId }
-      sheet.ensure(80f)
-      val where = buildList {
-        room?.let { add(it.name.ifBlank { s.room(it.kind) }) }
-        defectItemLabel(p, d, s)?.let(::add)
-      }.joinToString(" · ")
-      sheet.canvas.drawText("${i + 1}.", MARGIN, sheet.y + sheet.value.textSize, sheet.value)
-      sheet.canvas.drawText(where, MARGIN + 60f, sheet.y + sheet.small.textSize + 2f, sheet.small)
-      sheet.y += sheet.small.textSize + 8f
-      sheet.wrapped(d.text.ifBlank { "–" }, sheet.body, MARGIN + 60f, W - 2 * MARGIN - 60f)
-      val meta = buildList {
-        if (d.chargedToTenant) add(s.chargedToTenant.uppercase())
-        when (d.fixBy) {
-          FixBy.Tenant -> add("${s.fixByLabel}: ${s.role(Role.Tenant)}")
-          FixBy.Landlord -> add("${s.fixByLabel}: ${s.role(Role.Landlord)}")
-          FixBy.Open -> Unit
-        }
-        if (d.fixDeadline.isNotBlank()) add("${s.fixDeadline} ${d.fixDeadline}")
-        if (d.costNote.isNotBlank()) add("${s.costNote}: ${d.costNote}")
-        if (d.photos.isNotEmpty()) add("${s.photos}: ${d.photos.size}")
-        if (d.tenantResponse != TenantResponse.NotStated) {
-          add("${s.tenantResponse}: ${s.tenantResponse(d.tenantResponse)}")
-        }
-      }
-      if (meta.isNotEmpty()) {
-        sheet.wrapped(meta.joinToString(" · "), sheet.small, MARGIN + 60f, W - 2 * MARGIN - 60f)
-      }
-      if (d.reservation.isNotBlank()) {
-        sheet.wrapped("${s.reservationLabel}: ${d.reservation}", sheet.small, MARGIN + 60f, W - 2 * MARGIN - 60f)
-      }
-      if (d.tenantComment.isNotBlank()) {
-        sheet.wrapped("${s.tenantComment}: ${d.tenantComment}", sheet.small, MARGIN + 60f, W - 2 * MARGIN - 60f)
-      }
-      sheet.gap(8f)
+
+    val onObjects = Report.objectFindings(p)
+    if (onObjects.isNotEmpty()) {
+      sheet.ensure(60f)
+      sheet.wrapped(s.objects.uppercase(), sheet.label)
+      onObjects.forEach { finding(sheet, p, s, it.defect, it.number) }
+    }
+
+    // A finding whose room is gone would otherwise vanish from the paper while still
+    // counting in the heading and carrying a caption in the annex.
+    val orphaned = Report.orphanedFindings(p)
+    if (orphaned.isNotEmpty()) {
+      sheet.ensure(60f)
+      sheet.wrapped(s.defects.uppercase(), sheet.label)
+      orphaned.forEach { finding(sheet, p, s, it.defect, it.number) }
     }
   }
 
+  /** One numbered finding: what it is about, what it says, and everything hanging on it. */
+  private fun finding(sheet: Sheet, p: Protocol, s: Str, d: Defect, number: Int) {
+    sheet.ensure(80f)
+    sheet.canvas.drawText("$number.", MARGIN, sheet.y + sheet.value.textSize, sheet.value)
+    val where = buildList {
+      if (d.objectId.isNotBlank()) {
+        p.objects.firstOrNull { it.id == d.objectId }?.let { add(it.displayName(s)) }
+      }
+      defectItemLabel(p, d, s)?.let(::add)
+    }.joinToString(" · ")
+    if (where.isNotBlank()) {
+      sheet.canvas.drawText(
+        sheet.ellipsize(where, sheet.small, W - 2 * MARGIN - 60f),
+        MARGIN + 60f,
+        sheet.y + sheet.small.textSize + 2f,
+        sheet.small,
+      )
+      sheet.y += sheet.small.textSize + 8f
+    }
+    sheet.wrapped(d.text.ifBlank { "–" }, sheet.body, MARGIN + 60f, W - 2 * MARGIN - 60f)
+    val meta = buildList {
+      if (d.chargedToTenant) add(s.chargedToTenant.uppercase())
+      when (d.fixBy) {
+        FixBy.Tenant -> add("${s.fixByLabel}: ${s.role(Role.Tenant)}")
+        FixBy.Landlord -> add("${s.fixByLabel}: ${s.role(Role.Landlord)}")
+        FixBy.Open -> Unit
+      }
+      if (d.fixDeadline.isNotBlank()) add("${s.fixDeadline} ${d.fixDeadline}")
+      if (d.costNote.isNotBlank()) add("${s.costNote}: ${d.costNote}")
+      if (d.photos.isNotEmpty()) add("${s.photos}: ${d.photos.size}")
+      if (d.tenantResponse != TenantResponse.NotStated) {
+        add("${s.tenantResponse}: ${s.tenantResponse(d.tenantResponse)}")
+      }
+    }
+    if (meta.isNotEmpty()) {
+      sheet.wrapped(meta.joinToString(" · "), sheet.small, MARGIN + 60f, W - 2 * MARGIN - 60f)
+    }
+    if (d.reservation.isNotBlank()) {
+      sheet.wrapped("${s.reservationLabel}: ${d.reservation}", sheet.small, MARGIN + 60f, W - 2 * MARGIN - 60f)
+    }
+    if (d.tenantComment.isNotBlank()) {
+      sheet.wrapped("${s.tenantComment}: ${d.tenantComment}", sheet.small, MARGIN + 60f, W - 2 * MARGIN - 60f)
+    }
+    sheet.gap(8f)
+  }
+
+  /**
+   * The exhaustive item grid, printed only for a record that was signed with one.
+   *
+   * Two columns of item lines: the form look, at half the paper. The state is ellipsized
+   * into its own gutter, because "In Ordnung" in the right-hand column used to be drawn
+   * straight through the margin.
+   */
+  private fun legacyGrid(sheet: Sheet, p: Protocol, s: Str, room: Room) {
+    val colWidth = (W - 2 * MARGIN - 40f) / 2f
+    val stateWidth = 140f
+    val lines = room.items.map { item ->
+      val name =
+        if (item.key == ItemKey.Custom && item.label.isNotBlank()) item.label else s.item(item.key)
+      val defectNos = p.defects.withIndex()
+        .filter { (_, d) ->
+          d.roomId == room.id && d.item == item.key &&
+            (d.itemId.isBlank() || item.itemId.isBlank() || d.itemId == item.itemId)
+        }
+        .map { (i, _) -> i + 1 }
+      val state = when {
+        defectNos.isNotEmpty() -> "! " + defectNos.joinToString(",")
+        item.grade == Grade.NotChecked -> ""
+        p.style == GradeStyle.Binary -> s.grade(Grade.Ok)
+        else -> s.gradeShort(item.grade)
+      }
+      name to state
+    }
+    val rowsPerCol = (lines.size + 1) / 2
+    var i = 0
+    while (i < rowsPerCol) {
+      sheet.ensure(30f)
+      listOf(0, 1).forEach { col ->
+        val idx = i + col * rowsPerCol
+        if (idx < lines.size) {
+          val (name, state) = lines[idx]
+          val x = MARGIN + col * (colWidth + 40f)
+          sheet.canvas.drawText(
+            sheet.ellipsize(name, sheet.body, colWidth - stateWidth - 20f),
+            x,
+            sheet.y + sheet.body.textSize,
+            sheet.body,
+          )
+          sheet.canvas.drawText(
+            sheet.ellipsize(state, sheet.value, stateWidth),
+            x + colWidth - stateWidth,
+            sheet.y + sheet.body.textSize,
+            sheet.value,
+          )
+        }
+      }
+      sheet.y += sheet.body.textSize + 8f
+      i++
+    }
+  }
+
+  /**
+   * The item a finding names, or null when it is about the room or the object as a whole.
+   * A finding written by this version carries its own label; older ones kept it on the
+   * room's item row, so those are still resolved through the row.
+   */
   private fun defectItemLabel(p: Protocol, defect: Defect, s: Str): String? {
     val key = defect.item ?: return null
+    if (key != ItemKey.Custom) return s.item(key)
+    if (defect.itemLabel.isNotBlank()) return defect.itemLabel
     val item = p.rooms.firstOrNull { it.id == defect.roomId }?.items?.firstOrNull {
       it.key == key &&
         (defect.itemId.isBlank() || it.itemId.isBlank() || defect.itemId == it.itemId)
     }
-    return if (item?.key == ItemKey.Custom && item.label.isNotBlank()) item.label else s.item(key)
+    return item?.label?.takeIf { it.isNotBlank() } ?: s.item(key)
+  }
+
+  /** What an object row is called: its catalogue entry when it has one, else what was typed. */
+  private fun ObjectEntry.displayName(s: Str): String = when (group) {
+    ObjectGroup.Appliance ->
+      Appliance.entries.firstOrNull { it.name == catalogue }?.let(s::appliance) ?: label
+    ObjectGroup.Furniture ->
+      Furniture.entries.firstOrNull { it.name == catalogue }?.let(s::furniture) ?: label
+    ObjectGroup.Other -> label
   }
 
   private fun remarks(sheet: Sheet, p: Protocol, s: Str) {
@@ -531,41 +677,53 @@ object PdfExport {
   }
 
 
+  /**
+   * A plate's caption. A finding is cited by the number it prints under in [findings],
+   * which is what makes the annex checkable against the body; an object is cited by name,
+   * because an object has no number to cite.
+   */
+  private fun Report.Plate.caption(s: Str): String = when (val o = owner) {
+    is Report.PlateOwner.Finding -> "${s.defects} ${o.number}"
+    is Report.PlateOwner.Supplied -> o.entry.displayName(s)
+  }
+
   private fun annex(sheet: Sheet, p: Protocol, s: Str, photoDir: File, measuring: Boolean) {
-    val withPhotos = p.defects.withIndex().filter { it.value.photos.isNotEmpty() }
-    if (withPhotos.isEmpty()) return
+    val plates = Report.plates(p)
+    if (plates.isEmpty()) return
     sheet.newPage()
     sheet.sectionTitle(s.pdfDefectAnnex)
     val cellW = (W - 2 * MARGIN - 40f) / 2f
     val cellH = 420f
     var col = 0
-    withPhotos.forEach { (index, d) ->
-      d.photos.forEach { name ->
-        val file = File(photoDir, name)
-        // The counting pass reads the dimensions only: same page breaks, no decoding.
-        val bmp = if (measuring) null else decodeDown(file, cellW.toInt())
-        if (if (measuring) readable(file) else bmp != null) {
-          if (col == 0) sheet.ensure(cellH + 50f)
-          val x = MARGIN + col * (cellW + 40f)
-          if (bmp != null) {
-            val scale = minOf(cellW / bmp.width, (cellH - 40f) / bmp.height)
-            val w = bmp.width * scale
-            val h = bmp.height * scale
-            val paint = Paint(Paint.FILTER_BITMAP_FLAG)
-            sheet.canvas.drawBitmap(bmp, null, android.graphics.RectF(x, sheet.y, x + w, sheet.y + h), paint)
-            val proof = d.photoEvidence.firstOrNull { it.file == name }?.sha256?.take(12).orEmpty()
-            val caption = buildString {
-              append("${s.defects} ${index + 1}")
-              if (proof.isNotBlank()) append(" · ").append(proof)
-            }
-            sheet.canvas.drawText(caption, x, sheet.y + h + sheet.small.textSize + 6f, sheet.small)
-            bmp.recycle()
+    plates.forEach { plate ->
+      val file = File(photoDir, plate.file)
+      // The counting pass reads the dimensions only: same page breaks, no decoding.
+      val bmp = if (measuring) null else decodeDown(file, cellW.toInt())
+      if (if (measuring) readable(file) else bmp != null) {
+        if (col == 0) sheet.ensure(cellH + 50f)
+        val x = MARGIN + col * (cellW + 40f)
+        if (bmp != null) {
+          val scale = minOf(cellW / bmp.width, (cellH - 40f) / bmp.height)
+          val w = bmp.width * scale
+          val h = bmp.height * scale
+          val paint = Paint(Paint.FILTER_BITMAP_FLAG)
+          sheet.canvas.drawBitmap(bmp, null, android.graphics.RectF(x, sheet.y, x + w, sheet.y + h), paint)
+          val caption = buildString {
+            append(plate.caption(s))
+            if (plate.sha256.isNotBlank()) append(" · ").append(plate.sha256.take(12))
           }
-          col++
-          if (col == 2) {
-            col = 0
-            sheet.y += cellH + 20f
-          }
+          sheet.canvas.drawText(
+            sheet.ellipsize(caption, sheet.small, cellW),
+            x,
+            sheet.y + h + sheet.small.textSize + 6f,
+            sheet.small,
+          )
+          bmp.recycle()
+        }
+        col++
+        if (col == 2) {
+          col = 0
+          sheet.y += cellH + 20f
         }
       }
     }
