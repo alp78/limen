@@ -9,7 +9,6 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import dev.verso.limen.data.Contract
 import dev.verso.limen.data.Defect
-import dev.verso.limen.data.DeliveryReceipt
 import dev.verso.limen.data.Deposit
 import dev.verso.limen.data.DossierCard
 import dev.verso.limen.data.ItemKey
@@ -439,7 +438,10 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     flush()
     val p = store.load(id) ?: return
     setActiveProtocol(p)
-    flowStep = if (p.isFinalized()) FlowStep.Export else FlowStep.Hub
+    // A reopened record lands on its hub whether it is signed or not. A finalized one used
+    // to open straight onto Export with every way back out of the flow, which made the
+    // signed protocol the one thing in the app nobody could go back and read.
+    flowStep = FlowStep.Hub
     openRoomId = null
     prefs.edit().putString(KEY_OPEN, id).apply()
   }
@@ -466,8 +468,12 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     protocols = store.list()
   }
 
+  /**
+   * Every place is reachable in every state. A finalized record is walked exactly like a
+   * draft and refuses every edit instead, which [edit] enforces at the one point all writes
+   * pass through. Locking the navigation as well was belt and braces that cost the reading.
+   */
   fun goTo(step: FlowStep) {
-    if (working?.isFinalized() == true && step != FlowStep.Export) return
     flowStep = step
   }
 
@@ -577,22 +583,9 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
       result.onSuccess { draft ->
         setActiveProtocol(draft)
         finalizationIssues = emptyList()
-        flowStep = FlowStep.Review
+        flowStep = FlowStep.Hub
         prefs.edit().putString(KEY_OPEN, draft.id).apply()
       }
-    }
-  }
-
-  fun setCopyDelivered(role: Role, delivered: Boolean) {
-    val p = working ?: return
-    if (!p.isFinalized()) return
-    editMetadata { current ->
-      val existing = current.deliveryReceipts.filterNot { it.role == role }
-      current.copy(
-        deliveryReceipts = if (delivered) {
-          existing + DeliveryReceipt(role = role, epochMs = System.currentTimeMillis())
-        } else existing,
-      )
     }
   }
 
@@ -603,10 +596,6 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
       // key used to strand an empty finding on the record, which now counts in a room's
       // total and blocks finalization for a defect nobody meant to write.
       closeDefect()
-      return
-    }
-    if (working?.isFinalized() == true) {
-      closeFlow()
       return
     }
     if (flowStep == FlowStep.Inspection && openRoomId != null) {
@@ -765,8 +754,8 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     editingDefectId = id
   }
 
+  /** Opens a finding. On a finalized record the editor is the reader; nothing it shows moves. */
   fun editDefect(id: String) {
-    if (working?.isFinalized() == true) return
     editingDefectId = id
   }
 

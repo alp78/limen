@@ -23,7 +23,7 @@ import java.util.Locale
  * before store release.
  */
 enum class Lang {
-  En, Fr, De, It, Rm;
+  Fr, En, De, It, Rm;
 
   companion object {
     fun default(): Lang =
@@ -164,6 +164,11 @@ class Str(val lang: Lang) {
     "Data del verbale precedente",
     "Data dal protocol precedent",
   )
+  // The shape a date is typed in, spelled in each language's own initials.
+  val dateFormat = pick("DD/MM/YYYY", "JJ/MM/AAAA", "TT/MM/JJJJ", "GG/MM/AAAA", "DD/MM/AAAA")
+  val timeFormat = pick("HH:MM", "HH:MM", "HH:MM", "HH:MM", "HH:MM")
+  val pickDate = pick("PICK A DATE", "CHOISIR UNE DATE", "DATUM WÄHLEN", "SCEGLI UNA DATA", "TSCHERNER INA DATA")
+  val pickTime = pick("PICK A TIME", "CHOISIR UNE HEURE", "UHRZEIT WÄHLEN", "SCEGLI UN'ORA", "TSCHERNER IN'URA")
   val parties = pick("Parties", "Parties", "Parteien", "Parti", "Partidas")
   val meters = pick("Meter readings", "Relevé des compteurs", "Zählerstände", "Letture dei contatori", "Posiziuns dals contaturs")
   val keysLabel = pick("Keys", "Clés", "Schlüssel", "Chiavi", "Clavs")
@@ -193,6 +198,7 @@ class Str(val lang: Lang) {
     Role.Witness -> pick("Witness", "Témoin", "Zeuge/Zeugin", "Testimone", "Perditga")
     Role.Expert -> pick("Expert", "Expert·e", "Experte/Expertin", "Perito/a", "Expert/a")
   }
+  val compiledBy = pick("Record compiled by", "Constat établi par", "Protokoll erstellt von", "Verbale redatto da", "Protocol fatg da")
   val representedBy = pick("Represented by", "Représenté·e par", "Vertreten durch", "Rappresentato/a da", "Represchentà/ada da")
   val newAddress = pick("New address", "Nouvelle adresse", "Neue Adresse", "Nuovo indirizzo", "Nova adressa")
 
@@ -623,10 +629,7 @@ class Str(val lang: Lang) {
     )
     ExportIssue.Failed -> pick("The PDF could not be created. Try again.", "Le PDF n'a pas pu être créé. Réessayez.", "Das PDF konnte nicht erstellt werden. Erneut versuchen.", "Il PDF non ha potuto essere creato. Riprovate.", "Il PDF n'ha betg pudì vegnir creà. Empruvai danovamain.")
   }
-  val copiesDelivered = pick("Identical copies delivered", "Exemplaires identiques remis", "Gleichlautende Kopien übergeben", "Copie identiche consegnate", "Copias identicas surdadas")
-  fun copyDeliveredTo(partyRole: Role) = pick(
-    "Copy handed to ${role(partyRole)}", "Exemplaire remis à ${role(partyRole)}", "Kopie an ${role(partyRole)} übergeben", "Copia consegnata a ${role(partyRole)}", "Copia surdada a ${role(partyRole)}",
-  )
+  val lockedRecord = pick("Signed, read only", "Signé, lecture seule", "Unterzeichnet, nur lesen", "Firmato, sola lettura", "Suttascrit, mo leger")
   val amendRecord = pick("CREATE AMENDMENT", "CRÉER UN AVENANT", "NACHTRAG ERSTELLEN", "CREA INTEGRAZIONE", "CREAR SUPPLEMENT")
   val amendLead = pick(
     "A correction starts a new draft linked to this final record; the original remains unchanged.",
@@ -733,6 +736,7 @@ class Str(val lang: Lang) {
   // The deadlines face.
   val keysReturnedOn = pick("Keys returned on", "Clés rendues le", "Schlüssel zurück am", "Chiavi riconsegnate il", "Clavs restituidas ils")
   val safeBy = pick("Safe if posted by", "Sûr si posté d'ici au", "Sicher, wenn aufgegeben bis", "Sicuro se spedito entro il", "Segir sche tramess fin ils")
+  val listBy = pick("List posted by", "Liste postée d'ici au", "Liste aufgegeben bis", "Lista spedita entro il", "Glista tramessa fin ils")
   val latestBy = pick("Case law's outer edge", "Limite de la jurisprudence", "Äusserste Grenze der Praxis", "Limite della giurisprudenza", "Ultim termin da la pratica")
   val clockExitTitle = pick(
     "Landlord's defect notice",
@@ -1031,6 +1035,53 @@ class Str(val lang: Lang) {
         "Eine gezeichnete Unterschrift ist eine Bestätigung in diesem Protokoll, keine qualifizierte elektronische Signatur",
         "Una firma disegnata è una conferma in questo verbale, non una firma elettronica qualificata",
         "Ina suttascripziun dissegnada è ina conferma en quest protocol, betg ina suttascripziun electronica qualifitgada",
+      ),
+    ),
+  )
+
+  /**
+   * The tips that replaced prose on the screens. Most of them carry a sentence that used to
+   * sit under a heading in small type, moved behind the mark without being rewritten: the
+   * words were right, the place was wrong.
+   */
+  fun tipStep(step: FlowStep) = Tip(stepLead(step))
+
+  fun tipAddress() = Tip(addressLookupHint)
+
+  fun tipDefect() = Tip(defectHint)
+
+  fun tipNormalWear() = Tip(normalWearNote)
+
+  fun tipFinalize() = Tip(finalizeLead)
+
+  fun tipAmend() = Tip(amendLead)
+
+  fun tipEntryNotice() = Tip(clockEntryBody)
+
+  fun tipExitNotice() = Tip(clockExitBody, tipClocks().bullets)
+
+  fun tipLocked() = Tip(
+    pick(
+      "This record is signed. Everything in it can be read; nothing in it can be changed.",
+      "Ce constat est signé. Tout s'y lit ; rien ne s'y modifie.",
+      "Dieses Protokoll ist unterzeichnet. Alles darin ist lesbar; nichts darin ist änderbar.",
+      "Questo verbale è firmato. Tutto vi si legge; nulla vi si modifica.",
+      "Quest protocol è suttascrit. Tut sa lascha leger; nagut sa lascha midar.",
+    ),
+    listOf(
+      pick(
+        "Its fingerprint was taken over exactly what it holds now",
+        "Son empreinte a été prise sur exactement ce qu'il contient",
+        "Sein Fingerabdruck wurde über genau das genommen, was es enthält",
+        "La sua impronta è stata presa su esattamente ciò che contiene",
+        "Sia impronta è vegnida prendida sur exactamain quai ch'el cuntegna",
+      ),
+      pick(
+        "A correction is an amendment: a new draft, with the original left intact",
+        "Une correction est un avenant : un nouveau brouillon, l'original restant intact",
+        "Eine Korrektur ist ein Nachtrag: ein neuer Entwurf, das Original bleibt unberührt",
+        "Una correzione è un'integrazione: una nuova bozza, l'originale resta intatto",
+        "Ina correctura è in supplement: in nov sboz, l'original resta intact",
       ),
     ),
   )

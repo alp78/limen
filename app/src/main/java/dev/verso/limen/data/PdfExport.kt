@@ -249,11 +249,14 @@ object PdfExport {
     sheet.labeledRow(
       listOf(
         s.objectDetail to p.objectDetail,
-        s.handoverDate to listOf(p.handoverDate, p.handoverTime).filter { it.isNotBlank() }.joinToString(" "),
+        s.handoverDate to listOf(SwissDate.display(p.handoverDate), p.handoverTime)
+          .filter { it.isNotBlank() }.joinToString(" "),
       )
     )
     if (p.lastProtocolDate.isNotBlank()) {
-      sheet.labeledRow(listOf("${s.protocolKind} (${s.entry.lowercase()})" to p.lastProtocolDate))
+      sheet.labeledRow(
+        listOf("${s.protocolKind} (${s.entry.lowercase()})" to SwissDate.display(p.lastProtocolDate))
+      )
     }
   }
 
@@ -271,6 +274,7 @@ object PdfExport {
     p.parties.forEach { party ->
       val detail = buildList {
         if (party.representedBy.isNotBlank()) add("${s.representedBy}: ${party.representedBy}")
+        if (party.phone.isNotBlank()) add(party.phone)
         if (party.address.isNotBlank()) add("${s.newAddress}: ${party.address}")
       }.joinToString(" · ")
       sheet.ensure(52f)
@@ -286,6 +290,21 @@ object PdfExport {
         sheet.canvas.drawText(sheet.ellipsize(detail, sheet.small, W - 2 * MARGIN - 330f), MARGIN + 330f, sheet.y + sheet.small.textSize, sheet.small)
         sheet.y += sheet.small.textSize + 10f
       }
+    }
+
+    // Who compiled the record, with the contact the session was opened under. This was
+    // collected and validated at the start of every session and then printed nowhere, which
+    // made the whole identity form a set of fields that changed no document.
+    val by = p.sessionIdentity
+    val contact = buildList {
+      by.fullName.takeIf { it.isNotBlank() }?.let(::add)
+      by.phone.takeIf { it.isNotBlank() }?.let(::add)
+      listOf(by.addressLine, by.placeLine).filter { it.isNotBlank() }
+        .takeIf { it.isNotEmpty() }?.let { add(it.joinToString(", ")) }
+    }
+    if (contact.isNotEmpty()) {
+      sheet.gap(4f)
+      sheet.wrapped("${s.compiledBy}: ${contact.joinToString(" · ")}", sheet.small)
     }
   }
 
@@ -317,11 +336,14 @@ object PdfExport {
       listOf(
         s.monthlyRent to p.contract.monthlyRentChf,
         s.serviceCharges to p.contract.serviceChargesChf,
-        s.noticeDate to p.contract.noticeDate,
+        s.noticeDate to SwissDate.display(p.contract.noticeDate),
       )
     )
     sheet.labeledRow(
-      listOf(s.tenancyStart to p.contract.startDate, s.tenancyEnd to p.contract.endDate)
+      listOf(
+        s.tenancyStart to SwissDate.display(p.contract.startDate),
+        s.tenancyEnd to SwissDate.display(p.contract.endDate),
+      )
     )
   }
 
@@ -479,7 +501,7 @@ object PdfExport {
         FixBy.Landlord -> add("${s.fixByLabel}: ${s.role(Role.Landlord)}")
         FixBy.Open -> Unit
       }
-      if (d.fixDeadline.isNotBlank()) add("${s.fixDeadline} ${d.fixDeadline}")
+      if (d.fixDeadline.isNotBlank()) add("${s.fixDeadline} ${SwissDate.display(d.fixDeadline)}")
       if (d.costNote.isNotBlank()) add("${s.costNote}: ${d.costNote}")
       if (d.photos.isNotEmpty()) add("${s.photos}: ${d.photos.size}")
       if (d.tenantResponse != TenantResponse.NotStated) {
@@ -578,6 +600,7 @@ object PdfExport {
     ObjectGroup.Other -> label
   }
 
+  /** The Notes component: free remarks and the service-charge date, when it is on the record. */
   private fun remarks(sheet: Sheet, p: Protocol, s: Str) {
     if (p.remarks.isNotBlank()) {
       sheet.sectionTitle(s.remarks)
@@ -585,18 +608,21 @@ object PdfExport {
     }
     if (p.chargesStatementBy.isNotBlank()) {
       sheet.gap(8f)
-      sheet.wrapped("${s.chargesBy} ${p.chargesStatementBy}", sheet.body)
-    }
-    if (p.oneSided) {
-      sheet.gap(8f)
-      sheet.wrapped(s.oneSided.uppercase(), sheet.section)
-      sheet.wrapped(s.infoOneSided, sheet.small)
+      sheet.wrapped("${s.chargesBy} ${SwissDate.display(p.chargesStatementBy)}", sheet.body)
     }
   }
 
   private fun signatures(sheet: Sheet, p: Protocol, s: Str, signatureDir: File) {
     // Plane 1: the record. Always printed, with its meaning above the ink.
     sheet.sectionTitle(s.signRecordTitle)
+    // A handover one party did not attend is a statement about these signatures, so it is
+    // printed here and unconditionally. It used to live under the remarks section, which
+    // meant it vanished from the paper whenever that optional component was not added.
+    if (p.oneSided) {
+      sheet.wrapped(s.oneSided.uppercase(), sheet.section)
+      sheet.wrapped(s.infoOneSided, sheet.small)
+      sheet.gap(8f)
+    }
     sheet.wrapped(s.signRecordMeaning, sheet.small)
     sheet.gap(10f)
     drawPlane(sheet, p, s, signatureDir, Plane.Record)

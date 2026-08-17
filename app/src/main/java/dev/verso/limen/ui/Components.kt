@@ -39,6 +39,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -69,6 +70,7 @@ import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
@@ -77,6 +79,7 @@ import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Remove
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
@@ -88,6 +91,16 @@ import androidx.compose.material.icons.automirrored.outlined.OpenInNew
  * print ever sits inline on a screen.
  */
 data class Tip(val lead: String, val bullets: List<String> = emptyList())
+
+/**
+ * True while a finalized record is on screen. Everything in it can be walked into and read;
+ * nothing in it can be changed, because its evidence fingerprint was computed over exactly
+ * what it holds now. The way to change a signed record is an amendment, which is a new draft.
+ *
+ * Held as a local rather than passed down: every field on every screen has to honour it, and
+ * a parameter that forty call sites can forget is a parameter that forty call sites will.
+ */
+val LocalRecordLocked = staticCompositionLocalOf { false }
 
 /**
  * The house info affordance: anything that needs explaining lives behind this, never in
@@ -354,6 +367,7 @@ private fun Color.shaded(amount: Float): Color = Color.Black.copy(alpha = amount
 /** Universal controls use the familiar Material icon instead of repeating a text label. */
 enum class ButtonGlyph {
   Add, Remove, Delete, Edit, Camera, Gallery, Back, Next, Confirm, Cancel, Clear, Share, Open,
+  Calendar, Clock,
 }
 
 fun ButtonGlyph.vector(): ImageVector = when (this) {
@@ -370,6 +384,8 @@ fun ButtonGlyph.vector(): ImageVector = when (this) {
   ButtonGlyph.Clear -> Icons.Outlined.Refresh
   ButtonGlyph.Share -> Icons.Outlined.Share
   ButtonGlyph.Open -> Icons.AutoMirrored.Outlined.OpenInNew
+  ButtonGlyph.Calendar -> Icons.Outlined.CalendarMonth
+  ButtonGlyph.Clock -> Icons.Outlined.Schedule
 }
 
 @Composable
@@ -569,33 +585,13 @@ fun LangMenu(current: Lang, onSelect: (Lang) -> Unit) {
   }
 }
 
-/**
- * The voice that walks the user through a step: one readable sentence at the top, full
- * body size, never fine print. This is instruction, not decoration, so it gets room.
- */
-@Composable
-fun StepLead(text: String) {
-  Row(
-    Modifier
-      .fillMaxWidth()
-      .background(Limen.colors.plateRaised, RoundedCornerShape(12.dp))
-      .border(1.5.dp, Limen.colors.actionOutline, RoundedCornerShape(12.dp))
-      .padding(horizontal = 16.dp, vertical = 14.dp),
-  ) {
-    Text(
-      text,
-      style = MaterialTheme.typography.bodyLarge,
-      color = Limen.colors.ink,
-    )
-  }
-}
-
 /** A row of options as pills, the house selector: languages, protocol styles, deposit kinds. */
 @Composable
 fun <T> PillRow(
   options: List<Pair<T, String>>,
   current: T,
   dense: Boolean = false,
+  enabled: Boolean = true,
   onSelect: (T) -> Unit,
 ) {
   FlowRow(
@@ -603,7 +599,7 @@ fun <T> PillRow(
     verticalArrangement = Arrangement.spacedBy(if (dense) 5.dp else 6.dp),
   ) {
     options.forEach { (value, label) ->
-      Chip(label, active = value == current, enabled = value != current) { onSelect(value) }
+      Chip(label, active = value == current, enabled = enabled && value != current) { onSelect(value) }
     }
   }
 }
@@ -618,6 +614,7 @@ fun Field(
   hint: String? = null,
   keyboardType: KeyboardType = KeyboardType.Text,
   isError: Boolean = false,
+  trailing: @Composable (() -> Unit)? = null,
   onFocusChanged: ((Boolean) -> Unit)? = null,
   onChange: (String) -> Unit,
 ) {
@@ -628,6 +625,10 @@ fun Field(
     shape = RoundedCornerShape(10.dp),
     singleLine = singleLine,
     isError = isError,
+    // A finalized record is readable everywhere and writable nowhere, and the keyboard
+    // never opening says so better than a keystroke that silently does nothing.
+    readOnly = LocalRecordLocked.current,
+    trailingIcon = trailing,
     keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
     label = { Text(label, style = MaterialTheme.typography.labelSmall) },
     placeholder = hint?.let { { Text(it, style = MaterialTheme.typography.bodyMedium, color = Limen.colors.inkDim) } },
@@ -674,9 +675,10 @@ fun Toggle(
   on: Boolean,
   modifier: Modifier = Modifier,
   dense: Boolean = false,
+  enabled: Boolean = true,
   onPress: () -> Unit,
 ) {
-  KeySurface(modifier, shape = RoundedCornerShape(10.dp), onPress = onPress) {
+  KeySurface(modifier, enabled = enabled, shape = RoundedCornerShape(10.dp), onPress = onPress) {
     Row(
       Modifier.fillMaxWidth().padding(horizontal = if (dense) 10.dp else 13.dp, vertical = if (dense) 7.dp else 9.dp),
       verticalAlignment = Alignment.CenterVertically,

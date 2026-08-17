@@ -55,6 +55,18 @@ internal fun SignStep(vm: LimenViewModel, s: Str, p: Protocol) {
         vm.requiredRecordRoles(p).forEach { role ->
           SignRow(vm, s, p, role, Plane.Record) { padTarget = role to Plane.Record }
         }
+        // Who has to sign at all. This decides the rows above, which is why it sits here
+        // rather than filed under the dossier's notes, where it was also printed only if
+        // that optional component happened to be on the record.
+        Row(verticalAlignment = Alignment.CenterVertically) {
+          Toggle(
+            s.oneSided,
+            p.oneSided,
+            Modifier.weight(1f),
+            enabled = !LocalRecordLocked.current,
+          ) { vm.edit { it.copy(oneSided = !it.oneSided) } }
+          InfoTip(s.tipOneSided())
+        }
       }
     }
 
@@ -67,9 +79,10 @@ internal fun SignStep(vm: LimenViewModel, s: Str, p: Protocol) {
     }
 
     val issues = vm.completionIssues(p)
-    Panel(label = s.finalizeRecord) {
+    // A record that is already frozen has nothing to freeze. The key stayed on screen when
+    // this step became reachable after finalization, and it did nothing when pressed.
+    if (!LocalRecordLocked.current) Panel(label = s.finalizeRecord, info = s.tipFinalize()) {
       Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(s.finalizeLead, style = MaterialTheme.typography.bodyMedium, color = Limen.colors.ink)
         if (issues.isNotEmpty()) {
           Text(s.finalizationNeeds, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
           issues.forEach { issue ->
@@ -97,7 +110,9 @@ internal fun SignStep(vm: LimenViewModel, s: Str, p: Protocol) {
     ) {
       vm.goTo(FlowStep.Export)
     }
-    BigKey(s.saveAsDraft, active = true, Modifier.fillMaxWidth()) { vm.closeFlow() }
+    if (!LocalRecordLocked.current) {
+      BigKey(s.saveAsDraft, active = true, Modifier.fillMaxWidth()) { vm.closeFlow() }
+    }
     Spacer(Modifier.height(12.dp))
   }
 
@@ -144,7 +159,9 @@ private fun SignRow(
           color = if (sealed) Limen.colors.seal else Limen.colors.inkDim,
         )
       }
-      if (sig == null || !current) {
+      if (LocalRecordLocked.current) {
+        // Nothing to offer: the ink is part of what the fingerprint covers.
+      } else if (sig == null || !current) {
         IconKey(ButtonGlyph.Edit, s.signKey, Modifier.padding(end = 6.dp), onPress = onSign)
         IconKey(
           ButtonGlyph.Cancel,
@@ -273,21 +290,6 @@ internal fun ExportStep(vm: LimenViewModel, s: Str, p: Protocol) {
       }
     }
 
-    if (p.isExported()) {
-      Panel(label = s.copiesDelivered, info = s.tipShareNow()) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-          listOf(Role.Tenant, Role.Landlord).forEach { role ->
-            val delivered = p.deliveryReceipts.any { it.role == role }
-            Toggle(
-              s.copyDeliveredTo(role),
-              delivered,
-              Modifier.fillMaxWidth(),
-            ) { vm.setCopyDelivered(role, !delivered) }
-          }
-        }
-      }
-    }
-
     // The deposit's next step, on screen as well as in the PDF.
     if (p.kind == Kind.Exit && p.deposit.kind != DepositKind.None) {
       Panel(label = s.releaseTitle) {
@@ -303,9 +305,8 @@ internal fun ExportStep(vm: LimenViewModel, s: Str, p: Protocol) {
       }
     }
 
-    Panel(label = s.amendRecord) {
+    Panel(label = s.amendRecord, info = s.tipAmend()) {
       Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(s.amendLead, style = MaterialTheme.typography.bodyMedium, color = Limen.colors.ink)
         BigKey(
           if (vm.amendmentInProgress) s.amending else s.amendRecord,
           active = !vm.amendmentInProgress,

@@ -79,7 +79,13 @@ internal fun HubStep(vm: LimenViewModel, s: Str, p: Protocol) {
       }
     }
 
-    BigKey(s.hubClose, active = true, Modifier.fillMaxWidth()) { vm.goTo(FlowStep.Review) }
+    // A signed record has nothing left to close; what it still offers is its document.
+    val locked = LocalRecordLocked.current
+    BigKey(
+      if (locked) s.stepExport.uppercase() else s.hubClose,
+      active = true,
+      Modifier.fillMaxWidth(),
+    ) { vm.goTo(if (locked) FlowStep.Export else FlowStep.Review) }
     Spacer(Modifier.height(12.dp))
   }
 }

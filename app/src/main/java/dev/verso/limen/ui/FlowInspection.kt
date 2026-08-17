@@ -58,6 +58,7 @@ internal fun InspectionStep(vm: LimenViewModel, s: Str, p: Protocol) {
 
 @Composable
 private fun RoomGrid(vm: LimenViewModel, s: Str, p: Protocol) {
+  val locked = LocalRecordLocked.current
   var addingRoom by remember { mutableStateOf(false) }
   var customName by remember { mutableStateOf("") }
 
@@ -78,15 +79,17 @@ private fun RoomGrid(vm: LimenViewModel, s: Str, p: Protocol) {
       }
     }
 
-    RoomActionKey(
-      label = s.addRoom,
-      fill = Limen.colors.positive,
-      outline = Limen.colors.positive,
-      text = Limen.colors.onPositive,
-      glyph = ButtonGlyph.Add,
-    ) { addingRoom = !addingRoom }
+    if (!locked) {
+      RoomActionKey(
+        label = s.addRoom,
+        fill = Limen.colors.positive,
+        outline = Limen.colors.positive,
+        text = Limen.colors.onPositive,
+        glyph = ButtonGlyph.Add,
+      ) { addingRoom = !addingRoom }
+    }
 
-    if (addingRoom) {
+    if (addingRoom && !locked) {
       Panel(label = s.addRoom) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
           FlowRow(
@@ -158,6 +161,7 @@ private fun RoomKey(label: String, defects: Int, onPress: () -> Unit) {
 
 @Composable
 private fun RoomDetail(vm: LimenViewModel, s: Str, p: Protocol, room: Room) {
+  val locked = LocalRecordLocked.current
   var confirmingClear by remember { mutableStateOf(false) }
   var confirmingRemove by remember { mutableStateOf(false) }
   val roomDefects = p.defects.filter { it.roomId == room.id }
@@ -191,7 +195,7 @@ private fun RoomDetail(vm: LimenViewModel, s: Str, p: Protocol, room: Room) {
       Field(s.roomName, room.name) { v -> vm.renameRoom(room.id, v) }
     }
 
-    ItemPicker(s, room.kind) { key, label -> vm.openDefect(room.id, key, label) }
+    if (!locked) ItemPicker(s, room.kind) { key, label -> vm.openDefect(room.id, key, label) }
 
     if (roomDefects.isEmpty()) {
       Text(s.roomClean, style = MaterialTheme.typography.bodyMedium, color = Limen.colors.inkDim)
@@ -200,7 +204,8 @@ private fun RoomDetail(vm: LimenViewModel, s: Str, p: Protocol, room: Room) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
           roomDefects.forEach { d ->
             key(d.id) {
-              DismissibleItemRow(onRemove = { vm.removeDefect(d.id) }) {
+              if (locked) DefectLine(vm, s, p, d)
+              else DismissibleItemRow(onRemove = { vm.removeDefect(d.id) }) {
                 DefectLine(vm, s, p, d)
               }
             }
@@ -234,7 +239,7 @@ private fun RoomDetail(vm: LimenViewModel, s: Str, p: Protocol, room: Room) {
       }
     }
 
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    if (!locked) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
       RoomActionKey(
         label = s.clearRoom,
         fill = Limen.colors.danger,

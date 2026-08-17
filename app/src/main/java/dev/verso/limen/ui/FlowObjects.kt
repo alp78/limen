@@ -45,6 +45,7 @@ import dev.verso.limen.theme.Limen
  */
 @Composable
 internal fun ObjectsStep(vm: LimenViewModel, s: Str, p: Protocol) {
+  val locked = LocalRecordLocked.current
   var addingCategory by remember { mutableStateOf(false) }
   var categoryDraft by remember { mutableStateOf("") }
   val customGroups = vm.customGroups(p)
@@ -89,15 +90,17 @@ internal fun ObjectsStep(vm: LimenViewModel, s: Str, p: Protocol) {
       }
     }
 
-    RoomActionKey(
-      label = s.addCategory,
-      fill = Limen.colors.positive,
-      outline = Limen.colors.positive,
-      text = Limen.colors.onPositive,
-      glyph = ButtonGlyph.Add,
-    ) { addingCategory = !addingCategory }
+    if (!locked) {
+      RoomActionKey(
+        label = s.addCategory,
+        fill = Limen.colors.positive,
+        outline = Limen.colors.positive,
+        text = Limen.colors.onPositive,
+        glyph = ButtonGlyph.Add,
+      ) { addingCategory = !addingCategory }
+    }
 
-    if (addingCategory) {
+    if (addingCategory && !locked) {
       Panel(label = s.addCategory) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
           Field(s.categoryName, categoryDraft) { categoryDraft = it }
@@ -116,7 +119,9 @@ internal fun ObjectsStep(vm: LimenViewModel, s: Str, p: Protocol) {
       }
     }
 
-    BigKey(s.stepDossier.uppercase(), active = true, Modifier.fillMaxWidth()) { vm.goTo(FlowStep.Dossier) }
+    BigKey(s.stepDossier.uppercase(), active = true, Modifier.fillMaxWidth()) {
+      vm.goTo(FlowStep.Dossier)
+    }
     Spacer(Modifier.height(12.dp))
   }
 }
@@ -131,10 +136,13 @@ private fun ObjectGroupPanel(
   groupLabel: String,
   catalogue: List<Pair<String, String>>,
 ) {
+  val locked = LocalRecordLocked.current
   var freeDraft by remember(groupLabel) { mutableStateOf("") }
   val rows = p.objects.filter {
     it.group == group && (group != ObjectGroup.Other || it.groupLabel == groupLabel)
   }
+  // A group nobody filled in is not part of a signed record, so it is not shown on one.
+  if (locked && rows.isEmpty()) return
 
   Panel(label = label) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -143,7 +151,7 @@ private fun ObjectGroupPanel(
       }
 
       // Pressing a catalogue key appends: the same key twice records two of the thing.
-      if (catalogue.isNotEmpty()) {
+      if (catalogue.isNotEmpty() && !locked) {
         FlowRow(
           horizontalArrangement = Arrangement.spacedBy(6.dp),
           verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -156,11 +164,13 @@ private fun ObjectGroupPanel(
         }
       }
 
-      Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Field(s.addObject, freeDraft, Modifier.weight(1f)) { freeDraft = it }
-        SmallKey(s.add, enabled = freeDraft.trim().isNotEmpty()) {
-          vm.addObject(group, label = freeDraft.trim(), groupLabel = groupLabel)
-          freeDraft = ""
+      if (!locked) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+          Field(s.addObject, freeDraft, Modifier.weight(1f)) { freeDraft = it }
+          SmallKey(s.add, enabled = freeDraft.trim().isNotEmpty()) {
+            vm.addObject(group, label = freeDraft.trim(), groupLabel = groupLabel)
+            freeDraft = ""
+          }
         }
       }
     }
@@ -170,6 +180,7 @@ private fun ObjectGroupPanel(
 /** One supplied thing: what it is, what it looks like today, and any finding about it. */
 @Composable
 private fun ObjectRow(vm: LimenViewModel, s: Str, p: Protocol, entry: ObjectEntry) {
+  val locked = LocalRecordLocked.current
   val intake = rememberPhotoIntake(s) { file, source -> vm.attachObjectPhoto(entry.id, file, source) }
   val defect = p.defects.firstOrNull { it.objectId == entry.id }
   val flagged = defect != null
@@ -195,22 +206,28 @@ private fun ObjectRow(vm: LimenViewModel, s: Str, p: Protocol, entry: ObjectEntr
           ?: s.wholeFlat
         Text(where, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
       }
-      IconKey(ButtonGlyph.Camera, s.photo, onPress = intake.takePhoto)
-      Spacer(Modifier.width(6.dp))
-      IconKey(ButtonGlyph.Gallery, s.gallery, onPress = intake.pickPhoto)
-      Spacer(Modifier.width(6.dp))
-      IconKey(
-        ButtonGlyph.Add,
-        s.addDefect,
-        fillColor = if (flagged) Limen.colors.warning else null,
-        outlineColor = if (flagged) Limen.colors.warningOutline else null,
-        tint = if (flagged) Limen.colors.warningOutline else null,
-      ) {
-        if (defect != null) vm.editDefect(defect.id) else vm.openObjectDefect(entry.id)
+      if (!locked) {
+        IconKey(ButtonGlyph.Camera, s.photo, onPress = intake.takePhoto)
+        Spacer(Modifier.width(6.dp))
+        IconKey(ButtonGlyph.Gallery, s.gallery, onPress = intake.pickPhoto)
+        Spacer(Modifier.width(6.dp))
       }
-      Spacer(Modifier.width(6.dp))
-      IconKey(ButtonGlyph.Delete, s.delete, destructive = true, tick = Tick.Reject) {
-        vm.removeObject(entry.id)
+      if (!locked || flagged) {
+        IconKey(
+          ButtonGlyph.Add,
+          s.addDefect,
+          fillColor = if (flagged) Limen.colors.warning else null,
+          outlineColor = if (flagged) Limen.colors.warningOutline else null,
+          tint = if (flagged) Limen.colors.warningOutline else null,
+        ) {
+          if (defect != null) vm.editDefect(defect.id) else vm.openObjectDefect(entry.id)
+        }
+      }
+      if (!locked) {
+        Spacer(Modifier.width(6.dp))
+        IconKey(ButtonGlyph.Delete, s.delete, destructive = true, tick = Tick.Reject) {
+          vm.removeObject(entry.id)
+        }
       }
     }
 
@@ -238,7 +255,7 @@ private fun ObjectRow(vm: LimenViewModel, s: Str, p: Protocol, entry: ObjectEntr
 
     // Which room it stands in, when that matters. Blank is the honest default: most of what
     // is supplied belongs to the flat rather than to one of its rooms.
-    if (p.rooms.isNotEmpty()) {
+    if (p.rooms.isNotEmpty() && !locked) {
       Row(
         Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(5.dp),

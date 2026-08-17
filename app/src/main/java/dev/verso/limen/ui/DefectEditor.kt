@@ -36,6 +36,7 @@ import dev.verso.limen.theme.Limen
 @Composable
 fun DefectEditor(vm: LimenViewModel, s: Str, p: Protocol, defectId: String) {
   val d = p.defects.firstOrNull { it.id == defectId } ?: return
+  val locked = LocalRecordLocked.current
   val intake = rememberPhotoIntake(s) { file, source -> vm.attachPhoto(defectId, file, source) }
 
   BackHandler { vm.closeDefect() }
@@ -63,17 +64,17 @@ fun DefectEditor(vm: LimenViewModel, s: Str, p: Protocol, defectId: String) {
         }
       }
 
-      Panel(label = s.defects, warning = true) {
+      Panel(label = s.defects, info = s.tipDefect(), warning = true) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-          Field(s.defectText, d.text, singleLine = false, hint = s.defectHint) { v ->
+          Field(s.defectText, d.text, singleLine = false) { v ->
             vm.updateDefect(defectId) { it.copy(text = v) }
           }
         }
       }
 
-      Panel(label = s.photos) {
+      if (!locked || d.photos.isNotEmpty()) Panel(label = s.photos) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-          Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+          if (!locked) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             IconKey(ButtonGlyph.Camera, s.photo, Modifier.weight(1f), onPress = intake.takePhoto)
             IconKey(ButtonGlyph.Gallery, s.gallery, Modifier.weight(1f), onPress = intake.pickPhoto)
           }
@@ -91,12 +92,13 @@ fun DefectEditor(vm: LimenViewModel, s: Str, p: Protocol, defectId: String) {
       }
 
       if (p.kind == Kind.Exit) {
-        Panel(label = s.tenantResponse) {
+        Panel(label = s.tenantResponse, info = s.tipNormalWear()) {
           Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             PillRow(
               TenantResponse.entries.map { it to s.tenantResponse(it) },
               d.tenantResponse,
               dense = true,
+              enabled = !locked,
             ) { response ->
               vm.updateDefect(defectId) {
                 it.copy(
@@ -108,13 +110,12 @@ fun DefectEditor(vm: LimenViewModel, s: Str, p: Protocol, defectId: String) {
             Field(s.tenantComment, d.tenantComment, singleLine = false) { value ->
               vm.updateDefect(defectId) { it.copy(tenantComment = value) }
             }
-            Text(s.normalWearNote, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
           }
         }
 
         if (d.tenantResponse != TenantResponse.NormalWear) Panel(label = s.chargedToTenant, info = s.tipCharged()) {
           Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Toggle(s.chargedToTenant, d.chargedToTenant, Modifier.fillMaxWidth()) {
+            Toggle(s.chargedToTenant, d.chargedToTenant, Modifier.fillMaxWidth(), enabled = !locked) {
               vm.updateDefect(defectId) { it.copy(chargedToTenant = !it.chargedToTenant) }
             }
             Text(s.fixByLabel, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
@@ -126,9 +127,10 @@ fun DefectEditor(vm: LimenViewModel, s: Str, p: Protocol, defectId: String) {
               ),
               d.fixBy,
               dense = true,
+              enabled = !locked,
             ) { f -> vm.updateDefect(defectId) { it.copy(fixBy = f) } }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-              Field(s.fixDeadline, d.fixDeadline, Modifier.weight(1f)) { v ->
+              DateField(s.fixDeadline, d.fixDeadline, s, Modifier.weight(1f)) { v ->
                 vm.updateDefect(defectId) { it.copy(fixDeadline = v) }
               }
               Field(s.costNote, d.costNote, Modifier.weight(1.4f)) { v ->
@@ -152,7 +154,7 @@ fun DefectEditor(vm: LimenViewModel, s: Str, p: Protocol, defectId: String) {
       }
 
       Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        IconKey(
+        if (!locked) IconKey(
           ButtonGlyph.Delete,
           s.delete,
           Modifier.weight(1f),

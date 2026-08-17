@@ -40,6 +40,7 @@ import dev.verso.limen.data.Protocol
 import dev.verso.limen.data.Role
 import dev.verso.limen.data.SwissAddressCandidate
 import dev.verso.limen.data.SwissAddressLookup
+import dev.verso.limen.data.SwissDate
 import dev.verso.limen.data.dossierCards
 import dev.verso.limen.sense.Clocks
 import dev.verso.limen.theme.Limen
@@ -58,6 +59,7 @@ import java.time.LocalDate
 @Composable
 internal fun DossierStep(vm: LimenViewModel, s: Str, p: Protocol) {
   val cards = p.dossierCards()
+  val locked = LocalRecordLocked.current
   var removing by remember { mutableStateOf<DossierCard?>(null) }
 
   Column(
@@ -81,7 +83,7 @@ internal fun DossierStep(vm: LimenViewModel, s: Str, p: Protocol) {
     }
 
     val absent = DossierCard.entries.filterNot { it in cards }
-    if (absent.isNotEmpty()) {
+    if (absent.isNotEmpty() && !locked) {
       Panel(label = s.addComponent) {
         FlowRow(
           horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -94,7 +96,11 @@ internal fun DossierStep(vm: LimenViewModel, s: Str, p: Protocol) {
       }
     }
 
-    BigKey(s.hubClose, active = true, Modifier.fillMaxWidth()) { vm.goTo(FlowStep.Review) }
+    BigKey(
+      if (locked) s.stepExport.uppercase() else s.hubClose,
+      active = true,
+      Modifier.fillMaxWidth(),
+    ) { vm.goTo(if (locked) FlowStep.Export else FlowStep.Review) }
     Spacer(Modifier.height(12.dp))
   }
 
@@ -118,6 +124,7 @@ internal fun DossierStep(vm: LimenViewModel, s: Str, p: Protocol) {
  */
 @Composable
 private fun CardHeader(s: Str, onRemove: () -> Unit) {
+  if (LocalRecordLocked.current) return
   Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
     IconKey(ButtonGlyph.Delete, s.delete, destructive = true, onPress = onRemove)
   }
@@ -157,17 +164,9 @@ private fun ObjectCard(vm: LimenViewModel, s: Str, p: Protocol) {
     vm.edit(transform)
   }
 
-  Panel(label = s.objectLabel) {
+  Panel(label = s.objectLabel, info = s.tipAddress()) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-      Field(
-        s.address,
-        p.address,
-        hint = s.addressLookupHint,
-        onFocusChanged = { setFocused("address", it) },
-      ) { value -> editAddress { it.copy(address = value) } }
-      Field(s.place, p.place, onFocusChanged = { setFocused("place", it) }) { value ->
-        editAddress { it.copy(place = value) }
-      }
+      // Above the fields they fill: below them, the keyboard covered the answer.
       if (anyFocus && !verified && searching) {
         Text(s.addressSearching, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
       }
@@ -185,57 +184,68 @@ private fun ObjectCard(vm: LimenViewModel, s: Str, p: Protocol) {
           verified = true
         }
       }
-      Field(s.objectDetail, p.objectDetail) { v -> vm.edit { it.copy(objectDetail = v) } }
-      Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Field(s.handoverDate, p.handoverDate, Modifier.weight(1.4f)) { v ->
-          vm.edit { it.copy(handoverDate = v) }
-        }
-        Field(s.handoverTime, p.handoverTime, Modifier.weight(1f)) { v ->
-          vm.edit { it.copy(handoverTime = v) }
-        }
+      Field(
+        s.address,
+        p.address,
+        onFocusChanged = { setFocused("address", it) },
+      ) { value -> editAddress { it.copy(address = value) } }
+      Field(s.place, p.place, onFocusChanged = { setFocused("place", it) }) { value ->
+        editAddress { it.copy(place = value) }
       }
-      Field(s.lastProtocol, p.lastProtocolDate) { v -> vm.edit { it.copy(lastProtocolDate = v) } }
+      Field(s.objectDetail, p.objectDetail) { v -> vm.edit { it.copy(objectDetail = v) } }
+      DateAndTimeRow(
+        dateLabel = s.handoverDate,
+        date = p.handoverDate,
+        timeLabel = s.handoverTime,
+        time = p.handoverTime,
+        s = s,
+        onDate = { v -> vm.edit { it.copy(handoverDate = v) } },
+        onTime = { v -> vm.edit { it.copy(handoverTime = v) } },
+      )
+      DateField(s.lastProtocol, p.lastProtocolDate, s) { v ->
+        vm.edit { it.copy(lastProtocolDate = v) }
+      }
     }
   }
 }
 
-/** Legal timing is shown where the handover date is entered, not as a detached utility. */
+/**
+ * Legal timing is shown where the handover date is entered, not as a detached utility.
+ *
+ * Both kinds used to state their deadline as a paragraph. Both now state it as the date
+ * itself, computed from the handover, with the reasoning and the article behind the mark.
+ * A date is what a person acts on; the paragraph is what they read once.
+ */
 @Composable
 private fun HandoverDeadline(p: Protocol, s: Str) {
+  val handover = SwissDate.parse(p.handoverDate) ?: return
+
   if (p.kind == Kind.Entry) {
-    Panel(label = s.clockEntryTitle) {
-      Text(s.clockEntryBody, style = MaterialTheme.typography.bodyMedium, color = Limen.colors.ink)
+    Panel(label = s.clockEntryTitle, info = s.tipEntryNotice()) {
+      Deadline(s.listBy, Clocks.entryListBy(handover))
     }
     return
   }
 
-  Panel(label = s.clockExitTitle, info = s.tipClocks()) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-      Text(s.clockExitBody, style = MaterialTheme.typography.bodyMedium, color = Limen.colors.ink)
-      val returned = runCatching { LocalDate.parse(p.handoverDate) }.getOrNull()
-      if (returned != null) {
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-          Column(Modifier.weight(1f)) {
-            Text(s.safeBy, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
-            Text(
-              Clocks.exitNoticeSafeBy(returned).toString(),
-              fontFamily = FontFamily.Monospace,
-              fontSize = 22.sp,
-              color = Limen.colors.ink,
-            )
-          }
-          Column(Modifier.weight(1f)) {
-            Text(s.latestBy, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
-            Text(
-              Clocks.exitNoticeLatest(returned).toString(),
-              fontFamily = FontFamily.Monospace,
-              fontSize = 22.sp,
-              color = Limen.colors.ink,
-            )
-          }
-        }
-      }
+  Panel(label = s.clockExitTitle, info = s.tipExitNotice()) {
+    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+      Box(Modifier.weight(1f)) { Deadline(s.safeBy, Clocks.exitNoticeSafeBy(handover)) }
+      Box(Modifier.weight(1f)) { Deadline(s.latestBy, Clocks.exitNoticeLatest(handover)) }
     }
+  }
+}
+
+/** One computed date, read the way it is written on a form. */
+@Composable
+private fun Deadline(label: String, date: LocalDate) {
+  Column {
+    Text(label, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
+    Text(
+      SwissDate.display(date.toString()),
+      fontFamily = FontFamily.Monospace,
+      fontSize = 22.sp,
+      color = Limen.colors.ink,
+    )
   }
 }
 
@@ -251,11 +261,13 @@ private fun PartiesCard(vm: LimenViewModel, s: Str, p: Protocol) {
         if (i < 2) PartyBlock(vm, s, p, i, party)
         else Revealed(party.role) { PartyBlock(vm, s, p, i, party) }
       }
-      Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        listOf(Role.Witness, Role.Expert, Role.NextTenant).forEach { role ->
-          if (p.parties.none { it.role == role }) {
-            SmallKey("+ ${s.role(role)}", Modifier.weight(1f)) {
-              vm.edit { it.copy(parties = it.parties + Party(role)) }
+      if (!LocalRecordLocked.current) {
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+          listOf(Role.Witness, Role.Expert, Role.NextTenant).forEach { role ->
+            if (p.parties.none { it.role == role }) {
+              SmallKey("+ ${s.role(role)}", Modifier.weight(1f)) {
+                vm.edit { it.copy(parties = it.parties + Party(role)) }
+              }
             }
           }
         }
@@ -274,7 +286,8 @@ private fun PartyBlock(vm: LimenViewModel, s: Str, p: Protocol, index: Int, part
         color = Limen.colors.inkDim,
         modifier = Modifier.weight(1f),
       )
-      if (party.role == Role.Witness || party.role == Role.Expert || party.role == Role.NextTenant) {
+      val removable = party.role == Role.Witness || party.role == Role.Expert || party.role == Role.NextTenant
+      if (removable && !LocalRecordLocked.current) {
         IconKey(ButtonGlyph.Delete, s.delete, destructive = true) {
           vm.edit { it.copy(parties = it.parties.filterIndexed { j, _ -> j != index }) }
         }
@@ -312,14 +325,14 @@ private fun ContractCard(vm: LimenViewModel, s: Str, p: Protocol, onRemove: () -
         }
       }
       Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Field(s.tenancyStart, p.contract.startDate, Modifier.weight(1f)) { v ->
+        DateField(s.tenancyStart, p.contract.startDate, s, Modifier.weight(1f)) { v ->
           vm.edit { it.copy(contract = it.contract.copy(startDate = v)) }
         }
-        Field(s.tenancyEnd, p.contract.endDate, Modifier.weight(1f)) { v ->
+        DateField(s.tenancyEnd, p.contract.endDate, s, Modifier.weight(1f)) { v ->
           vm.edit { it.copy(contract = it.contract.copy(endDate = v)) }
         }
       }
-      Field(s.noticeDate, p.contract.noticeDate) { v ->
+      DateField(s.noticeDate, p.contract.noticeDate, s) { v ->
         vm.edit { it.copy(contract = it.contract.copy(noticeDate = v)) }
       }
     }
@@ -331,9 +344,11 @@ private fun DepositCard(vm: LimenViewModel, s: Str, p: Protocol, onRemove: () ->
   Panel(label = s.deposit, info = s.tipDeposit()) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
       CardHeader(s, onRemove)
-      PillRow(DepositKind.entries.map { it to s.depositKind(it) }, p.deposit.kind) { k ->
-        vm.edit { it.copy(deposit = it.deposit.copy(kind = k)) }
-      }
+      PillRow(
+        DepositKind.entries.map { it to s.depositKind(it) },
+        p.deposit.kind,
+        enabled = !LocalRecordLocked.current,
+      ) { k -> vm.edit { it.copy(deposit = it.deposit.copy(kind = k)) } }
       // Whichever road the pill above chose, its fields arrive under the highlight.
       if (p.deposit.kind != DepositKind.None) {
         Revealed(p.deposit.kind) {
@@ -424,6 +439,7 @@ private fun MetersCard(vm: LimenViewModel, s: Str, p: Protocol, onRemove: () -> 
 
 @Composable
 private fun KeysCard(vm: LimenViewModel, s: Str, p: Protocol, onRemove: () -> Unit) {
+  val locked = LocalRecordLocked.current
   var adding by remember { mutableStateOf(false) }
   var otherLabel by remember { mutableStateOf("") }
 
@@ -439,20 +455,29 @@ private fun KeysCard(vm: LimenViewModel, s: Str, p: Protocol, onRemove: () -> Un
               color = Limen.colors.ink,
             )
           }
-          Stepper(key.count) { c ->
-            vm.edit {
-              it.copy(keys = it.keys.mapIndexed { j, k -> if (j == i) k.copy(count = c) else k })
+          if (locked) {
+            Text(
+              key.count.toString(),
+              fontFamily = FontFamily.Monospace,
+              fontSize = 17.sp,
+              color = Limen.colors.ink,
+            )
+          } else {
+            Stepper(key.count) { c ->
+              vm.edit {
+                it.copy(keys = it.keys.mapIndexed { j, k -> if (j == i) k.copy(count = c) else k })
+              }
             }
-          }
-          Spacer(Modifier.width(6.dp))
-          IconKey(ButtonGlyph.Delete, s.delete, destructive = true) {
-            vm.edit { it.copy(keys = it.keys.filterIndexed { j, _ -> j != i }) }
+            Spacer(Modifier.width(6.dp))
+            IconKey(ButtonGlyph.Delete, s.delete, destructive = true) {
+              vm.edit { it.copy(keys = it.keys.filterIndexed { j, _ -> j != i }) }
+            }
           }
         }
       }
 
-      SmallKey(s.addKeyKind, Modifier.fillMaxWidth()) { adding = !adding }
-      if (adding) {
+      if (!locked) SmallKey(s.addKeyKind, Modifier.fillMaxWidth()) { adding = !adding }
+      if (adding && !locked) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
           FlowRow(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -477,7 +502,7 @@ private fun KeysCard(vm: LimenViewModel, s: Str, p: Protocol, onRemove: () -> Un
         }
       }
 
-      Toggle(s.selfMadeKeys, p.selfMadeKeys, Modifier.fillMaxWidth()) {
+      Toggle(s.selfMadeKeys, p.selfMadeKeys, Modifier.fillMaxWidth(), enabled = !locked) {
         vm.edit { it.copy(selfMadeKeys = !it.selfMadeKeys) }
       }
     }
@@ -490,12 +515,9 @@ private fun NotesCard(vm: LimenViewModel, s: Str, p: Protocol, onRemove: () -> U
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
       CardHeader(s, onRemove)
       Field(s.remarks, p.remarks, singleLine = false) { v -> vm.edit { it.copy(remarks = v) } }
-      Field(s.chargesBy, p.chargesStatementBy) { v -> vm.edit { it.copy(chargesStatementBy = v) } }
-      Row(verticalAlignment = Alignment.CenterVertically) {
-        Toggle(s.oneSided, p.oneSided, Modifier.weight(1f)) {
-          vm.edit { it.copy(oneSided = !it.oneSided) }
-        }
-        InfoTip(s.tipOneSided())
+      // A date, and now typed as one: the label has always said "by", in every language.
+      DateField(s.chargesBy, p.chargesStatementBy, s) { v ->
+        vm.edit { it.copy(chargesStatementBy = v) }
       }
     }
   }

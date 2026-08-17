@@ -188,6 +188,13 @@ fun NewSessionScreen(
             }
             Text(s.foreignAddressHint, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
           }
+          // The suggestions sit ABOVE the fields they fill. Below them they were the first
+          // thing the keyboard covered, which made the official lookup look like it had
+          // returned nothing at exactly the moment it had returned everything.
+          if (usesSwissAddress && addressFieldsFocused && addressSearching) {
+            Text(s.addressSearching, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
+          }
+          if (usesSwissAddress && addressFieldsFocused) AddressMatches(addressMatches, ::selectAddress)
           Field(
             s.street,
             street,
@@ -218,10 +225,6 @@ fun NewSessionScreen(
               onFocusChanged = { setAddressFieldFocused("city", it) },
             ) { changeAddress { city = it } }
           }
-          if (usesSwissAddress && addressFieldsFocused && addressSearching) {
-            Text(s.addressSearching, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
-          }
-          if (usesSwissAddress && addressFieldsFocused) AddressMatches(addressMatches, ::selectAddress)
           CountryDropDown(
             label = s.phoneCountry,
             selectedLabel = phoneCountry.label(),

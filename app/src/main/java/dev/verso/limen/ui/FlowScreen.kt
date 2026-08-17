@@ -26,6 +26,7 @@ import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -56,33 +57,44 @@ import dev.verso.limen.theme.Limen
 @Composable
 fun FlowScreen(modifier: Modifier = Modifier, vm: LimenViewModel, s: Str) {
   val p = vm.working ?: return
-  Box(modifier.fillMaxSize()) {
-    Column(Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
-      FlowMast(vm, s, p)
-      Spacer(Modifier.height(8.dp))
-      // The place's one instruction, at reading size, before any control.
-      StepLead(s.stepLead(vm.flowStep))
-      Spacer(Modifier.height(8.dp))
-      when (vm.flowStep) {
-        FlowStep.Hub -> HubStep(vm, s, p)
-        FlowStep.Inspection -> InspectionStep(vm, s, p)
-        FlowStep.Objects -> ObjectsStep(vm, s, p)
-        FlowStep.Dossier -> DossierStep(vm, s, p)
-        FlowStep.Review -> ReviewStep(vm, s, p)
-        FlowStep.Sign -> SignStep(vm, s, p)
-        FlowStep.Export -> ExportStep(vm, s, p)
+  val locked = p.isFinalized()
+  CompositionLocalProvider(LocalRecordLocked provides locked) {
+    Box(modifier.fillMaxSize()) {
+      Column(Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
+        FlowMast(vm, s, p)
+        Spacer(Modifier.height(8.dp))
+        // Export carries the amendment door in full, with the sentence that explains it.
+        if (locked && vm.flowStep != FlowStep.Export) {
+          SealBar(vm, s)
+          Spacer(Modifier.height(8.dp))
+        }
+        when (vm.flowStep) {
+          FlowStep.Hub -> HubStep(vm, s, p)
+          FlowStep.Inspection -> InspectionStep(vm, s, p)
+          FlowStep.Objects -> ObjectsStep(vm, s, p)
+          FlowStep.Dossier -> DossierStep(vm, s, p)
+          FlowStep.Review -> ReviewStep(vm, s, p)
+          FlowStep.Sign -> SignStep(vm, s, p)
+          FlowStep.Export -> ExportStep(vm, s, p)
+        }
       }
-    }
-    if (vm.editingDefectId != null) {
-      DefectEditor(vm, s, p, vm.editingDefectId!!)
-    }
-    if (vm.showDepositCompare) {
-      DepositCompareOverlay(vm, s)
+      if (vm.editingDefectId != null) {
+        DefectEditor(vm, s, p, vm.editingDefectId!!)
+      }
+      if (vm.showDepositCompare) {
+        DepositCompareOverlay(vm, s)
+      }
     }
   }
 }
 
-/** The flow's own masthead: the way out, where you are, the theme. */
+/**
+ * The flow's own masthead: the way out, where you are, what this place is for, the theme.
+ *
+ * The step's instruction lives behind the mark rather than in a paragraph over the controls.
+ * It is read once, by the person who needs it, and it stops costing everyone else the top
+ * fifth of every screen.
+ */
 @Composable
 private fun FlowMast(vm: LimenViewModel, s: Str, p: Protocol) {
   Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -103,7 +115,34 @@ private fun FlowMast(vm: LimenViewModel, s: Str, p: Protocol) {
         color = Limen.colors.inkDim,
       )
     }
+    InfoTip(s.tipStep(vm.flowStep))
     ThemeToggle(vm.darkTheme, vm::toggleTheme)
+  }
+}
+
+/** Says why nothing on this screen moves, and offers the one thing that does. */
+@Composable
+private fun SealBar(vm: LimenViewModel, s: Str) {
+  Row(
+    Modifier
+      .fillMaxWidth()
+      .clip(RoundedCornerShape(10.dp))
+      .background(Limen.colors.plateRaised)
+      .padding(start = 14.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    Text(
+      s.lockedRecord.uppercase(),
+      fontFamily = FontFamily.Monospace,
+      fontSize = 12.sp,
+      color = Limen.colors.seal,
+      modifier = Modifier.weight(1f),
+    )
+    InfoTip(s.tipLocked())
+    // Named for where it goes, not for what is done there. Amending is a deliberate act
+    // with its own key on that step; a one-tap amendment on every screen would make a
+    // stray thumb start a second record.
+    SmallKey(s.stepExport.uppercase()) { vm.goTo(FlowStep.Export) }
   }
 }
 
@@ -338,21 +377,9 @@ private fun ReviewStep(vm: LimenViewModel, s: Str, p: Protocol) {
       }
     }
 
-    Panel(label = s.remarks) {
-      Field(s.remarks, p.remarks, singleLine = false) { v -> vm.edit { it.copy(remarks = v) } }
-    }
-
-    Panel(label = s.chargesBy) {
-      Field(s.chargesBy, p.chargesStatementBy) { v -> vm.edit { it.copy(chargesStatementBy = v) } }
-    }
-
-    Row(verticalAlignment = Alignment.CenterVertically) {
-      Toggle(s.oneSided, p.oneSided, Modifier.weight(1f)) {
-        vm.edit { it.copy(oneSided = !it.oneSided) }
-      }
-      InfoTip(s.tipOneSided())
-    }
-
+    // Remarks and the service-charge date used to be repeated here as well as in the
+    // dossier's Notes component. They print only when that component is on the record, so
+    // the copy on this screen wrote into fields the PDF then left out.
     BigKey(s.stepSign.uppercase(), active = true, Modifier.fillMaxWidth()) { vm.goTo(FlowStep.Sign) }
     Spacer(Modifier.height(12.dp))
   }

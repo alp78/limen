@@ -137,6 +137,9 @@ fun PhotoThumb(vm: LimenViewModel, s: Str, name: String, size: Int = 84, onRemov
       contentScale = ContentScale.Crop,
       modifier = frame,
     )
+    // On a finalized record the photograph is evidence the fingerprint covers, so the
+    // square is a picture and nothing else.
+    if (LocalRecordLocked.current) return@Box
     KeySurface(
       modifier = Modifier.align(Alignment.TopEnd).padding(3.dp).size(30.dp),
       shape = RoundedCornerShape(8.dp),
