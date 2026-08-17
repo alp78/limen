@@ -174,7 +174,7 @@ class Str(val lang: Lang) {
   val keysLabel = pick("Keys", "Clés", "Schlüssel", "Chiavi", "Clavs")
   val selfMadeKeys = pick(
     "Copies had been made by the tenant",
-    "Le locataire a fait faire des copies",
+    "Le locataire a fait faire des doubles",
     "Mieterseits wurden Kopien angefertigt",
     "Il conduttore ha fatto fare delle copie",
     "Il locatari ha fatg far copias",
@@ -523,8 +523,8 @@ class Str(val lang: Lang) {
     "Nobody on the other side of the threshold: document everything with dated photos, have a neutral witness sign the record, and send the keys by registered mail. The proof of delivery completes the return.",
     "Personne de l'autre côté du seuil : documentez tout par photos datées, faites signer le constat par un témoin neutre et envoyez les clés en recommandé. La preuve de remise achève la restitution.",
     "Niemand auf der anderen Seite: alles mit datierten Fotos festhalten, eine neutrale Zeugin den Befund unterschreiben lassen und die Schlüssel eingeschrieben senden. Der Zustellnachweis vollendet die Rückgabe.",
-    "Nessuno dall'altra parte: documentate tutto con foto datate, fate firmare il rilievo a un testimone neutrale e spedite le chiavi per raccomandata. La prova di consegna completa la riconsegna.",
-    "Nagin da l'autra vart: documentai tut cun fotos datadas, laschai suttascriver il protocol d'ina perditga neutrala e trametti las clavs cun brev recumandada.",
+    "Nessuno dall'altra parte: documentate tutto con foto datate, fate firmare il verbale a un testimone neutrale e spedite le chiavi per raccomandata. La prova di consegna completa la riconsegna.",
+    "Nagin da l'autra vart: documentai tut cun fotos datadas, laschai suttascriver il protocol d'ina perditga neutrala e trametti las clavs cun brev recumandada. La cumprova da la consegna cumpletta la restituziun.",
   )
 
 
@@ -568,7 +568,7 @@ class Str(val lang: Lang) {
   )
   val signCostsWarning = pick(
     "This second signature is a debt acknowledgment for the charged defects. It is optional, it may be refused, and it should only be given when the duty to pay is beyond doubt. For larger amounts, sign subject to a cost estimate, or involve the liability insurer first.",
-    "Cette seconde signature vaut reconnaissance de dette pour les défauts imputés. Elle est facultative, elle peut être refusée, et ne devrait être donnée que si l'obligation de payer est indubitable. Pour les montants importants, signez sous réserve d'un devis, ou passez d'abord par l'assurance RC.",
+    "Cette seconde signature vaut reconnaissance de dette pour les défauts imputés. Elle est facultative, elle peut être refusée, et ne devrait être donnée que si l'obligation de payer est incontestable. Pour les montants importants, signez sous réserve d'un devis, ou passez d'abord par l'assurance RC.",
     "Diese zweite Unterschrift ist eine Schuldanerkennung für die angelasteten Mängel. Sie ist freiwillig, sie darf verweigert werden, und sie gehört nur dorthin, wo die Zahlungspflicht ausser Zweifel steht. Bei grösseren Beträgen mit Vorbehalt eines Kostenvoranschlags unterschreiben oder zuerst die Haftpflichtversicherung beiziehen.",
     "Questa seconda firma vale riconoscimento di debito per i difetti imputati. È facoltativa, può essere rifiutata, e va data solo quando l'obbligo di pagare è fuori dubbio. Per importi rilevanti, firmate con riserva di un preventivo o coinvolgete prima l'assicurazione RC.",
     "Questa segunda suttascripziun vala sco renconuschientscha da debit per las mancanzas messas a quint. Ella è facultativa e po vegnir refusada.",
@@ -599,7 +599,7 @@ class Str(val lang: Lang) {
     "Il protocol n'ha betg pudì vegnir finalisà. Tegnai il sboz e empruvai danovamain.",
   )
   fun finalizationIssue(issue: FinalizationIssue) = when (issue) {
-    FinalizationIssue.Address -> pick("Add the street and number", "Indiquez la rue et le numéro", "Strasse und Nummer ergänzen", "Indicate via e numero", "Agiuntai via e numer")
+    FinalizationIssue.Address -> pick("Add the street and number", "Indiquez la rue et le numéro", "Strasse und Nummer ergänzen", "Indicate via e numero civico", "Agiuntai via e numer")
     FinalizationIssue.Place -> pick("Add the postcode and place", "Indiquez le NPA et la localité", "PLZ und Ort ergänzen", "Indicate NAP e località", "Agiuntai NPA e lieu")
     FinalizationIssue.HandoverDate -> pick("Add the handover date", "Indiquez la date de remise", "Übergabedatum ergänzen", "Indicate la data di consegna", "Agiuntai la data da surdada")
     FinalizationIssue.HandoverTime -> pick("Add the handover time", "Indiquez l'heure de remise", "Übergabezeit ergänzen", "Indicate l'ora di consegna", "Agiuntai l'ura da surdada")
@@ -710,7 +710,7 @@ class Str(val lang: Lang) {
   val customLifespan = pick("Own value", "Valeur libre", "Eigener Wert", "Valore proprio", "Atgna valur")
 
   fun life(k: dev.verso.limen.sense.LifeKey) = when (k) {
-    dev.verso.limen.sense.LifeKey.DispersionPaint -> pick("Dispersion paint", "Peinture dispersion", "Dispersionsfarbe", "Pittura a dispersione", "Colur a dispersiun")
+    dev.verso.limen.sense.LifeKey.DispersionPaint -> pick("Dispersion paint", "Peinture à dispersion", "Dispersionsfarbe", "Pittura a dispersione", "Colur a dispersiun")
     dev.verso.limen.sense.LifeKey.AcrylicPaint -> pick("Acrylic/oil paint", "Peinture acryl/huile", "Acryl-/Ölfarbe", "Pittura acrilica/olio", "Colur acrilica")
     dev.verso.limen.sense.LifeKey.WoodchipWallpaper -> pick("Woodchip wallpaper", "Papier ingrain", "Raufasertapete", "Tappezzeria ruvida", "Tapet grob")
     dev.verso.limen.sense.LifeKey.PaintableWallpaper -> pick("Paintable wallpaper", "Papier repeignable", "Überstreichbare Tapete", "Tappezzeria ritinteggiabile", "Tapet surpittirabel")
@@ -797,7 +797,7 @@ class Str(val lang: Lang) {
   val clockReturnTitle = pick("The return day", "Le jour de la restitution", "Der Rückgabetag", "Il giorno della riconsegna", "Il di da la restituziun")
   val clockReturnBody = pick(
     "The flat is due back on the lease's last day within business hours; a weekend or holiday shifts it to the next working day. Local custom in Zurich and Bern: noon of the following day. The état des lieux is best made in empty rooms, in daylight, and either party may bring a person versed in tenancy law.",
-    "Le logement se rend le dernier jour du bail pendant les heures ouvrables ; un week-end ou un jour férié reporte au jour ouvrable suivant. Usage local à Zurich et Berne : midi le lendemain. L'état des lieux se fait de préférence locaux vides, de jour, et chaque partie peut se faire accompagner d'une personne au fait du droit du bail.",
+    "Le logement se restitue le dernier jour du bail pendant les heures ouvrables ; un week-end ou un jour férié reporte au jour ouvrable suivant. Usage local à Zurich et Berne : midi le lendemain. L'état des lieux se fait de préférence dans des locaux vides, de jour, et chaque partie peut se faire accompagner d'une personne au fait du droit du bail.",
     "Die Wohnung ist am letzten Tag der Miete zu Geschäftszeiten zurückzugeben; Wochenende oder Feiertag verschieben auf den nächsten Werktag. Ortsgebrauch in Zürich und Bern: 12 Uhr am Folgetag. Das Protokoll entsteht am besten in leeren Räumen, bei Tageslicht, und jede Partei darf eine mietrechtskundige Person beiziehen.",
     "L'alloggio si riconsegna l'ultimo giorno della locazione in orario d'ufficio; un fine settimana o un giorno festivo spostano al giorno lavorativo successivo. Uso locale a Zurigo e Berna: mezzogiorno del giorno dopo. Il verbale si fa preferibilmente in locali vuoti, di giorno, e ogni parte può farsi accompagnare da una persona esperta di diritto di locazione.",
     "L'abitaziun vegn restituida l'ultim di da la locaziun durant las uras da fatschenta; ina fin d'emna u in di da festa spostan al proxim di da lavur.",
@@ -855,7 +855,7 @@ class Str(val lang: Lang) {
       ),
       pick(
         "Only where the duty to pay is beyond doubt",
-        "Seulement si l'obligation de payer est indubitable",
+        "Seulement si l'obligation de payer est incontestable",
         "Nur wo die Zahlungspflicht ausser Zweifel steht",
         "Solo quando l'obbligo di pagare è fuori dubbio",
         "Mo nua che l'obligaziun da pajar è senza dubi",
@@ -1085,7 +1085,7 @@ class Str(val lang: Lang) {
         "Its fingerprint was taken over exactly what it holds now",
         "Son empreinte a été prise sur exactement ce qu'il contient",
         "Sein Fingerabdruck wurde über genau das genommen, was es enthält",
-        "La sua impronta è stata presa su esattamente ciò che contiene",
+        "La sua impronta è stata presa esattamente su ciò che contiene",
         "Sia impronta è vegnida prendida sur exactamain quai ch'el cuntegna",
       ),
       pick(
@@ -1179,7 +1179,7 @@ class Str(val lang: Lang) {
         "Your deadlines come first on the clocks face",
         "Vos délais passent en premier sur les échéances",
         "Ihre Fristen stehen zuerst auf dem Fristenblatt",
-        "I vostri termini vengono per primi sui termini",
+        "I vostri termini vengono per primi sulla faccia TERMINI",
         "Voss termins vegnan l'emprim sin ils termins",
       ),
       pick(
