@@ -297,14 +297,21 @@ object PdfExport {
     // made the whole identity form a set of fields that changed no document.
     val by = p.sessionIdentity
     val contact = buildList {
-      by.fullName.takeIf { it.isNotBlank() }?.let(::add)
+      // An agency session names the firm first and the person present as its representative.
+      if (by.company.isNotBlank()) {
+        add(by.company)
+        by.fullName.takeIf { it.isNotBlank() }?.let { add("${s.representedBy}: $it") }
+      } else {
+        by.fullName.takeIf { it.isNotBlank() }?.let(::add)
+      }
       by.phone.takeIf { it.isNotBlank() }?.let(::add)
       listOf(by.addressLine, by.placeLine).filter { it.isNotBlank() }
         .takeIf { it.isNotEmpty() }?.let { add(it.joinToString(", ")) }
     }
     if (contact.isNotEmpty()) {
       sheet.gap(4f)
-      sheet.wrapped("${s.compiledBy}: ${contact.joinToString(" · ")}", sheet.small)
+      val side = p.sessionRole?.let { " (${s.role(it)})" } ?: ""
+      sheet.wrapped("${s.compiledBy}$side: ${contact.joinToString(" · ")}", sheet.small)
     }
   }
 

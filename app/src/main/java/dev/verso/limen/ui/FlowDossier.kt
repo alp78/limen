@@ -396,9 +396,13 @@ private fun DepositCard(vm: LimenViewModel, s: Str, p: Protocol, onRemove: () ->
       // The comparison gets its own line and is named for what it opens. Sharing the pill
       // row it had room for one letter, and a key that says "C" teaches nobody that the two
       // roads for a deposit are a blocked account or an insurance, or what either costs.
-      Row(verticalAlignment = Alignment.CenterVertically) {
-        SmallKey(s.compareKey, Modifier.weight(1f)) { vm.setDepositCompare(true) }
-        InfoTip(s.tipCompare())
+      // Only at entry: the deposit is chosen before moving in. At exit it already exists
+      // and the card merely documents it for the release instruction.
+      if (p.kind == Kind.Entry) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+          SmallKey(s.compareKey, Modifier.weight(1f)) { vm.setDepositCompare(true) }
+          InfoTip(s.tipCompare())
+        }
       }
     }
   }

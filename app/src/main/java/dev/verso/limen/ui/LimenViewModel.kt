@@ -44,6 +44,7 @@ private const val KEY_LANG = "lang"
 private const val KEY_OPEN = "openProtocol"
 private const val KEY_ROLE = "myRole"
 private const val KEY_NAME = "profileName"
+private const val KEY_COMPANY = "profileCompany"
 
 /**
  * How long the draft waits before it reaches the disk. Long enough that a burst of typing
@@ -115,10 +116,16 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
   var profileName by mutableStateOf(prefs.getString(KEY_NAME, "") ?: "")
     private set
 
-  fun chooseRole(role: Role, name: String) {
+  /** The agency's firm name when this phone belongs to a Verwaltung; blank for private actors. */
+  var profileCompany by mutableStateOf(prefs.getString(KEY_COMPANY, "") ?: "")
+    private set
+
+  fun chooseRole(role: Role, name: String, company: String = "") {
     myRole = role
     profileName = name.trim()
-    prefs.edit().putString(KEY_ROLE, role.name).putString(KEY_NAME, profileName).apply()
+    profileCompany = company.trim()
+    prefs.edit().putString(KEY_ROLE, role.name).putString(KEY_NAME, profileName)
+      .putString(KEY_COMPANY, profileCompany).apply()
   }
 
   fun updateProfileName(name: String) {
@@ -130,7 +137,8 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
   fun clearProfile() {
     myRole = null
     profileName = ""
-    prefs.edit().remove(KEY_ROLE).remove(KEY_NAME).apply()
+    profileCompany = ""
+    prefs.edit().remove(KEY_ROLE).remove(KEY_NAME).remove(KEY_COMPANY).apply()
   }
 
 
@@ -269,7 +277,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
   fun startNewSession(role: Role, identity: SessionIdentity, kind: Kind) {
     if (!identity.hasRequiredFields()) return
     val name = identity.fullName
-    chooseRole(role, name)
+    chooseRole(role, name, identity.company)
     createProtocol(kind, role, name, identity)
   }
 
@@ -307,11 +315,26 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
         Party(
           Role.Tenant,
           name = if (sessionRole == Role.Tenant) resolvedName else "",
+          // At an exit the starter's contact address IS the new address the deposit
+          // letter goes to, so it lands in the form's "Neue Adresse" field directly.
+          address = if (sessionRole == Role.Tenant && kind == Kind.Exit) {
+            listOf(resolvedIdentity.addressLine, resolvedIdentity.placeLine)
+              .filter { it.isNotBlank() }.joinToString(", ")
+          } else "",
           phone = if (sessionRole == Role.Tenant) resolvedIdentity.phone else "",
         ),
+        // An agency session puts the firm on the landlord line and the person present
+        // behind "vertreten durch", the way the paper forms record a Verwaltung.
         Party(
           Role.Landlord,
-          name = if (sessionRole == Role.Landlord) resolvedName else "",
+          name = when {
+            sessionRole != Role.Landlord -> ""
+            resolvedIdentity.company.isNotBlank() -> resolvedIdentity.company
+            else -> resolvedName
+          },
+          representedBy = if (sessionRole == Role.Landlord && resolvedIdentity.company.isNotBlank()) {
+            resolvedName
+          } else "",
           phone = if (sessionRole == Role.Landlord) resolvedIdentity.phone else "",
         ),
       ),
@@ -395,7 +418,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     val resolvedIdentity = identity.copy(
       phone = dev.verso.limen.data.InternationalPhone.format(identity.phone, identity.phoneRegion),
     )
-    chooseRole(sessionRole, name)
+    chooseRole(sessionRole, name, identity.company)
     flush()
     val now = System.currentTimeMillis()
     val p = entry.copy(
@@ -409,7 +432,24 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
       handoverTime = "",
       lastProtocolDate = entry.handoverDate,
       parties = entry.parties.map { party ->
-        if (party.role == sessionRole) party.copy(name = name, phone = resolvedIdentity.phone) else party
+        when {
+          party.role != sessionRole -> party
+          // The agency's exit session: firm on the landlord line, the person sent behind
+          // "vertreten durch", matching how createProtocol writes an agency entry.
+          sessionRole == Role.Landlord && resolvedIdentity.company.isNotBlank() -> party.copy(
+            name = resolvedIdentity.company,
+            representedBy = name,
+            phone = resolvedIdentity.phone,
+          )
+          // The leaving tenant's contact address is the new address of the exit form.
+          sessionRole == Role.Tenant -> party.copy(
+            name = name,
+            address = listOf(resolvedIdentity.addressLine, resolvedIdentity.placeLine)
+              .filter { it.isNotBlank() }.joinToString(", "),
+            phone = resolvedIdentity.phone,
+          )
+          else -> party.copy(name = name, phone = resolvedIdentity.phone)
+        }
       },
       rooms = entry.rooms.map(::freshRoom),
       objects = entry.objects.map(::freshObject),

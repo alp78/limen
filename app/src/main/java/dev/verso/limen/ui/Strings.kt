@@ -201,6 +201,18 @@ class Str(val lang: Lang) {
   val compiledBy = pick("Record compiled by", "Constat établi par", "Protokoll erstellt von", "Verbale redatto da", "Protocol fatg da")
   val representedBy = pick("Represented by", "Représenté·e par", "Vertreten durch", "Rappresentato/a da", "Represchentà/ada da")
   val newAddress = pick("New address", "Nouvelle adresse", "Neue Adresse", "Nuovo indirizzo", "Nova adressa")
+  // The three actor buttons of the new-session form. On paper the protocol still has two
+  // sides; the agency is the landlord side acting through the representative it sends.
+  val actorLandlordPrivate = pick("Landlord", "Bailleur", "Vermieter/in", "Locatore/trice", "Locatur/a")
+  val actorAgency = pick("Agency", "Régie", "Verwaltung", "Amministrazione", "Administraziun")
+  val companyName = pick("Agency name", "Nom de la régie", "Name der Verwaltung", "Nome dell'amministrazione", "Num da l'administraziun")
+  val tenantExitAddressHint = pick(
+    "Your new address: the deposit letter and the final service-charge statement will be sent there.",
+    "Votre nouvelle adresse : la lettre de garantie et le décompte final des charges y seront envoyés.",
+    "Ihre neue Adresse: Der Depotbrief und die Schlussabrechnung der Nebenkosten werden dorthin geschickt.",
+    "Il vostro nuovo indirizzo: la lettera del deposito e il conteggio finale delle spese accessorie saranno inviati lì.",
+    "Vossa nova adressa: la brev dal deposit ed il quint final dals custs accessorics vegnan tramess là.",
+  )
 
   // Meters.
   val meterElec1 = pick("Electricity I", "Électricité I", "Elektrisch I", "Elettricità I", "Electricitad I")

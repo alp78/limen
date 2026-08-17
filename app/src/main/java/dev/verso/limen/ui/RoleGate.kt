@@ -47,6 +47,14 @@ import dev.verso.limen.data.hasRequiredFields
 import dev.verso.limen.theme.Limen
 import kotlinx.coroutines.delay
 
+/**
+ * The three actors of the form. On paper the protocol still has two sides: the agency is
+ * the landlord side acting through the representative it sends, so only [role] is stored.
+ */
+private enum class Actor { Tenant, Landlord, Agency }
+
+private val Actor.role: Role get() = if (this == Actor.Tenant) Role.Tenant else Role.Landlord
+
 /** Identity and handover type are chosen together, immediately before a new session starts. */
 @Composable
 fun NewSessionScreen(
@@ -66,7 +74,16 @@ fun NewSessionScreen(
   var usesSwissAddress by rememberSaveable { mutableStateOf(true) }
   var addressCountryCode by rememberSaveable { mutableStateOf("CH") }
   var phoneRegionCode by rememberSaveable { mutableStateOf("CH") }
-  var role by rememberSaveable { mutableStateOf(vm.myRole ?: Role.Tenant) }
+  var company by rememberSaveable { mutableStateOf(vm.profileCompany) }
+  var actor by rememberSaveable {
+    mutableStateOf(
+      when {
+        vm.myRole == Role.Landlord && vm.profileCompany.isNotBlank() -> Actor.Agency
+        vm.myRole == Role.Landlord -> Actor.Landlord
+        else -> Actor.Tenant
+      }
+    )
+  }
   var kind by rememberSaveable { mutableStateOf(if (entryToSeed != null) Kind.Exit else Kind.Entry) }
   var addressVerified by rememberSaveable { mutableStateOf(false) }
   var addressSearching by remember { mutableStateOf(false) }
@@ -78,9 +95,11 @@ fun NewSessionScreen(
     ?: phoneCountries.first { it.regionCode == "CH" }
   val addressCountry = addressCountries.firstOrNull { it.regionCode == addressCountryCode }
   val sessionKind = if (entryToSeed != null) Kind.Exit else kind
+  val role = actor.role
   val identity = SessionIdentity(
     firstName = firstName,
     lastName = lastName,
+    company = if (actor == Actor.Agency) company else "",
     street = street,
     flatNumber = flatNumber,
     postalCode = postalCode,
@@ -90,7 +109,8 @@ fun NewSessionScreen(
     phone = phone,
     phoneRegion = phoneRegionCode,
   )
-  val canStart = (!usesSwissAddress || addressVerified) && identity.hasRequiredFields()
+  val canStart = (!usesSwissAddress || addressVerified) && identity.hasRequiredFields() &&
+    (actor != Actor.Agency || company.trim().length >= 2)
   val addressQuery = listOf(street, flatNumber, postalCode, city)
     .filter { it.isNotBlank() }
     .joinToString(" ")
@@ -164,8 +184,37 @@ fun NewSessionScreen(
         style = MaterialTheme.typography.titleMedium,
         color = Limen.colors.ink,
       )
+      Panel(label = s.userType) {
+        EqualChoiceRow(
+          options = listOf(
+            Actor.Tenant to s.role(Role.Tenant),
+            Actor.Landlord to s.actorLandlordPrivate,
+            Actor.Agency to s.actorAgency,
+          ),
+          current = actor,
+          onSelect = { actor = it },
+        )
+      }
+      Panel(label = s.sessionKind) {
+        EqualChoiceRow(
+          options = listOf(Kind.Entry to s.entry, Kind.Exit to s.exit),
+          current = sessionKind,
+          locked = entryToSeed != null,
+        ) { kind = it }
+        if (entryToSeed != null) {
+          Text(
+            "${s.exit} · ${entryToSeed.address.ifBlank { s.noAddress }}",
+            style = MaterialTheme.typography.bodyMedium,
+            color = Limen.colors.ink,
+          )
+        }
+      }
       Panel(label = s.sessionIdentity) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+          if (actor == Actor.Agency) {
+            Field(s.companyName, company) { company = it }
+            Text(s.representedBy, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
+          }
           Field(s.firstName, firstName) { firstName = it }
           Field(s.lastName, lastName) { lastName = it }
           Text(s.identityAddress, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
@@ -225,6 +274,9 @@ fun NewSessionScreen(
               onFocusChanged = { setAddressFieldFocused("city", it) },
             ) { changeAddress { city = it } }
           }
+          if (actor == Actor.Tenant && sessionKind == Kind.Exit) {
+            Text(s.tenantExitAddressHint, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
+          }
           CountryDropDown(
             label = s.phoneCountry,
             selectedLabel = phoneCountry.label(),
@@ -252,27 +304,6 @@ fun NewSessionScreen(
               color = if (phoneIsValid) Limen.colors.positive else Limen.colors.dangerOutline,
             )
           }
-        }
-      }
-      Panel(label = s.userType) {
-        EqualChoiceRow(
-          options = listOf(Role.Tenant to s.role(Role.Tenant), Role.Landlord to s.role(Role.Landlord)),
-          current = role,
-          onSelect = { role = it },
-        )
-      }
-      Panel(label = s.sessionKind) {
-        EqualChoiceRow(
-          options = listOf(Kind.Entry to s.entry, Kind.Exit to s.exit),
-          current = sessionKind,
-          locked = entryToSeed != null,
-        ) { kind = it }
-        if (entryToSeed != null) {
-          Text(
-            "${s.exit} · ${entryToSeed.address.ifBlank { s.noAddress }}",
-            style = MaterialTheme.typography.bodyMedium,
-            color = Limen.colors.ink,
-          )
         }
       }
       Spacer(Modifier.height(4.dp))
