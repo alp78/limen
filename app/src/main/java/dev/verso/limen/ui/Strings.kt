@@ -544,7 +544,7 @@ class Str(val lang: Lang) {
   )
   val photos = pick("Photos", "Photos", "Fotos", "Foto", "Fotos")
 
-  // The two signature planes.
+  // The only signature surface offered by current records.
   val signRecordTitle = pick(
     "Signature of the record",
     "Signature du constat",
@@ -558,20 +558,6 @@ class Str(val lang: Lang) {
     "Diese Unterschrift bestätigt nur eines: die Mängel sind richtig protokolliert. Sie ist keine Übernahme irgendwelcher Kosten. Im Kanton Waadt ist das RULV-Recht; überall sonst schreibt dieses Protokoll es ausdrücklich hin.",
     "Questa firma conferma una sola cosa: i difetti sono correttamente verbalizzati. Non vale accettazione di alcun costo. Nel canton Vaud è la regola delle RULV; ovunque altrove questo verbale lo scrive espressamente.",
     "Questa suttascripziun conferma mo ina chaussa: las mancanzas èn registradas correctamain. Ella na vala betg sco acceptaziun da custs.",
-  )
-  val signCostsTitle = pick(
-    "Acceptance of costs",
-    "Acceptation des coûts",
-    "Kostenübernahme",
-    "Accettazione dei costi",
-    "Acceptaziun dals custs",
-  )
-  val signCostsWarning = pick(
-    "This second signature is a debt acknowledgment for the charged defects. It is optional, it may be refused, and it should only be given when the duty to pay is beyond doubt. For larger amounts, sign subject to a cost estimate, or involve the liability insurer first.",
-    "Cette seconde signature vaut reconnaissance de dette pour les défauts imputés. Elle est facultative, elle peut être refusée, et ne devrait être donnée que si l'obligation de payer est incontestable. Pour les montants importants, signez sous réserve d'un devis, ou passez d'abord par l'assurance RC.",
-    "Diese zweite Unterschrift ist eine Schuldanerkennung für die angelasteten Mängel. Sie ist freiwillig, sie darf verweigert werden, und sie gehört nur dorthin, wo die Zahlungspflicht ausser Zweifel steht. Bei grösseren Beträgen mit Vorbehalt eines Kostenvoranschlags unterschreiben oder zuerst die Haftpflichtversicherung beiziehen.",
-    "Questa seconda firma vale riconoscimento di debito per i difetti imputati. È facoltativa, può essere rifiutata, e va data solo quando l'obbligo di pagare è fuori dubbio. Per importi rilevanti, firmate con riserva di un preventivo o coinvolgete prima l'assicurazione RC.",
-    "Questa segunda suttascripziun vala sco renconuschientscha da debit per las mancanzas messas a quint. Ella è facultativa e po vegnir refusada.",
   )
   val signKey = pick("SIGN", "SIGNER", "UNTERSCHREIBEN", "FIRMA", "SUTTASCRIVER")
   val refusedKey = pick("REFUSED", "REFUSÉE", "VERWEIGERT", "RIFIUTATA", "REFUSADA")
@@ -833,46 +819,6 @@ class Str(val lang: Lang) {
         "Sie darf verweigert werden; die Verweigerung wird schlicht protokolliert",
         "Può essere rifiutata; il rifiuto viene semplicemente verbalizzato",
         "Ella po vegnir refusada; la refusa vegn simplamain registrada",
-      ),
-    ),
-  )
-
-  fun tipCosts() = Tip(
-    pick(
-      "The second signature is a debt acknowledgment for the charged defects.",
-      "La seconde signature vaut reconnaissance de dette pour les défauts imputés.",
-      "Die zweite Unterschrift ist eine Schuldanerkennung für die angelasteten Mängel.",
-      "La seconda firma vale riconoscimento di debito per i difetti imputati.",
-      "La segunda suttascripziun vala sco renconuschientscha da debit per las mancanzas messas a quint.",
-    ),
-    listOf(
-      pick(
-        "Optional, and it may be refused",
-        "Facultative, et elle peut être refusée",
-        "Freiwillig, und sie darf verweigert werden",
-        "Facoltativa, e può essere rifiutata",
-        "Facultativa, ed ella po vegnir refusada",
-      ),
-      pick(
-        "Only where the duty to pay is beyond doubt",
-        "Seulement si l'obligation de payer est incontestable",
-        "Nur wo die Zahlungspflicht ausser Zweifel steht",
-        "Solo quando l'obbligo di pagare è fuori dubbio",
-        "Mo nua che l'obligaziun da pajar è senza dubi",
-      ),
-      pick(
-        "Larger amounts: sign subject to a cost estimate",
-        "Montants importants : signer sous réserve d'un devis",
-        "Grössere Beträge: mit Vorbehalt eines Kostenvoranschlags",
-        "Importi rilevanti: firmare con riserva di un preventivo",
-        "Imports pli gronds: suttascriver cun resalva d'in preventiv",
-      ),
-      pick(
-        "Or involve the liability insurer first",
-        "Ou passer d'abord par l'assurance RC",
-        "Oder zuerst die Haftpflichtversicherung beiziehen",
-        "O coinvolgere prima l'assicurazione RC",
-        "U includer l'emprim l'assicuranza da responsabladad",
       ),
     ),
   )
@@ -1362,11 +1308,11 @@ class Str(val lang: Lang) {
       "Legì ils resultats ensemen. Notai tgi che surpiglia mintga defect avant che suttascriver.",
     )
     FlowStep.Sign -> pick(
-      "Two signatures with two meanings: first the record, then, only if agreed, the costs.",
-      "Deux signatures, deux sens : d'abord le constat, puis, seulement si accepté, les coûts.",
-      "Zwei Unterschriften mit zwei Bedeutungen: zuerst das Protokoll, dann, nur wenn einverstanden, die Kosten.",
-      "Due firme con due significati: prima il verbale, poi, solo se accettati, i costi.",
-      "Duas suttascripziuns cun dus muments: l'emprim il protocol, lura, mo sche acceptà, ils custs.",
+      "Review who must sign or refuse the handover record. This signature does not accept costs.",
+      "Vérifiez qui doit signer ou refuser le constat. Cette signature n'accepte aucun coût.",
+      "Prüft, wer das Übergabeprotokoll unterzeichnet oder verweigert. Diese Unterschrift übernimmt keine Kosten.",
+      "Verificate chi deve firmare o rifiutare il verbale. Questa firma non accetta alcun costo.",
+      "Controllai tgi che sto suttascriver u refusar il protocol. Questa suttascripziun n'accepta nagins custs.",
     )
     FlowStep.Export -> pick(
       "Export the PDF and hand a copy to each side right now.",

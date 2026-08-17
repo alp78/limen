@@ -620,7 +620,7 @@ object PdfExport {
   }
 
   private fun signatures(sheet: Sheet, p: Protocol, s: Str, signatureDir: File) {
-    // Plane 1: the record. Always printed, with its meaning above the ink.
+    // The record signature is always printed, with its meaning above the ink.
     sheet.sectionTitle(s.signRecordTitle)
     // A handover one party did not attend is a statement about these signatures, so it is
     // printed here and unconditionally. It used to live under the remarks section, which
@@ -633,15 +633,6 @@ object PdfExport {
     sheet.wrapped(s.signRecordMeaning, sheet.small)
     sheet.gap(10f)
     drawPlane(sheet, p, s, signatureDir, Plane.Record)
-
-    // Plane 2: the debt. Printed only when someone engaged with it; its warning always.
-    val costs = p.signatures.filter { it.plane == Plane.Costs && p.isCurrent(it) }
-    if (costs.isNotEmpty()) {
-      sheet.sectionTitle(s.signCostsTitle)
-      sheet.wrapped(s.signCostsWarning, sheet.small)
-      sheet.gap(10f)
-      drawPlane(sheet, p, s, signatureDir, Plane.Costs)
-    }
 
     // The Swiss ritual, said on the document itself: two identical papers, one per party.
     // In Vaud the RULV require exactly that, and a tenant who reads it here knows to leave

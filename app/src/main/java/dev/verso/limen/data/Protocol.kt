@@ -397,12 +397,7 @@ data class DeliveryReceipt(
   val epochMs: Long = 0,
 )
 
-/**
- * One ink signature. The two planes are the design the paper canon insists on and the
- * apps all flatten: [Plane.Record] confirms only that the defects are correctly recorded
- * (in Vaud, by law, this is not a debt acknowledgment); [Plane.Costs] is the separate,
- * refusable acceptance of the charges. The app never collects the second inside the first.
- */
+/** One ink signature confirming the handover record, never an acceptance of costs. */
 @Serializable
 data class Signature(
   val role: Role,
@@ -419,6 +414,7 @@ data class Signature(
   val contentRevision: Long = 0,
 )
 
+/** [Costs] remains only so records created by older Limen versions still deserialize. */
 @Serializable
 enum class Plane { Record, Costs }
 

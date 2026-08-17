@@ -35,14 +35,10 @@ import dev.verso.limen.data.Protocol
 import dev.verso.limen.data.Role
 import dev.verso.limen.theme.Limen
 
-/**
- * The two signature planes, kept apart on purpose and by law: the record's signature is
- * never the debt's. Refusal is a key, not a dead end, and every signature can carry its
- * dictated reservation.
- */
+/** The handover record signature. Refusal is a recorded outcome, not a dead end. */
 @Composable
 internal fun SignStep(vm: LimenViewModel, s: Str, p: Protocol) {
-  var padTarget by remember { mutableStateOf<Pair<Role, Plane>?>(null) }
+  var padTarget by remember { mutableStateOf<Role?>(null) }
 
   // A Box, so the pad truly overlays the step instead of queueing below the scroll.
   androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
@@ -53,7 +49,7 @@ internal fun SignStep(vm: LimenViewModel, s: Str, p: Protocol) {
     Panel(label = s.signRecordTitle, info = s.tipRecord()) {
       Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         vm.requiredRecordRoles(p).forEach { role ->
-          SignRow(vm, s, p, role, Plane.Record) { padTarget = role to Plane.Record }
+          SignRow(vm, s, p, role, Plane.Record) { padTarget = role }
         }
         // Who has to sign at all. This decides the rows above, which is why it sits here
         // rather than filed under the dossier's notes, where it was also printed only if
@@ -66,14 +62,6 @@ internal fun SignStep(vm: LimenViewModel, s: Str, p: Protocol) {
             enabled = !LocalRecordLocked.current,
           ) { vm.edit { it.copy(oneSided = !it.oneSided) } }
           InfoTip(s.tipOneSided())
-        }
-      }
-    }
-
-    Panel(label = s.signCostsTitle, info = s.tipCosts()) {
-      Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        listOf(Role.Tenant, Role.Landlord).forEach { role ->
-          SignRow(vm, s, p, role, Plane.Costs) { padTarget = role to Plane.Costs }
         }
       }
     }
@@ -116,13 +104,13 @@ internal fun SignStep(vm: LimenViewModel, s: Str, p: Protocol) {
     Spacer(Modifier.height(12.dp))
   }
 
-  padTarget?.let { (role, plane) ->
+  padTarget?.let { role ->
     SignPadOverlay(
-      title = "${if (plane == Plane.Record) s.signRecordTitle else s.signCostsTitle} · ${s.role(role)}",
-      meaning = if (plane == Plane.Record) s.tipRecord().lead else s.tipCosts().lead,
+      title = "${s.signRecordTitle} · ${s.role(role)}",
+      meaning = s.tipRecord().lead,
       s = s,
       onKeep = { bmp ->
-        vm.keepSignature(role, plane, bmp)
+        vm.keepSignature(role, Plane.Record, bmp)
         padTarget = null
       },
       onCancel = { padTarget = null },
