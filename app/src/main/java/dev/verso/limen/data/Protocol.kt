@@ -141,6 +141,14 @@ data class Party(
 data class SessionIdentity(
   val firstName: String = "",
   val lastName: String = "",
+  /**
+   * The managing agency's firm name, when the landlord side is a Verwaltung/regie rather
+   * than a private person. The names above then belong to the representative present at
+   * the handover. NEVER-encoded so finalized pre-agency records keep their fingerprint.
+   */
+  @OptIn(ExperimentalSerializationApi::class)
+  @EncodeDefault(EncodeDefault.Mode.NEVER)
+  val company: String = "",
   val street: String = "",
   /** Building number, with an optional flat supplement supplied by the person. */
   val flatNumber: String = "",

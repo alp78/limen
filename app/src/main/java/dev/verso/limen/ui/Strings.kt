@@ -1206,11 +1206,11 @@ class Str(val lang: Lang) {
     "Voss protocols",
   )
   val startNewSession = pick(
-    "START NEW SESSION",
-    "COMMENCER UNE NOUVELLE SESSION",
-    "NEUE SITZUNG STARTEN",
-    "AVVIA NUOVA SESSIONE",
-    "NOVA SESIUN CUMENZAR",
+    "NEW SESSION",
+    "NOUVELLE SESSION",
+    "NEUE SITZUNG",
+    "NUOVA SESSIONE",
+    "NOVA SESIUN",
   )
   val allSessions = pick(
     "ALL SESSIONS",
