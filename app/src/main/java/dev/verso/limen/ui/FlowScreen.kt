@@ -43,6 +43,7 @@ import dev.verso.limen.data.Protocol
 import dev.verso.limen.data.TenantResponse
 import dev.verso.limen.data.carries
 import dev.verso.limen.data.legalProfile
+import dev.verso.limen.data.resolvedLegalOverlay
 import dev.verso.limen.theme.Limen
 
 /**
@@ -345,6 +346,38 @@ private fun ReviewIdentity(s: Str, p: Protocol) {
 }
 
 @Composable
+private fun ReviewLegalOverlay(s: Str, p: Protocol) {
+  val overlay = p.resolvedLegalOverlay() ?: return
+  Panel(label = s.legalOverlayTitle) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+      Row(
+        Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+      ) {
+        CantonFlag(overlay.canton, contentDescription = null, size = 28.dp)
+        Text(s.canton(overlay.canton), style = MaterialTheme.typography.bodyMedium, color = Limen.colors.ink)
+      }
+      if (p.kind == Kind.Entry) {
+        ReviewLine(s.initialRentForm, s.initialRentFormRule(overlay.initialRentFormRule))
+      }
+      val requirements = if (p.isFinalized() && p.legalOverlay.checks.isNotEmpty()) {
+        p.legalOverlay.checks.keys.sortedBy { it.ordinal }
+      } else {
+        overlay.requirements
+      }
+      requirements.forEach { requirement ->
+        ReviewLine(
+          s.legalRequirement(requirement),
+          p.legalOverlay.status(requirement)?.let(s::legalCheckStatus) ?: s.stillMissing,
+        )
+      }
+      ReviewLine(s.legalOverlayNote, p.legalOverlay.note)
+    }
+  }
+}
+
+@Composable
 private fun ReviewInspection(s: Str, p: Protocol) {
   Panel(label = s.stepInspection) {
     Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
@@ -461,6 +494,7 @@ private fun ReviewStep(vm: LimenViewModel, s: Str, p: Protocol) {
     verticalArrangement = Arrangement.spacedBy(10.dp),
   ) {
     ReviewIdentity(s, p)
+    ReviewLegalOverlay(s, p)
     ReviewInspection(s, p)
     ReviewDossier(s, p)
     Panel(

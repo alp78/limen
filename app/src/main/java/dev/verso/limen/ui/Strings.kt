@@ -10,6 +10,9 @@ import dev.verso.limen.data.ItemKey
 import dev.verso.limen.data.KeyTransferStatus
 import dev.verso.limen.data.KeyKind
 import dev.verso.limen.data.LegalProfile
+import dev.verso.limen.data.InitialRentFormRule
+import dev.verso.limen.data.LegalCheckStatus
+import dev.verso.limen.data.LegalRequirement
 import dev.verso.limen.data.ObjectGroup
 import dev.verso.limen.data.Role
 import dev.verso.limen.data.RoomKind
@@ -190,6 +193,139 @@ class Str(val lang: Lang) {
       "RULV Vad, obligatoric dal 1. fanadur 2026 fin ils 30 da zercladur 2032",
     )
   }
+  val legalOverlayTitle = pick(
+    "Canton overlay",
+    "Couche cantonale",
+    "Kantonale Ergänzung",
+    "Livello cantonale",
+    "Cumplement chantunal",
+  )
+  val initialRentForm = pick(
+    "Official initial-rent form",
+    "Formule officielle du loyer initial",
+    "Amtliches Anfangsmietzinsformular",
+    "Modulo ufficiale della pigione iniziale",
+    "Formular uffizial da la fit iniziala",
+  )
+  fun initialRentFormRule(rule: InitialRentFormRule) = when (rule) {
+    InitialRentFormRule.Required -> pick(
+      "Required throughout the canton in the 2026 official snapshot",
+      "Obligatoire dans tout le canton selon le relevé officiel 2026",
+      "Gemäss amtlicher Übersicht 2026 im ganzen Kanton erforderlich",
+      "Obbligatorio in tutto il cantone secondo il rilevamento ufficiale 2026",
+      "Necessari en tut il chantun tenor la survista uffiziala 2026",
+    )
+    InitialRentFormRule.ConditionalLocal -> pick(
+      "Check municipality, district and dwelling category in the 2026 official snapshot",
+      "Vérifier commune, district et catégorie de logement dans le relevé officiel 2026",
+      "Gemeinde, Bezirk und Wohnungskategorie in der amtlichen Übersicht 2026 prüfen",
+      "Verificare comune, distretto e categoria dell'alloggio nel rilevamento ufficiale 2026",
+      "Controllar vischnanca, district e categoria d'abitaziun en la survista uffiziala 2026",
+    )
+    InitialRentFormRule.NotRequired -> pick(
+      "No canton-wide requirement listed in the 2026 official snapshot",
+      "Aucune obligation cantonale générale dans le relevé officiel 2026",
+      "Keine kantonsweite Pflicht in der amtlichen Übersicht 2026 aufgeführt",
+      "Nessun obbligo cantonale generale nel rilevamento ufficiale 2026",
+      "Nagins obligaziun chantunala generala en la survista uffiziala 2026",
+    )
+    InitialRentFormRule.VerifyCurrent -> pick(
+      "The selected date is outside the 2026 snapshot; verify the rule in force for that date",
+      "La date choisie est hors du relevé 2026; vérifier la règle en vigueur à cette date",
+      "Das gewählte Datum liegt ausserhalb der Übersicht 2026; damals geltende Regel prüfen",
+      "La data scelta è fuori dal rilevamento 2026; verificare la regola in vigore a quella data",
+      "La data tschernida è ordaifer la survista 2026; controllar la regla valaivla per quella data",
+    )
+  }
+  fun legalRequirement(requirement: LegalRequirement) = when (requirement) {
+    LegalRequirement.LeaseAndLocalTiming -> pick(
+      "Appointment checked against the lease, local dates and public holidays",
+      "Rendez-vous vérifié selon le bail, les termes locaux et les jours fériés",
+      "Termin mit Mietvertrag, örtlichen Terminen und Feiertagen abgeglichen",
+      "Appuntamento verificato con contratto, termini locali e giorni festivi",
+      "Termin controllà tenor contract, termins locals e dis da festa",
+    )
+    LegalRequirement.InitialRentForm -> pick(
+      "Official initial-rent form checked and kept with the entry dossier",
+      "Formule officielle du loyer initial vérifiée et jointe au dossier d'entrée",
+      "Amtliches Anfangsmietzinsformular geprüft und im Einzugsdossier abgelegt",
+      "Modulo ufficiale della pigione iniziale verificato e conservato nel dossier d'entrata",
+      "Formular uffizial da la fit iniziala controllà e mess en il dossier d'entrada",
+    )
+    LegalRequirement.DepositProof -> pick(
+      "Deposit proof supplied within 30 days of signature and no later than entry",
+      "Preuve de garantie fournie dans les 30 jours suivant la signature et au plus tard à l'entrée",
+      "Nachweis der Sicherheit innert 30 Tagen nach Unterzeichnung und spätestens beim Einzug",
+      "Prova della garanzia entro 30 giorni dalla firma e non oltre l'entrata",
+      "Cumprova da la garanzia entaifer 30 dis da la suttascripziun e betg pli tard che l'entrada",
+    )
+    LegalRequirement.TenantLiabilityInsurance -> pick(
+      "Tenant liability insurance checked for the tenancy",
+      "Assurance responsabilité civile du locataire vérifiée pour le bail",
+      "Mieterhaftpflichtversicherung für das Mietverhältnis geprüft",
+      "Assicurazione responsabilità civile del conduttore verificata per la locazione",
+      "Assicuranza da responsabladad dal locatari controllada per la locaziun",
+    )
+    LegalRequirement.LandlordLiabilityInsurance -> pick(
+      "Landlord liability insurance checked for the tenancy",
+      "Assurance responsabilité civile du bailleur vérifiée pour le bail",
+      "Vermieterhaftpflichtversicherung für das Mietverhältnis geprüft",
+      "Assicurazione responsabilità civile del locatore verificata per la locazione",
+      "Assicuranza da responsabladad dal locatur controllada per la locaziun",
+    )
+    LegalRequirement.VaudExitReadiness -> pick(
+      "Vaud return readiness checked: empty, clean, accessible and due at noon",
+      "Restitution vaudoise vérifiée: vide, propre, accessible et due à midi",
+      "Waadtländer Rückgabe geprüft: leer, sauber, zugänglich und mittags fällig",
+      "Restituzione vodese verificata: vuota, pulita, accessibile e dovuta a mezzogiorno",
+      "Restituziun vadaisa controllada: vida, netta, accessibla e dueivel a mezdi",
+    )
+  }
+  fun legalCheckStatus(status: LegalCheckStatus) = when (status) {
+    LegalCheckStatus.Confirmed -> pick("Confirmed", "Confirmé", "Bestätigt", "Confermato", "Confermà")
+    LegalCheckStatus.MissingOrDisputed -> pick(
+      "Missing / disputed",
+      "Manquant / contesté",
+      "Fehlt / bestritten",
+      "Mancante / contestato",
+      "Manca / contestà",
+    )
+    LegalCheckStatus.NotApplicable -> pick(
+      "Not applicable",
+      "Non applicable",
+      "Nicht anwendbar",
+      "Non applicabile",
+      "Betg applitgabel",
+    )
+  }
+  val legalOverlayNote = pick(
+    "Reason, reservation or local verification",
+    "Motif, réserve ou vérification locale",
+    "Grund, Vorbehalt oder örtliche Prüfung",
+    "Motivo, riserva o verifica locale",
+    "Motiv, resalva u controlla locala",
+  )
+  val legalOverlayNoteRequired = pick(
+    "Add a note for every missing, disputed or non-applicable outcome",
+    "Ajoutez une note pour tout résultat manquant, contesté ou non applicable",
+    "Bei fehlendem, bestrittenem oder nicht anwendbarem Ergebnis Notiz ergänzen",
+    "Aggiungete una nota per ogni esito mancante, contestato o non applicabile",
+    "Agiuntai ina nota per mintga resultat mancant, contestà u betg applitgabel",
+  )
+  val legalSnapshot = pick(
+    "Rule snapshot: BWO initial-rent form 2026 and dated Vaud RULV periods",
+    "Référentiel: formule OFL 2026 et périodes RULV Vaud datées",
+    "Regelstand: BWO-Anfangsmietzinsformular 2026 und datierte Waadtländer RULV",
+    "Riferimento: modulo UFAB 2026 e periodi RULV Vaud datati",
+    "Stadi da reglas: formular UFL 2026 e periodas RULV Vad datadas",
+  )
+  val vaudPreviousExitReport = pick(
+    "Vaud entry: the tenant may request a copy of the previous tenant's exit report.",
+    "Entrée vaudoise: le locataire peut demander une copie de l'état des lieux de sortie précédent.",
+    "Einzug in Waadt: Die Mieterschaft kann eine Kopie des vorherigen Auszugsprotokolls verlangen.",
+    "Entrata nel Vaud: il conduttore può chiedere una copia del precedente verbale d'uscita.",
+    "Entrada en il Vad: il locatari po dumandar ina copia dal protocol da sortida precedent.",
+  )
   val romandFrameworkInLease = pick(
     "The lease expressly incorporates the Romand framework contract",
     "Le bail intègre expressément le contrat-cadre romand",
@@ -667,6 +803,13 @@ class Str(val lang: Lang) {
     FinalizationIssue.Canton -> pick("Select the object's canton", "Choisissez le canton de l'objet", "Kanton des Mietobjekts wählen", "Scegliete il cantone dell'oggetto", "Tscherner il chantun da l'object")
     FinalizationIssue.HandoverDate -> pick("Add the handover date", "Indiquez la date de remise", "Übergabedatum ergänzen", "Indicate la data di consegna", "Agiuntai la data da surdada")
     FinalizationIssue.HandoverTime -> pick("Add the handover time", "Indiquez l'heure de remise", "Übergabezeit ergänzen", "Indicate l'ora di consegna", "Agiuntai l'ura da surdada")
+    FinalizationIssue.LegalOverlay -> pick(
+      "Record every applicable canton-overlay check and explain exceptions",
+      "Consignez chaque contrôle cantonal applicable et expliquez les exceptions",
+      "Alle anwendbaren Kantonprüfungen erfassen und Ausnahmen erläutern",
+      "Registrate ogni verifica cantonale applicabile e spiegate le eccezioni",
+      "Registrai mintga controlla chantunala applitgabla ed explitgai excepziuns",
+    )
     FinalizationIssue.Parties -> pick("Name both tenant and landlord / agency", "Nommez le locataire et le bailleur / la régie", "Mieterschaft und Vermieterschaft / Verwaltung benennen", "Indicate conduttore e locatore / amministrazione", "Numnai locatari e locatur / administraziun")
     FinalizationIssue.Rooms -> pick("Confirm every listed room was inspected", "Confirmez le contrôle de chaque pièce", "Prüfung jedes aufgeführten Raums bestätigen", "Confermate ogni locale controllato", "Confermai mintga local controllà")
     FinalizationIssue.Objects -> pick("Confirm every supplied item was checked", "Confirmez chaque objet fourni", "Jeden mitübergebenen Gegenstand bestätigen", "Confermate ogni oggetto fornito", "Confermai mintga object surdà")
@@ -1109,6 +1252,33 @@ class Str(val lang: Lang) {
   fun tipStep(step: FlowStep) = Tip(stepLead(step))
 
   fun tipAddress() = Tip(addressLookupHint)
+
+  fun tipLegalOverlay() = Tip(
+    pick(
+      "The canton adapts a common Swiss handover record; it does not create a separate workflow.",
+      "Le canton adapte un constat suisse commun; il ne crée pas un parcours séparé.",
+      "Der Kanton ergänzt ein gemeinsames Schweizer Protokoll; er erzeugt keinen eigenen Ablauf.",
+      "Il cantone adatta un verbale svizzero comune; non crea un percorso separato.",
+      "Il chantun cumplettescha in protocol svizzer cuminaivel; el na creescha betg in agen process.",
+    ),
+    listOf(
+      legalSnapshot,
+      pick(
+        "Swisstopo proposes the canton from the object address; the operator remains responsible for checking it.",
+        "Swisstopo propose le canton depuis l'adresse de l'objet; l'opérateur doit le vérifier.",
+        "Swisstopo schlägt den Kanton aus der Objektadresse vor; die prüfende Person bleibt verantwortlich.",
+        "Swisstopo propone il cantone dall'indirizzo dell'oggetto; chi opera deve verificarlo.",
+        "Swisstopo propona il chantun da l'adressa da l'object; la persuna responsabla sto controllar el.",
+      ),
+      pick(
+        "This is a structured handover aid, not a legal opinion or a substitute for current official guidance.",
+        "Il s'agit d'une aide structurée à la remise, non d'un avis juridique ni d'un remplacement des sources officielles actuelles.",
+        "Dies ist eine strukturierte Übergabehilfe, keine Rechtsberatung und kein Ersatz für aktuelle amtliche Hinweise.",
+        "È un ausilio strutturato alla consegna, non un parere legale né un sostituto delle fonti ufficiali aggiornate.",
+        "Quai è in agid structurà per la surdada, betg in avis giuridic ni in remplazzament per infurmaziuns uffizialas actualas.",
+      ),
+    ),
+  )
 
   fun tipDefect() = Tip(defectHint)
 

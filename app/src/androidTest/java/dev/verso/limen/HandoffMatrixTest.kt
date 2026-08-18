@@ -57,18 +57,22 @@ class HandoffMatrixTest {
 
   @Test
   fun allActorsBothHandoffsAndDataNoticeAreReachable() {
+    val assets = InstrumentationRegistry.getInstrumentation().targetContext.assets
+    SwissCanton.entries.forEach { canton ->
+      assets.open("cantons/${canton.code.lowercase()}.svg").use { assertTrue(it.read() >= 0) }
+    }
     compose.onNodeWithText("NEW SESSION").performClick()
 
     compose.onNodeWithText("Tenant").assertIsDisplayed()
     compose.onNodeWithText("Landlord").assertIsDisplayed().performClick()
     compose.onNodeWithText("Agency").assertIsDisplayed().performClick()
     compose.onNodeWithText("Agency name").assertExists()
-    compose.onNodeWithText("Entry").assertIsDisplayed()
-    compose.onNodeWithText("Exit").assertIsDisplayed().performClick()
-    compose.onNodeWithText("Entry").performClick()
+    compose.onNodeWithText("Entry").performScrollTo().assertIsDisplayed()
+    compose.onNodeWithText("Exit").performScrollTo().assertIsDisplayed().performClick()
+    compose.onNodeWithText("Entry").performScrollTo().performClick()
 
     compose.onNodeWithContentDescription("BACK").performClick()
-    compose.onNodeWithText("DATA, BACKUP & PRIVACY").performClick()
+    compose.onNodeWithText("DATA, BACKUP & PRIVACY").performScrollTo().performClick()
     compose.onNodeWithText("Privacy information").assertExists()
     compose.onNodeWithText("Backup and restore").assertExists()
     compose.onNodeWithContentDescription("BACK").performClick()
@@ -82,8 +86,13 @@ class HandoffMatrixTest {
     compose.onNodeWithContentDescription("BACK").performClick()
     compose.onNodeWithText("DOSSIER").performClick()
     compose.onNodeWithText("Parties").assertExists()
+    compose.onNodeWithContentDescription("SELECT CANTON").performScrollTo().performClick()
+    compose.onNodeWithContentDescription("ZH · Zürich").performScrollTo().performClick()
+    compose.onNodeWithText(
+      "Required throughout the canton in the 2026 official snapshot"
+    ).performScrollTo().assertIsDisplayed()
     compose.onNodeWithContentDescription("BACK").performClick()
-    compose.onNodeWithText("CLOSE THE RECORD").performClick()
+    compose.onNodeWithText("CLOSE THE RECORD").performScrollTo().performClick()
     compose.onNodeWithText("Object").assertExists()
     compose.onNodeWithText("SIGNATURES").performScrollTo().performClick()
     compose.onNodeWithText("Unilateral record").assertExists()

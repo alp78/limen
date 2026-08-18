@@ -46,6 +46,10 @@ data class Protocol(
   @OptIn(ExperimentalSerializationApi::class)
   @EncodeDefault(EncodeDefault.Mode.NEVER)
   val romandFrameworkInLease: Boolean = false,
+  /** Recorded outcomes for the dated canton overlay; absent from records made before it. */
+  @OptIn(ExperimentalSerializationApi::class)
+  @EncodeDefault(EncodeDefault.Mode.NEVER)
+  val legalOverlay: LegalOverlayRecord = LegalOverlayRecord(),
   /** Floor and position, the way regies write it: "3. OG links". */
   val objectDetail: String = "",
   /** ISO date of the handover itself, and the clock time beside it. */

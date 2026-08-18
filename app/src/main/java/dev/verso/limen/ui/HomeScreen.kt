@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,6 +16,8 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.activity.compose.BackHandler
 import androidx.compose.material3.MaterialTheme
@@ -89,36 +92,39 @@ private fun LandingScreen(
   onSessions: () -> Unit,
   onDataPrivacy: () -> Unit,
 ) {
-  Column(
-    modifier
-      .fillMaxSize()
-      .background(Limen.colors.landing)
-      .safeDrawingPadding()
-      .padding(horizontal = 24.dp),
-    horizontalAlignment = Alignment.CenterHorizontally,
-  ) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-      LangMenu(vm.lang, vm::selectLang)
-      Spacer(Modifier.weight(1f))
-      ThemeToggle(vm.darkTheme, s.themeMode, vm::toggleTheme)
+  BoxWithConstraints(modifier.fillMaxSize().background(Limen.colors.landing)) {
+    val compactHeight = maxHeight < 600.dp
+    Column(
+      Modifier
+        .fillMaxSize()
+        .safeDrawingPadding()
+        .then(if (compactHeight) Modifier.verticalScroll(rememberScrollState()) else Modifier)
+        .padding(horizontal = 24.dp),
+      horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+      Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        LangMenu(vm.lang, vm::selectLang)
+        Spacer(Modifier.weight(1f))
+        ThemeToggle(vm.darkTheme, s.themeMode, vm::toggleTheme)
+      }
+      if (compactHeight) Spacer(Modifier.height(12.dp)) else Spacer(Modifier.weight(1f))
+      LimenMark(size = if (compactHeight) 88.dp else 172.dp)
+      Spacer(Modifier.height(if (compactHeight) 10.dp else 20.dp))
+      Text("LIMEN", style = MaterialTheme.typography.displayLarge, color = Limen.colors.onInk)
+      Spacer(Modifier.height(10.dp))
+      Text(
+        s.welcomeLead,
+        style = MaterialTheme.typography.bodyLarge,
+        color = Limen.colors.onInk.copy(alpha = 0.88f),
+      )
+      if (compactHeight) Spacer(Modifier.height(18.dp)) else Spacer(Modifier.weight(1f))
+      LandingKey(s.startNewSession, onPress = onNewSession)
+      Spacer(Modifier.height(10.dp))
+      LandingKey(s.allSessions, enabled = vm.protocols.isNotEmpty(), onPress = onSessions)
+      Spacer(Modifier.height(10.dp))
+      LandingKey(s.dataAndPrivacy, onPress = onDataPrivacy)
+      Spacer(Modifier.height(24.dp))
     }
-    Spacer(Modifier.weight(1f))
-    LimenMark(size = 172.dp)
-    Spacer(Modifier.height(20.dp))
-    Text("LIMEN", style = MaterialTheme.typography.displayLarge, color = Limen.colors.onInk)
-    Spacer(Modifier.height(10.dp))
-    Text(
-      s.welcomeLead,
-      style = MaterialTheme.typography.bodyLarge,
-      color = Limen.colors.onInk.copy(alpha = 0.88f),
-    )
-    Spacer(Modifier.weight(1f))
-    LandingKey(s.startNewSession, onPress = onNewSession)
-    Spacer(Modifier.height(10.dp))
-    LandingKey(s.allSessions, enabled = vm.protocols.isNotEmpty(), onPress = onSessions)
-    Spacer(Modifier.height(10.dp))
-    LandingKey(s.dataAndPrivacy, onPress = onDataPrivacy)
-    Spacer(Modifier.height(24.dp))
   }
 }
 

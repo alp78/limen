@@ -7,6 +7,10 @@ import dev.verso.limen.data.KeyCount
 import dev.verso.limen.data.KeyKind
 import dev.verso.limen.data.KeyTransferStatus
 import dev.verso.limen.data.Kind
+import dev.verso.limen.data.LegalCheckStatus
+import dev.verso.limen.data.LegalOverlayRecord
+import dev.verso.limen.data.LegalRequirement
+import dev.verso.limen.data.LEGAL_RULE_SET_ID
 import dev.verso.limen.data.ObjectEntry
 import dev.verso.limen.data.ObjectGroup
 import dev.verso.limen.data.Party
@@ -40,6 +44,22 @@ class CompletionRulesTest {
     objectCanton = SwissCanton.VD,
     handoverDate = "2026-08-18",
     handoverTime = "10:00",
+    legalOverlay = LegalOverlayRecord(
+      checks = if (kind == Kind.Entry) {
+        mapOf(
+          LegalRequirement.LeaseAndLocalTiming to LegalCheckStatus.Confirmed,
+          LegalRequirement.InitialRentForm to LegalCheckStatus.Confirmed,
+          LegalRequirement.TenantLiabilityInsurance to LegalCheckStatus.Confirmed,
+          LegalRequirement.LandlordLiabilityInsurance to LegalCheckStatus.Confirmed,
+        )
+      } else {
+        mapOf(
+          LegalRequirement.LeaseAndLocalTiming to LegalCheckStatus.Confirmed,
+          LegalRequirement.VaudExitReadiness to LegalCheckStatus.Confirmed,
+        )
+      },
+      ruleSetId = LEGAL_RULE_SET_ID,
+    ),
     parties = listOf(Party(Role.Tenant, "Tenant"), Party(Role.Landlord, company.ifBlank { "Landlord" })),
     rooms = listOf(Room("r1", RoomKind.Room, inspected = true)),
     keys = listOf(KeyCount(KeyKind.Apartment, count = 2)),
@@ -115,8 +135,19 @@ class CompletionRulesTest {
       issues(
         incomplete.copy(
           deposit = incomplete.deposit.copy(bank = "Bank", account = "Account"),
+          legalOverlay = incomplete.legalOverlay.withStatus(
+            LegalRequirement.DepositProof,
+            LegalCheckStatus.Confirmed,
+          ),
         )
       ).isEmpty()
     )
+  }
+
+  @Test
+  fun applicableOverlayChecksBlockFinalizationUntilTheyAreRecorded() {
+    val base = complete(Kind.Exit, Role.Tenant)
+    assertTrue(FinalizationIssue.LegalOverlay in issues(base.copy(legalOverlay = LegalOverlayRecord())))
+    assertTrue(issues(base).isEmpty())
   }
 }

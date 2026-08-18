@@ -126,6 +126,7 @@ dependencies {
   implementation(libs.androidx.lifecycle.viewmodel.compose)
   implementation(libs.kotlinx.serialization.json)
   implementation(libs.libphonenumber)
+  implementation("com.caverock:androidsvg-aar:1.4")
 
   implementation(libs.androidx.compose.ui)
   implementation(libs.androidx.compose.ui.tooling.preview)

@@ -51,6 +51,7 @@ class LegacyCompatTest {
       "objectId",
       "objectCanton",
       "romandFrameworkInLease",
+      "legalOverlay",
       "unilateralReason",
       "unilateralNote",
       "keyTransfer",

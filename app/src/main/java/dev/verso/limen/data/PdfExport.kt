@@ -82,6 +82,7 @@ object PdfExport {
     title(sheet, p, s, context)
     header(sheet, p, s)
     integrity(sheet, p, s)
+    legalOverlay(sheet, p, s)
     parties(sheet, p, s)
     if (DossierCard.Contract in cards) contract(sheet, p, s)
     if (DossierCard.Deposit in cards) deposit(sheet, p, s)
@@ -279,6 +280,35 @@ object PdfExport {
     if (p.amendedFromId.isNotBlank()) {
       sheet.wrapped("${s.pdfAmends}: ${p.amendedFromId}", sheet.small)
     }
+  }
+
+  /** The dated canton checks actually recorded, never inferred into an older frozen PDF. */
+  private fun legalOverlay(sheet: Sheet, p: Protocol, s: Str) {
+    if (p.legalOverlay == LegalOverlayRecord()) return
+    val overlay = p.resolvedLegalOverlay() ?: return
+    sheet.sectionTitle(s.legalOverlayTitle)
+    sheet.wrapped(
+      "${s.canton(overlay.canton)} · ${s.legalProfile(overlay.profile)}",
+      sheet.body,
+    )
+    if (p.kind == Kind.Entry) {
+      sheet.wrapped(
+        "${s.initialRentForm}: ${s.initialRentFormRule(overlay.initialRentFormRule)}",
+        sheet.small,
+      )
+    }
+    p.legalOverlay.checks.keys.sortedBy { it.ordinal }.forEach { requirement ->
+      val status = p.legalOverlay.status(requirement) ?: return@forEach
+      sheet.wrapped(
+        "${s.legalRequirement(requirement)}: ${s.legalCheckStatus(status)}",
+        sheet.body,
+      )
+    }
+    if (p.legalOverlay.note.isNotBlank()) {
+      sheet.wrapped("${s.legalOverlayNote}: ${p.legalOverlay.note}", sheet.small)
+    }
+    val ruleSet = p.legalOverlay.ruleSetId.takeIf { it.isNotBlank() }?.let { " ($it)" }.orEmpty()
+    sheet.wrapped("${s.legalSnapshot}$ruleSet", sheet.small)
   }
 
   private fun parties(sheet: Sheet, p: Protocol, s: Str) {

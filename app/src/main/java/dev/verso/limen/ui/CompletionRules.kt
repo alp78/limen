@@ -10,6 +10,7 @@ import dev.verso.limen.data.Protocol
 import dev.verso.limen.data.ProtocolIntegrity
 import dev.verso.limen.data.Role
 import dev.verso.limen.data.dossierCards
+import dev.verso.limen.data.resolvedLegalOverlay
 import java.io.File
 
 internal fun requiredRecordRoles(record: Protocol, fallbackRole: Role?): List<Role> = buildList {
@@ -34,6 +35,9 @@ internal fun protocolCompletionIssues(
   if (record.objectCanton == null) add(FinalizationIssue.Canton)
   if (record.handoverDate.isBlank()) add(FinalizationIssue.HandoverDate)
   if (record.handoverTime.isBlank()) add(FinalizationIssue.HandoverTime)
+  record.resolvedLegalOverlay()?.let { overlay ->
+    if (!overlay.isComplete(record.legalOverlay)) add(FinalizationIssue.LegalOverlay)
+  }
   if (listOf(Role.Tenant, Role.Landlord).any { role ->
       record.parties.firstOrNull { it.role == role }?.name.isNullOrBlank()
     }) add(FinalizationIssue.Parties)

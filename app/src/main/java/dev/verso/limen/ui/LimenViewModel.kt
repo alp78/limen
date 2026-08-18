@@ -91,6 +91,7 @@ enum class FinalizationIssue {
   Canton,
   HandoverDate,
   HandoverTime,
+  LegalOverlay,
   Parties,
   Rooms,
   Objects,
@@ -496,6 +497,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
       oneSided = false,
       unilateralReason = null,
       unilateralNote = "",
+      legalOverlay = dev.verso.limen.data.LegalOverlayRecord(),
       keyTransfer = dev.verso.limen.data.KeyTransferStatus.NotRecorded,
       keyTransferNote = "",
       pendingRecordReservations = emptyMap(),
@@ -577,6 +579,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
       oneSided = false,
       unilateralReason = null,
       unilateralNote = "",
+      legalOverlay = dev.verso.limen.data.LegalOverlayRecord(),
       keyTransfer = dev.verso.limen.data.KeyTransferStatus.NotRecorded,
       keyTransferNote = "",
       pendingRecordReservations = emptyMap(),
@@ -870,7 +873,12 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     edit { p ->
       when (card) {
         DossierCard.Contract -> p.copy(contract = Contract())
-        DossierCard.Deposit -> p.copy(deposit = Deposit())
+        DossierCard.Deposit -> p.copy(
+          deposit = Deposit(),
+          legalOverlay = p.legalOverlay.withoutStatus(
+            dev.verso.limen.data.LegalRequirement.DepositProof,
+          ),
+        )
         DossierCard.Meters -> p.copy(meters = Meters())
         DossierCard.Keys -> p.copy(
           keys = emptyList(),

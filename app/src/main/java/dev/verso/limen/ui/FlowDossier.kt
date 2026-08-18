@@ -36,17 +36,14 @@ import dev.verso.limen.data.KeyCount
 import dev.verso.limen.data.KeyKind
 import dev.verso.limen.data.KeyTransferStatus
 import dev.verso.limen.data.Kind
+import dev.verso.limen.data.LegalOverlayRecord
 import dev.verso.limen.data.Party
 import dev.verso.limen.data.Protocol
 import dev.verso.limen.data.Role
 import dev.verso.limen.data.SwissAddressCandidate
 import dev.verso.limen.data.SwissAddressLookup
-import dev.verso.limen.data.SwissCanton
 import dev.verso.limen.data.SwissDate
 import dev.verso.limen.data.dossierCards
-import dev.verso.limen.data.isVaudRulv
-import dev.verso.limen.data.legalProfile
-import dev.verso.limen.data.supportsRomandFramework
 import dev.verso.limen.sense.Clocks
 import dev.verso.limen.theme.Limen
 import kotlinx.coroutines.delay
@@ -72,6 +69,7 @@ internal fun DossierStep(vm: LimenViewModel, s: Str, p: Protocol) {
     verticalArrangement = Arrangement.spacedBy(10.dp),
   ) {
     ObjectCard(vm, s, p)
+    LegalOverlayPanel(vm, s, p)
     HandoverDeadline(p, s)
     PartiesCard(vm, s, p)
 
@@ -169,7 +167,11 @@ private fun ObjectCard(vm: LimenViewModel, s: Str, p: Protocol) {
     matches = emptyList()
     searching = false
     vm.edit { current ->
-      transform(current).copy(objectCanton = null, romandFrameworkInLease = false)
+      transform(current).copy(
+        objectCanton = null,
+        romandFrameworkInLease = false,
+        legalOverlay = LegalOverlayRecord(),
+      )
     }
   }
 
@@ -189,6 +191,7 @@ private fun ObjectCard(vm: LimenViewModel, s: Str, p: Protocol) {
                 .filter { part -> part.isNotBlank() }.joinToString(" "),
               objectCanton = candidate.canton,
               romandFrameworkInLease = false,
+              legalOverlay = LegalOverlayRecord(),
             )
           }
           matches = emptyList()
@@ -204,26 +207,13 @@ private fun ObjectCard(vm: LimenViewModel, s: Str, p: Protocol) {
         editAddress { it.copy(place = value) }
       }
       CantonPicker(s, p.objectCanton) { canton ->
-        vm.edit {
-          it.copy(
+        vm.edit { current ->
+          if (current.objectCanton == canton) current
+          else current.copy(
             objectCanton = canton,
-            romandFrameworkInLease = it.romandFrameworkInLease && canton.supportsRomandFramework(),
+            romandFrameworkInLease = false,
+            legalOverlay = LegalOverlayRecord(),
           )
-        }
-      }
-      p.objectCanton?.let { canton ->
-        Text(
-          "${s.legalBasis}: ${s.legalProfile(p.legalProfile())}",
-          style = MaterialTheme.typography.labelSmall,
-          color = Limen.colors.inkDim,
-        )
-        if (canton.supportsRomandFramework() && !p.legalProfile().isVaudRulv()) {
-          Toggle(
-            s.romandFrameworkInLease,
-            p.romandFrameworkInLease,
-            Modifier.fillMaxWidth(),
-            enabled = !LocalRecordLocked.current,
-          ) { vm.edit { it.copy(romandFrameworkInLease = !it.romandFrameworkInLease) } }
         }
       }
       Field(s.objectDetail, p.objectDetail) { v -> vm.edit { it.copy(objectDetail = v) } }
@@ -233,7 +223,14 @@ private fun ObjectCard(vm: LimenViewModel, s: Str, p: Protocol) {
         timeLabel = s.handoverTime,
         time = p.handoverTime,
         s = s,
-        onDate = { v -> vm.edit { it.copy(handoverDate = v) } },
+        onDate = { v ->
+          vm.edit {
+            it.copy(
+              handoverDate = v,
+              legalOverlay = if (it.handoverDate == v) it.legalOverlay else LegalOverlayRecord(),
+            )
+          }
+        },
         onTime = { v -> vm.edit { it.copy(handoverTime = v) } },
       )
       DateField(s.lastProtocol, p.lastProtocolDate, s) { v ->
@@ -595,45 +592,6 @@ private fun NotesCard(vm: LimenViewModel, s: Str, p: Protocol, onRemove: () -> U
 
 // ── Shared pickers ─────────────────────────────────────────────────────────────────────
 
-@Composable
-private fun CantonPicker(s: Str, selected: SwissCanton?, onSelect: (SwissCanton) -> Unit) {
-  var expanded by remember { mutableStateOf(false) }
-  Box(Modifier.fillMaxWidth()) {
-    KeySurface(
-      modifier = Modifier.fillMaxWidth(),
-      enabled = !LocalRecordLocked.current,
-      shape = RoundedCornerShape(10.dp),
-      onPress = { expanded = true },
-    ) {
-      Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp)) {
-        Text(s.cantonLabel, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
-        Text(
-          selected?.let(s::canton) ?: s.selectCanton,
-          style = MaterialTheme.typography.bodyMedium,
-          color = Limen.colors.ink,
-        )
-      }
-    }
-    DropdownMenu(
-      expanded = expanded,
-      onDismissRequest = { expanded = false },
-      containerColor = Limen.colors.plateRaised,
-      modifier = Modifier.height(420.dp),
-    ) {
-      SwissCanton.entries.forEach { canton ->
-        DropdownMenuItem(
-          text = { Text(s.canton(canton), color = Limen.colors.ink) },
-          enabled = canton != selected,
-          onClick = {
-            onSelect(canton)
-            expanded = false
-          },
-        )
-      }
-    }
-  }
-}
-
 /** The handed-over flat is resolved independently from any participant contact address. */
 @Composable
 private fun AddressMatchList(
@@ -648,13 +606,20 @@ private fun AddressMatchList(
         shape = RoundedCornerShape(10.dp),
         onPress = { onSelect(candidate) },
       ) {
-        Text(
-          candidate.label,
-          style = MaterialTheme.typography.bodyMedium,
-          color = Limen.colors.ink,
-          maxLines = 2,
-          modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-        )
+        Row(
+          Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+          CantonFlag(candidate.canton, contentDescription = null, size = 26.dp)
+          Text(
+            candidate.label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = Limen.colors.ink,
+            maxLines = 2,
+            modifier = Modifier.weight(1f),
+          )
+        }
       }
     }
   }

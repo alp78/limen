@@ -10,6 +10,9 @@ import dev.verso.limen.data.Grade
 import dev.verso.limen.data.ItemKey
 import dev.verso.limen.data.KeyKind
 import dev.verso.limen.data.KeyTransferStatus
+import dev.verso.limen.data.InitialRentFormRule
+import dev.verso.limen.data.LegalCheckStatus
+import dev.verso.limen.data.LegalRequirement
 import dev.verso.limen.data.LegalProfile
 import dev.verso.limen.data.ObjectGroup
 import dev.verso.limen.data.Role
@@ -38,6 +41,9 @@ class StringsTest {
       DossierCard.entries.forEach { assertTrue("$lang card $it", s.dossierCard(it).isNotBlank()) }
       SwissCanton.entries.forEach { assertTrue("$lang canton $it", s.canton(it).isNotBlank()) }
       LegalProfile.entries.forEach { assertTrue("$lang legal profile $it", s.legalProfile(it).isNotBlank()) }
+      InitialRentFormRule.entries.forEach { assertTrue("$lang rent form $it", s.initialRentFormRule(it).isNotBlank()) }
+      LegalRequirement.entries.forEach { assertTrue("$lang legal check $it", s.legalRequirement(it).isNotBlank()) }
+      LegalCheckStatus.entries.forEach { assertTrue("$lang legal status $it", s.legalCheckStatus(it).isNotBlank()) }
       KeyTransferStatus.entries.forEach { assertTrue("$lang key transfer $it", s.keyTransfer(it).isNotBlank()) }
       UnilateralReason.entries.forEach { assertTrue("$lang unilateral reason $it", s.unilateralReason(it).isNotBlank()) }
       DeliveryMethod.entries.forEach { assertTrue("$lang delivery $it", s.deliveryMethod(it).isNotBlank()) }
