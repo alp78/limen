@@ -13,6 +13,11 @@ object ProtocolIntegrity {
   private val json = Json { encodeDefaults = true }
 
   fun fingerprint(protocol: Protocol, photoDir: File, signatureDir: File): String {
+    val evidence = evidenceFiles(protocol, photoDir, signatureDir)
+    val missing = evidence.filterNot { (_, file) -> file.isFile && file.canRead() && file.length() > 0L }
+    require(missing.isEmpty()) {
+      "Missing or unreadable evidence: ${missing.joinToString { (label, _) -> label }}"
+    }
     val digest = MessageDigest.getInstance("SHA-256")
     val canonical = protocol.copy(
       evidenceFingerprint = "",
@@ -21,19 +26,7 @@ object ProtocolIntegrity {
     )
     digest.update(json.encodeToString(Protocol.serializer(), canonical).toByteArray(Charsets.UTF_8))
 
-    protocol.defects
-      .flatMap { defect -> defect.photoFiles().map { name -> "photo/$name" to File(photoDir, name) } }
-      // Object photos hash under the same label scheme, so a record with no objects, which is
-      // every record written before they existed, produces the identical fingerprint it always did.
-      .plus(
-        protocol.objects
-          .flatMap { entry -> entry.photoFiles().map { name -> "photo/$name" to File(photoDir, name) } }
-      )
-      .plus(
-        protocol.signatures
-          .filter { it.file.isNotBlank() }
-          .map { signature -> "ink/${signature.file}" to File(signatureDir, signature.file) }
-      )
+    evidence
       .distinctBy { (label, _) -> label }
       .sortedBy { (label, _) -> label }
       .forEach { (label, file) ->
@@ -44,10 +37,19 @@ object ProtocolIntegrity {
   }
 
   fun matches(protocol: Protocol, photoDir: File, signatureDir: File): Boolean =
-    protocol.isFinalized() && protocol.evidenceFingerprint == fingerprint(protocol, photoDir, signatureDir)
+    protocol.isFinalized() && runCatching {
+      protocol.evidenceFingerprint == fingerprint(protocol, photoDir, signatureDir)
+    }.getOrDefault(false)
+
+  fun missingEvidence(protocol: Protocol, photoDir: File, signatureDir: File): List<String> =
+    evidenceFiles(protocol, photoDir, signatureDir)
+      .filterNot { (_, file) -> file.isFile && file.canRead() && file.length() > 0L }
+      .map { (label, _) -> label }
 
   fun fileHash(file: File): String {
-    if (!file.exists() || !file.isFile) return "MISSING"
+    require(file.isFile && file.canRead() && file.length() > 0L) {
+      "Evidence file is missing, unreadable, or empty: ${file.name}"
+    }
     val digest = MessageDigest.getInstance("SHA-256")
     file.inputStream().buffered().use { input ->
       val buffer = ByteArray(8 * 1024)
@@ -59,4 +61,29 @@ object ProtocolIntegrity {
     }
     return digest.digest().joinToString("") { "%02X".format(it) }
   }
+
+  private fun evidenceFiles(
+    protocol: Protocol,
+    photoDir: File,
+    signatureDir: File,
+  ): List<Pair<String, File>> =
+    protocol.defects
+      .flatMap { defect -> defect.photoFiles().map { name -> "photo/$name" to resolvedFile(photoDir, name) } }
+      .plus(
+        protocol.objects
+          .flatMap { entry -> entry.photoFiles().map { name -> "photo/$name" to resolvedFile(photoDir, name) } }
+      )
+      .plus(
+        protocol.signatures
+          .filter { it.file.isNotBlank() }
+          .map { signature -> "ink/${signature.file}" to resolvedFile(signatureDir, signature.file) }
+      )
+
+  /** Invalid names resolve to a guaranteed-missing child, never outside the evidence root. */
+  private fun resolvedFile(root: File, name: String): File =
+    if (name == File(name).name && name !in setOf(".", "..")) {
+      File(root, name)
+    } else {
+      File(File(root, ".invalid-evidence"), name.hashCode().toString())
+    }
 }

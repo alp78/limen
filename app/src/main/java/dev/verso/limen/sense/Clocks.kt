@@ -7,11 +7,10 @@ import java.time.LocalDate
  * The legal clocks of the handover, as pure date arithmetic so they can be tested against
  * a calendar on the JVM.
  *
- * The law says "immediately"; the case law (BGer 4A_388/2013) says that means 2 to 3
- * working days for the landlord's defect notice, Saturdays, Sundays and holidays not
- * counting. The tenant's move-in defect list runs on ~10 calendar days of practice; the
- * deposit's backstop is Art. 257e's one year. None of this is legal advice and every
- * face that shows these numbers says where they come from.
+ * The law says "immediately". BGer 4A_388/2013 reports a usual 2 to 3 working-day
+ * practice, another view extending to one week, and makes the concrete circumstances
+ * decisive. Ten calendar days is a frequent contractual move-in period, not a uniform
+ * federal deadline. The deposit's backstop is Art. 257e's one year.
  */
 object Clocks {
 
@@ -37,18 +36,17 @@ object Clocks {
   }
 
   /**
-   * The landlord's defect notice should be POSTED by this date: the second working day
-   * after the keys came back. Courts have accepted three; one week is already late, so
-   * the instrument shows the safe edge, not the cliff.
+   * A conservative planning target: the second working day after return. It is not a
+   * statutory deadline and does not replace the duty to act immediately.
    */
   fun exitNoticeSafeBy(keysReturned: LocalDate, holidays: Set<LocalDate> = emptySet()): LocalDate =
     addWorkingDays(keysReturned, 2, holidays)
 
-  /** The strict edge the case law still tolerates. */
+  /** The three-working-day practice reference, not a guaranteed legal outer edge. */
   fun exitNoticeLatest(keysReturned: LocalDate, holidays: Set<LocalDate> = emptySet()): LocalDate =
     addWorkingDays(keysReturned, 3, holidays)
 
-  /** The incoming tenant's own defect list, on the customary ten days of practice. */
+  /** A common contractual ten-day period, shown only as a planning aid. */
   fun entryListBy(moveIn: LocalDate): LocalDate = moveIn.plusDays(10)
 
   /**
@@ -58,9 +56,12 @@ object Clocks {
   fun depositFreeAfter(tenancyEnd: LocalDate): LocalDate = tenancyEnd.plusYears(1)
 
   /**
-   * When the flat is actually due back: the lease's last day, shifted to the next working
-   * day when it falls on a weekend or holiday.
+   * Art. 78 CO planning aid: shift a Sunday or supplied recognized holiday, but not an
+   * ordinary Saturday. The lease or another agreement can provide otherwise.
    */
-  fun returnDue(leaseEnd: LocalDate, holidays: Set<LocalDate> = emptySet()): LocalDate =
-    nextWorkingDay(leaseEnd, holidays)
+  fun returnDue(leaseEnd: LocalDate, holidays: Set<LocalDate> = emptySet()): LocalDate {
+    var date = leaseEnd
+    while (date.dayOfWeek == DayOfWeek.SUNDAY || date in holidays) date = date.plusDays(1)
+    return date
+  }
 }

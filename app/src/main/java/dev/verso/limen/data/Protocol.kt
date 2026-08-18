@@ -38,6 +38,14 @@ data class Protocol(
   val address: String = "",
   /** Postcode and place. */
   val place: String = "",
+  /** Canton of the object, selected independently from every participant address. */
+  @OptIn(ExperimentalSerializationApi::class)
+  @EncodeDefault(EncodeDefault.Mode.NEVER)
+  val objectCanton: SwissCanton? = null,
+  /** True only when the lease expressly incorporates the non-binding Romand framework. */
+  @OptIn(ExperimentalSerializationApi::class)
+  @EncodeDefault(EncodeDefault.Mode.NEVER)
+  val romandFrameworkInLease: Boolean = false,
   /** Floor and position, the way regies write it: "3. OG links". */
   val objectDetail: String = "",
   /** ISO date of the handover itself, and the clock time beside it. */
@@ -77,6 +85,24 @@ data class Protocol(
   val chargesStatementBy: String = "",
   /** Nobody on the other side of the threshold: the one-sided handover documented alone. */
   val oneSided: Boolean = false,
+  /** Why the bilateral handover could not take place. Required for a unilateral record. */
+  @OptIn(ExperimentalSerializationApi::class)
+  @EncodeDefault(EncodeDefault.Mode.NEVER)
+  val unilateralReason: UnilateralReason? = null,
+  @OptIn(ExperimentalSerializationApi::class)
+  @EncodeDefault(EncodeDefault.Mode.NEVER)
+  val unilateralNote: String = "",
+  /** The state of the key transfer, including a deliberate no-physical-keys outcome. */
+  @OptIn(ExperimentalSerializationApi::class)
+  @EncodeDefault(EncodeDefault.Mode.NEVER)
+  val keyTransfer: KeyTransferStatus = KeyTransferStatus.NotRecorded,
+  @OptIn(ExperimentalSerializationApi::class)
+  @EncodeDefault(EncodeDefault.Mode.NEVER)
+  val keyTransferNote: String = "",
+  /** Reservations are entered before ink and copied into that person's signed outcome. */
+  @OptIn(ExperimentalSerializationApi::class)
+  @EncodeDefault(EncodeDefault.Mode.NEVER)
+  val pendingRecordReservations: Map<Role, String> = emptyMap(),
   val signatures: List<Signature> = emptyList(),
   /** The id of the entry protocol this exit protocol was seeded from, if any. */
   val seedId: String = "",
@@ -94,11 +120,15 @@ data class Protocol(
 ) {
   /** The record plane has current ink from at least one person. */
   fun isSigned(): Boolean = signatures.any {
-    it.plane == Plane.Record && !it.refused && it.contentRevision == contentRevision
+    it.plane == Plane.Record && !it.refused && it.file.isNotBlank() &&
+      it.contentRevision == contentRevision
   }
   fun isFinalized(): Boolean = finalizedEpochMs > 0 && evidenceFingerprint.isNotBlank()
   fun isExported(): Boolean = exportedEpochMs > 0
   fun isCurrent(signature: Signature): Boolean = signature.contentRevision == contentRevision
+  fun copyDeliveredTo(role: Role): Boolean = deliveryReceipts.any { it.role == role }
+  fun deliveryComplete(): Boolean =
+    listOf(Role.Tenant, Role.Landlord).all(::copyDeliveredTo)
 }
 
 @Serializable
@@ -123,6 +153,12 @@ enum class Grade { NotChecked, Ok, VeryGood, Good, Fair, Poor }
 
 @Serializable
 enum class Role { Tenant, Landlord, NextTenant, Witness, Expert }
+
+@Serializable
+enum class UnilateralReason { OtherPartyAbsent, RefusedInspection, RemoteKeyReturn, Other }
+
+@Serializable
+enum class KeyTransferStatus { NotRecorded, AllTransferred, NoPhysicalKeys, Incomplete }
 
 @Serializable
 data class Party(
@@ -243,6 +279,10 @@ data class Room(
   val items: List<RoomItem> = emptyList(),
   /** Keys of this room's own door, the way every MV room block ends. */
   val keysCount: Int = 0,
+  /** Explicit confirmation that this listed room was actually inspected. */
+  @OptIn(ExperimentalSerializationApi::class)
+  @EncodeDefault(EncodeDefault.Mode.NEVER)
+  val inspected: Boolean = false,
   /** Legacy v2 value retained solely to verify finalized v2 records; no longer shown or exported. */
   val freshPaintedWalls: Boolean = false,
   val freshPaintedWoodwork: Boolean = false,
@@ -274,6 +314,10 @@ data class ObjectEntry(
   /** Which room it stands in. Blank means the object as a whole. */
   val roomId: String = "",
   val note: String = "",
+  /** Explicit confirmation that this supplied item and its condition were checked. */
+  @OptIn(ExperimentalSerializationApi::class)
+  @EncodeDefault(EncodeDefault.Mode.NEVER)
+  val inspected: Boolean = false,
   /** File names under the protocol's photo directory, in the order they were taken. */
   val photos: List<String> = emptyList(),
   val photoEvidence: List<PhotoEvidence> = emptyList(),
@@ -395,9 +439,14 @@ enum class TenantResponse { NotStated, Agrees, Disputes, NormalWear, ExistingAtE
 data class DeliveryReceipt(
   val role: Role,
   val epochMs: Long = 0,
+  val method: DeliveryMethod = DeliveryMethod.InPerson,
+  val note: String = "",
 )
 
-/** One ink signature confirming the handover record, never an acceptance of costs. */
+@Serializable
+enum class DeliveryMethod { InPerson, Electronic, RegisteredMail, Other }
+
+/** One ink signature confirming the handover observations and any written reservation. */
 @Serializable
 data class Signature(
   val role: Role,

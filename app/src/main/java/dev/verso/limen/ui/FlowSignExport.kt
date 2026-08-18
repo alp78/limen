@@ -21,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,11 +30,16 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.verso.limen.data.DepositKind
+import dev.verso.limen.data.DeliveryMethod
 import dev.verso.limen.data.Kind
 import dev.verso.limen.data.Plane
 import dev.verso.limen.data.Protocol
 import dev.verso.limen.data.Role
+import dev.verso.limen.data.UnilateralReason
 import dev.verso.limen.theme.Limen
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 /** The handover record signature. Refusal is a recorded outcome, not a dead end. */
 @Composable
@@ -48,10 +54,7 @@ internal fun SignStep(vm: LimenViewModel, s: Str, p: Protocol) {
   ) {
     Panel(label = s.signRecordTitle, info = s.tipRecord()) {
       Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        vm.requiredRecordRoles(p).forEach { role ->
-          SignRow(vm, s, p, role, Plane.Record) { padTarget = role }
-        }
-        // Who has to sign at all. This decides the rows above, which is why it sits here
+        // Who has to sign at all. This decides the rows below, which is why it sits here
         // rather than filed under the dossier's notes, where it was also printed only if
         // that optional component happened to be on the record.
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -60,9 +63,38 @@ internal fun SignStep(vm: LimenViewModel, s: Str, p: Protocol) {
             p.oneSided,
             Modifier.weight(1f),
             enabled = !LocalRecordLocked.current,
-          ) { vm.edit { it.copy(oneSided = !it.oneSided) } }
+          ) {
+            vm.edit {
+              if (it.oneSided) it.copy(
+                oneSided = false,
+                unilateralReason = null,
+                unilateralNote = "",
+              ) else it.copy(oneSided = true)
+            }
+          }
           InfoTip(s.tipOneSided())
         }
+        if (p.oneSided) {
+          Text(s.infoOneSided, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
+          androidx.compose.foundation.layout.FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+          ) {
+            UnilateralReason.entries.forEach { reason ->
+              Chip(s.unilateralReason(reason), active = p.unilateralReason == reason) {
+                vm.edit { it.copy(unilateralReason = reason) }
+              }
+            }
+          }
+          Field(s.unilateralNote, p.unilateralNote, singleLine = false) { value ->
+            vm.edit { it.copy(unilateralNote = value) }
+          }
+        }
+        Text(s.reservationBeforeSign, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
+        vm.requiredRecordRoles(p).forEach { role ->
+          SignRow(vm, s, p, role, Plane.Record) { padTarget = role }
+        }
+        Text(s.inkEvidenceNotice, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
       }
     }
 
@@ -89,7 +121,7 @@ internal fun SignStep(vm: LimenViewModel, s: Str, p: Protocol) {
       }
     }
 
-    val canExport = issues.isEmpty() && !vm.finalizing
+    val canExport = p.isFinalized() || (issues.isEmpty() && !vm.finalizing)
     BigKey(
       s.stepExport.uppercase(),
       active = canExport,
@@ -130,6 +162,7 @@ private fun SignRow(
 ) {
   val sig = p.signatures.firstOrNull { it.role == role && it.plane == plane }
   val current = sig?.let(p::isCurrent) == true
+  val pendingReservation = p.pendingRecordReservations[role] ?: sig?.reservation.orEmpty()
   Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
     Row(verticalAlignment = Alignment.CenterVertically) {
       Column(Modifier.weight(1f)) {
@@ -163,10 +196,16 @@ private fun SignRow(
         IconKey(ButtonGlyph.Clear, s.clearInk, destructive = true) { vm.clearSignature(role, plane) }
       }
     }
-    if (sig != null) {
-      Field(s.reservationLabel, sig.reservation) { v ->
-        vm.setSignatureReservation(role, plane, v)
+    if (!LocalRecordLocked.current && !current) {
+      Field(s.reservationLabel, pendingReservation) { value ->
+        vm.setRecordReservation(role, value)
       }
+    } else if (sig != null && sig.reservation.isNotBlank()) {
+      Text(
+        "${s.reservationLabel}: ${sig.reservation}",
+        style = MaterialTheme.typography.labelSmall,
+        color = Limen.colors.inkDim,
+      )
     }
   }
 }
@@ -278,6 +317,8 @@ internal fun ExportStep(vm: LimenViewModel, s: Str, p: Protocol) {
       }
     }
 
+    if (p.isExported()) CopyDeliveryPanel(vm, s, p)
+
     // The deposit's next step, on screen as well as in the PDF.
     if (p.kind == Kind.Exit && p.deposit.kind != DepositKind.None) {
       Panel(label = s.releaseTitle) {
@@ -309,3 +350,60 @@ internal fun ExportStep(vm: LimenViewModel, s: Str, p: Protocol) {
     }
   }
 }
+
+@Composable
+private fun CopyDeliveryPanel(vm: LimenViewModel, s: Str, p: Protocol) {
+  var tenantDetail by rememberSaveable(p.id) { mutableStateOf("") }
+  var landlordDetail by rememberSaveable(p.id) { mutableStateOf("") }
+  Panel(label = s.copyDelivery) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+      Text(s.deliverySelfDeclared, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
+      listOf(Role.Tenant, Role.Landlord).forEach { role ->
+        val receipt = p.deliveryReceipts.firstOrNull { it.role == role }
+        Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+          Text(s.role(role), style = MaterialTheme.typography.bodyMedium, color = Limen.colors.ink)
+          if (receipt == null) {
+            Text(s.recordCopyFor, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
+            val detail = if (role == Role.Tenant) tenantDetail else landlordDetail
+            Field(
+              s.deliveryDetail,
+              detail,
+              editableWhenLocked = true,
+            ) { value ->
+              if (role == Role.Tenant) tenantDetail = value else landlordDetail = value
+            }
+            androidx.compose.foundation.layout.FlowRow(
+              horizontalArrangement = Arrangement.spacedBy(6.dp),
+              verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+              DeliveryMethod.entries.forEach { method ->
+                Chip(
+                  s.deliveryMethod(method),
+                  dim = false,
+                  enabled = method != DeliveryMethod.Other || detail.isNotBlank(),
+                ) { vm.recordDelivery(role, method, detail) }
+              }
+            }
+          } else {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+              Text(
+                "${s.deliveryMethod(receipt.method)} · ${deliveryMoment(receipt.epochMs)}",
+                style = MaterialTheme.typography.labelSmall,
+                color = Limen.colors.seal,
+                modifier = Modifier.weight(1f),
+              )
+              IconKey(ButtonGlyph.Clear, s.clearDelivery, destructive = true) { vm.clearDelivery(role) }
+            }
+            if (receipt.note.isNotBlank()) {
+              Text(receipt.note, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+private fun deliveryMoment(epochMs: Long): String =
+  DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+    .format(Instant.ofEpochMilli(epochMs).atZone(ZoneId.systemDefault()))

@@ -2,12 +2,14 @@ package dev.verso.limen.ui
 
 import android.app.Application
 import android.content.Context
+import android.net.Uri
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import dev.verso.limen.data.Contract
+import dev.verso.limen.data.ArchiveImportResult
 import dev.verso.limen.data.Defect
 import dev.verso.limen.data.Deposit
 import dev.verso.limen.data.DossierCard
@@ -33,6 +35,8 @@ import dev.verso.limen.data.Templates
 import dev.verso.limen.data.dossierCards
 import dev.verso.limen.data.hasRequiredFields
 import dev.verso.limen.data.photoFiles
+import dev.verso.limen.data.exportStamp
+import dev.verso.limen.data.writeToDownloads
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -84,10 +88,17 @@ enum class FlowStep {
 enum class FinalizationIssue {
   Address,
   Place,
+  Canton,
   HandoverDate,
   HandoverTime,
   Parties,
+  Rooms,
+  Objects,
+  Dossier,
+  Keys,
+  UnilateralReason,
   DefectText,
+  Evidence,
   RecordOutcomes,
 }
 
@@ -154,6 +165,63 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
   var protocols by mutableStateOf(store.list())
     private set
 
+  var archiveBusy by mutableStateOf(false)
+    private set
+
+  var archiveExported by mutableStateOf<dev.verso.limen.data.ExportedFile?>(null)
+    private set
+
+  var archiveImported by mutableStateOf<ArchiveImportResult?>(null)
+    private set
+
+  var archiveFailed by mutableStateOf(false)
+    private set
+
+  fun exportArchive() {
+    if (archiveBusy) return
+    flush()
+    archiveBusy = true
+    archiveExported = null
+    archiveImported = null
+    archiveFailed = false
+    viewModelScope.launch {
+      val result = withContext(Dispatchers.IO) {
+        runCatching {
+          writeToDownloads(
+            getApplication(),
+            "Limen-backup-${exportStamp()}.zip",
+            "application/zip",
+            store::exportArchive,
+          )
+        }
+      }
+      archiveBusy = false
+      result.onSuccess { archiveExported = it }.onFailure { archiveFailed = true }
+    }
+  }
+
+  fun importArchive(uri: Uri) {
+    if (archiveBusy) return
+    flush()
+    archiveBusy = true
+    archiveExported = null
+    archiveImported = null
+    archiveFailed = false
+    viewModelScope.launch {
+      val result = withContext(Dispatchers.IO) {
+        runCatching {
+          getApplication<Application>().contentResolver.openInputStream(uri)?.use(store::importArchive)
+            ?: error("No archive input stream")
+        }
+      }
+      archiveBusy = false
+      result.onSuccess {
+        archiveImported = it
+        protocols = store.list()
+      }.onFailure { archiveFailed = true }
+    }
+  }
+
   // ── The flow ─────────────────────────────────────────────────────────────────────────
 
   /** The protocol being walked, or null when the case is showing. Saved on every edit. */
@@ -190,6 +258,19 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
   var finalizationError by mutableStateOf(false)
     private set
 
+  init {
+    val openId = prefs.getString(KEY_OPEN, null)
+    if (!openId.isNullOrBlank()) {
+      val recovered = store.load(openId)
+      if (recovered != null) {
+        setActiveProtocol(recovered)
+        flowStep = FlowStep.Hub
+      } else {
+        prefs.edit().remove(KEY_OPEN).apply()
+      }
+    }
+  }
+
   fun photoDir(): File? = working?.let { store.photoDir(it.id) }
   fun signatureDir(): File? = working?.let { store.signatureDir(it.id) }
 
@@ -219,6 +300,8 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     scheduleSave()
   }
 
+  private fun contentLocked(): Boolean = working?.isFinalized() == true || finalizing
+
   /** Ink records agreement with the current draft; it does not itself rewrite the draft. */
   private fun editSignatures(transform: (Protocol) -> Protocol) {
     val p = working ?: return
@@ -236,6 +319,34 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     val p = working ?: return
     working = transform(p)
     scheduleSave()
+  }
+
+  fun recordDelivery(
+    role: Role,
+    method: dev.verso.limen.data.DeliveryMethod,
+    note: String = "",
+  ) {
+    val p = working ?: return
+    if (!p.isFinalized() || !p.isExported() || role !in listOf(Role.Tenant, Role.Landlord)) return
+    if (method == dev.verso.limen.data.DeliveryMethod.Other && note.isBlank()) return
+    editMetadata { record ->
+      record.copy(
+        deliveryReceipts = record.deliveryReceipts.filterNot { it.role == role } +
+          dev.verso.limen.data.DeliveryReceipt(
+            role = role,
+            epochMs = System.currentTimeMillis(),
+            method = method,
+            note = note.trim(),
+          )
+      )
+    }
+  }
+
+  fun clearDelivery(role: Role) {
+    if (working?.isFinalized() != true) return
+    editMetadata { record ->
+      record.copy(deliveryReceipts = record.deliveryReceipts.filterNot { it.role == role })
+    }
   }
 
   private var saveJob: kotlinx.coroutines.Job? = null
@@ -344,6 +455,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
         KeyCount(KeyKind.Mailbox),
         KeyCount(KeyKind.Cellar),
       ),
+      dossier = listOf(DossierCard.Keys),
       rooms = rooms,
     )
     store.save(p)
@@ -382,6 +494,11 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
       remarks = "",
       chargesStatementBy = "",
       oneSided = false,
+      unilateralReason = null,
+      unilateralNote = "",
+      keyTransfer = dev.verso.limen.data.KeyTransferStatus.NotRecorded,
+      keyTransferNote = "",
+      pendingRecordReservations = emptyMap(),
       signatures = emptyList(),
       seedId = entry.id,
       amendedFromId = "",
@@ -404,11 +521,12 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
    * does. An older entry's item grid is dropped rather than reopened: the exit is a new record
    * and records only what it finds.
    */
-  private fun freshRoom(room: Room): Room = room.copy(items = emptyList(), keysCount = 0)
+  private fun freshRoom(room: Room): Room =
+    room.copy(items = emptyList(), keysCount = 0, inspected = false)
 
   /** The supplied object is still supplied; the photographs of it at entry are not its exit state. */
   private fun freshObject(entry: ObjectEntry): ObjectEntry =
-    entry.copy(photos = emptyList(), photoEvidence = emptyList())
+    entry.copy(photos = emptyList(), photoEvidence = emptyList(), inspected = false)
 
   /** Opens an exit from its entry baseline while retaining the new starter's verified contact data. */
   fun seedExitFrom(entry: Protocol, sessionRole: Role, identity: SessionIdentity) {
@@ -457,6 +575,11 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
       remarks = "",
       chargesStatementBy = "",
       oneSided = false,
+      unilateralReason = null,
+      unilateralNote = "",
+      keyTransfer = dev.verso.limen.data.KeyTransferStatus.NotRecorded,
+      keyTransferNote = "",
+      pendingRecordReservations = emptyMap(),
       signatures = emptyList(),
       seedId = entry.id,
       amendedFromId = "",
@@ -520,37 +643,18 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
   /** The people whose record outcome is required before this phone can freeze the record. */
   fun requiredRecordRoles(p: Protocol? = working): List<Role> {
     val record = p ?: return emptyList()
-    return buildList {
-      if (record.oneSided) {
-        (record.sessionRole ?: myRole)?.let(::add)
-      } else {
-        add(Role.Tenant)
-        add(Role.Landlord)
-      }
-      if (record.parties.any { it.role == Role.Witness }) add(Role.Witness)
-      if (record.parties.any { it.role == Role.Expert }) add(Role.Expert)
-    }.distinct()
+    return requiredRecordRoles(record, myRole)
   }
 
   fun completionIssues(p: Protocol? = working): List<FinalizationIssue> {
     val record = p ?: return emptyList()
-    return buildList {
-      if (record.address.isBlank()) add(FinalizationIssue.Address)
-      if (record.place.isBlank()) add(FinalizationIssue.Place)
-      if (record.handoverDate.isBlank()) add(FinalizationIssue.HandoverDate)
-      if (record.handoverTime.isBlank()) add(FinalizationIssue.HandoverTime)
-      if (listOf(Role.Tenant, Role.Landlord).any { role ->
-          record.parties.firstOrNull { it.role == role }?.name.isNullOrBlank()
-        }) add(FinalizationIssue.Parties)
-      // No room-by-room gate. A flat with nothing wrong in it is a complete finding, and
-      // demanding a tap on every undamaged surface only teaches people to tap without looking.
-      if (record.defects.any { it.text.isBlank() }) add(FinalizationIssue.DefectText)
-      if (requiredRecordRoles(record).any { role ->
-          record.signatures.none { signature ->
-            signature.role == role && signature.plane == Plane.Record && record.isCurrent(signature)
-          }
-        }) add(FinalizationIssue.RecordOutcomes)
-    }
+    if (record.isFinalized()) return emptyList()
+    return protocolCompletionIssues(
+      record,
+      requiredRecordRoles(record),
+      store.photoDir(record.id),
+      store.signatureDir(record.id),
+    )
   }
 
   fun finalizeProtocol() {
@@ -569,6 +673,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
         runCatching {
           val withMoment = p.copy(
             signatures = p.signatures.filter(p::isCurrent),
+            pendingRecordReservations = emptyMap(),
             finalizedEpochMs = System.currentTimeMillis(),
           )
           val frozen = withMoment.copy(
@@ -670,7 +775,14 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     }
   }
 
+  fun setRoomInspected(roomId: String, inspected: Boolean) {
+    edit { p ->
+      p.copy(rooms = p.rooms.map { if (it.id == roomId) it.copy(inspected = inspected) else it })
+    }
+  }
+
   fun removeRoom(roomId: String) {
+    if (contentLocked()) return
     val gone = working?.defects?.filter { it.roomId == roomId }.orEmpty()
     deletePhotosOf(gone.flatMap(Defect::photoFiles))
     edit { p ->
@@ -685,6 +797,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
 
   /** Clears every finding in this room, leaving the room itself on the walk. */
   fun clearRoom(roomId: String) {
+    if (contentLocked()) return
     val gone = working?.defects?.filter { it.roomId == roomId }.orEmpty()
     deletePhotosOf(gone.flatMap(Defect::photoFiles))
     edit { p -> p.copy(defects = p.defects.filterNot { it.roomId == roomId }) }
@@ -721,8 +834,13 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     edit { p -> p.copy(objects = p.objects.map { if (it.id == id) transform(it) else it }) }
   }
 
+  fun setObjectInspected(id: String, inspected: Boolean) {
+    updateObject(id) { it.copy(inspected = inspected) }
+  }
+
   /** A removed object takes its photographs and any finding recorded on it with it. */
   fun removeObject(id: String) {
+    if (contentLocked()) return
     val entry = working?.objects?.firstOrNull { it.id == id }
     val gone = working?.defects?.filter { it.objectId == id }.orEmpty()
     deletePhotosOf(entry?.photoFiles().orEmpty() + gone.flatMap(Defect::photoFiles))
@@ -754,8 +872,13 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
         DossierCard.Contract -> p.copy(contract = Contract())
         DossierCard.Deposit -> p.copy(deposit = Deposit())
         DossierCard.Meters -> p.copy(meters = Meters())
-        DossierCard.Keys -> p.copy(keys = emptyList(), selfMadeKeys = false)
-        DossierCard.Notes -> p.copy(remarks = "", chargesStatementBy = "", oneSided = false)
+        DossierCard.Keys -> p.copy(
+          keys = emptyList(),
+          selfMadeKeys = false,
+          keyTransfer = dev.verso.limen.data.KeyTransferStatus.NotRecorded,
+          keyTransferNote = "",
+        )
+        DossierCard.Notes -> p.copy(remarks = "", chargesStatementBy = "")
       }
     }
   }
@@ -773,7 +896,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
   // ── Defects ──────────────────────────────────────────────────────────────────────────
 
   fun openDefect(roomId: String, item: ItemKey?, itemLabel: String = "") {
-    if (working?.isFinalized() == true) return
+    if (contentLocked()) return
     val id = "d${System.currentTimeMillis()}"
     edit { p ->
       p.copy(defects = p.defects + Defect(
@@ -788,7 +911,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
 
   /** A finding about a supplied object rather than a surface of the flat. */
   fun openObjectDefect(objectId: String) {
-    if (working?.isFinalized() == true) return
+    if (contentLocked()) return
     val id = "d${System.currentTimeMillis()}"
     edit { p -> p.copy(defects = p.defects + Defect(id = id, objectId = objectId)) }
     editingDefectId = id
@@ -812,7 +935,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
   }
 
   fun removeDefect(id: String) {
-    if (working?.isFinalized() == true) return
+    if (contentLocked()) return
     val gone = working?.defects?.firstOrNull { it.id == id }
     deletePhotosOf(gone?.photoFiles().orEmpty())
     edit { p -> p.copy(defects = p.defects.filterNot { it.id == id }) }
@@ -821,8 +944,11 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
 
   private fun deletePhotosOf(names: List<String>) {
     val dir = photoDir() ?: return
-    names.distinct().forEach { name -> File(dir, name).delete() }
+    names.distinct().filter(::safeEvidenceName).forEach { name -> File(dir, name).delete() }
   }
+
+  private fun safeEvidenceName(name: String): Boolean =
+    name == File(name).name && name !in setOf(".", "..")
 
   // ── Photographs ──────────────────────────────────────────────────────────────────────
 
@@ -833,7 +959,11 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
    */
   private fun copyPhoto(ownerId: String, existing: Int, source: File, photoSource: PhotoSource): PhotoEvidence? {
     val dir = photoDir() ?: return null
-    val name = "$ownerId-${System.currentTimeMillis()}-${existing + 1}.jpg"
+    val ownerToken = ownerId
+      .takeIf { safeEvidenceName(it) && it.matches(Regex("[A-Za-z0-9._-]+")) }
+      ?.take(80)
+      ?: "e${ownerId.hashCode().toUInt().toString(16)}"
+    val name = "$ownerToken-${System.currentTimeMillis()}-${existing + 1}.jpg"
     val target = File(dir, name)
     runCatching { source.copyTo(target, overwrite = true) }.getOrElse { return null }
     source.delete()
@@ -846,7 +976,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
   }
 
   fun attachPhoto(defectId: String, source: File, photoSource: PhotoSource = PhotoSource.Unknown) {
-    if (working?.isFinalized() == true) return
+    if (contentLocked()) return
     val had = working?.defects?.firstOrNull { it.id == defectId }?.photos?.size ?: 0
     val evidence = copyPhoto(defectId, had, source, photoSource) ?: return
     updateDefect(defectId) {
@@ -858,7 +988,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
   }
 
   fun removePhoto(defectId: String, name: String) {
-    if (working?.isFinalized() == true) return
+    if (contentLocked()) return
     deletePhotosOf(listOf(name))
     updateDefect(defectId) {
       it.copy(
@@ -869,7 +999,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
   }
 
   fun attachObjectPhoto(objectId: String, source: File, photoSource: PhotoSource = PhotoSource.Unknown) {
-    if (working?.isFinalized() == true) return
+    if (contentLocked()) return
     val had = working?.objects?.firstOrNull { it.id == objectId }?.photos?.size ?: 0
     val evidence = copyPhoto(objectId, had, source, photoSource) ?: return
     updateObject(objectId) {
@@ -881,7 +1011,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
   }
 
   fun removeObjectPhoto(objectId: String, name: String) {
-    if (working?.isFinalized() == true) return
+    if (contentLocked()) return
     deletePhotosOf(listOf(name))
     updateObject(objectId) {
       it.copy(
@@ -893,9 +1023,14 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
 
   // ── Signatures ───────────────────────────────────────────────────────────────────────
 
+  private fun deleteSignatureFile(name: String) {
+    if (!safeEvidenceName(name)) return
+    signatureDir()?.let { File(it, name).delete() }
+  }
+
   /** Keeps the ink: the PNG lands beside the protocol, the record points at it. */
   fun keepSignature(role: Role, plane: Plane, bitmap: android.graphics.Bitmap) {
-    if (working?.isFinalized() == true) return
+    if (contentLocked()) return
     val dir = signatureDir() ?: return
     val name = "${role.name.lowercase()}-${plane.name.lowercase()}.png"
     File(dir, name).outputStream().use {
@@ -903,6 +1038,10 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     }
     val partyName = working?.parties?.firstOrNull { it.role == role }?.name.orEmpty()
     editSignatures { p ->
+      val reservation = (
+        p.pendingRecordReservations[role]
+          ?: p.signatures.firstOrNull { it.role == role && it.plane == plane }?.reservation
+        ).orEmpty().trim()
       p.copy(
         signatures = p.signatures.filterNot { it.role == role && it.plane == plane } +
           dev.verso.limen.data.Signature(
@@ -910,6 +1049,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
             name = partyName,
             plane = plane,
             file = name,
+            reservation = reservation,
             epochMs = System.currentTimeMillis(),
             contentRevision = p.contentRevision,
           )
@@ -919,13 +1059,17 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
 
   /** Refusal is an outcome the record keeps, not an error it recovers from. */
   fun refuseSignature(role: Role, plane: Plane) {
-    if (working?.isFinalized() == true) return
+    if (contentLocked()) return
     val existing = working?.signatures?.firstOrNull { it.role == role && it.plane == plane }
     if (existing != null && existing.file.isNotBlank()) {
-      signatureDir()?.let { File(it, existing.file).delete() }
+      deleteSignatureFile(existing.file)
     }
     val partyName = working?.parties?.firstOrNull { it.role == role }?.name.orEmpty()
     editSignatures { p ->
+      val reservation = (
+        p.pendingRecordReservations[role]
+          ?: p.signatures.firstOrNull { it.role == role && it.plane == plane }?.reservation
+        ).orEmpty().trim()
       p.copy(
         signatures = p.signatures.filterNot { it.role == role && it.plane == plane } +
           dev.verso.limen.data.Signature(
@@ -933,6 +1077,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
             name = partyName,
             plane = plane,
             refused = true,
+            reservation = reservation,
             epochMs = System.currentTimeMillis(),
             contentRevision = p.contentRevision,
           )
@@ -941,21 +1086,33 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
   }
 
   fun clearSignature(role: Role, plane: Plane) {
-    if (working?.isFinalized() == true) return
+    if (contentLocked()) return
     val existing = working?.signatures?.firstOrNull { it.role == role && it.plane == plane }
     if (existing != null && existing.file.isNotBlank()) {
-      signatureDir()?.let { File(it, existing.file).delete() }
+      deleteSignatureFile(existing.file)
     }
     editSignatures { p ->
-      p.copy(signatures = p.signatures.filterNot { it.role == role && it.plane == plane })
+      val reservation = existing?.reservation.orEmpty()
+      p.copy(
+        signatures = p.signatures.filterNot { it.role == role && it.plane == plane },
+        pendingRecordReservations = if (reservation.isBlank()) p.pendingRecordReservations else {
+          p.pendingRecordReservations + (role to reservation)
+        },
+      )
     }
   }
 
-  fun setSignatureReservation(role: Role, plane: Plane, text: String) {
+  fun setRecordReservation(role: Role, text: String) {
+    // A reservation is printed in the shared record. Changing it after another person
+    // signed must therefore move the revision and require that signature to be reviewed.
     edit { p ->
-      p.copy(signatures = p.signatures.map {
-        if (it.role == role && it.plane == plane) it.copy(reservation = text) else it
-      })
+      p.copy(
+        pendingRecordReservations = if (text.isBlank()) {
+          p.pendingRecordReservations - role
+        } else {
+          p.pendingRecordReservations + (role to text)
+        }
+      )
     }
   }
 

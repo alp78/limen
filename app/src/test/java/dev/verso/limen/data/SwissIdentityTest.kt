@@ -39,8 +39,11 @@ class InternationalIdentityTest {
 
   @Test fun parsesOfficialAddressSearchResults() {
     val matches = SwissAddressLookup.parse(
-      """{"results":[{"attrs":{"origin":"address","label":"Avenue de la Gare 1 <b>1003 Lausanne</b>"}}]}""",
+      """{"results":[{"attrs":{"origin":"address","label":"Avenue de la Gare 1 <b>1003 Lausanne</b>","detail":"avenue de la gare 1 1003 lausanne ch vd"}}]}""",
     )
-    assertEquals(listOf(SwissAddressCandidate("Avenue de la Gare", "1", "1003", "Lausanne")), matches)
+    assertEquals(
+      listOf(SwissAddressCandidate("Avenue de la Gare", "1", "1003", "Lausanne", SwissCanton.VD)),
+      matches,
+    )
   }
 }

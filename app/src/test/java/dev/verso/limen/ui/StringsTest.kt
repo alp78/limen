@@ -3,14 +3,19 @@ package dev.verso.limen.ui
 import dev.verso.limen.data.Appliance
 import dev.verso.limen.data.CautionProvider
 import dev.verso.limen.data.DepositKind
+import dev.verso.limen.data.DeliveryMethod
 import dev.verso.limen.data.DossierCard
 import dev.verso.limen.data.Furniture
 import dev.verso.limen.data.Grade
 import dev.verso.limen.data.ItemKey
 import dev.verso.limen.data.KeyKind
+import dev.verso.limen.data.KeyTransferStatus
+import dev.verso.limen.data.LegalProfile
 import dev.verso.limen.data.ObjectGroup
 import dev.verso.limen.data.Role
 import dev.verso.limen.data.RoomKind
+import dev.verso.limen.data.SwissCanton
+import dev.verso.limen.data.UnilateralReason
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -31,6 +36,11 @@ class StringsTest {
       Furniture.entries.forEach { assertTrue("$lang furniture $it", s.furniture(it).isNotBlank()) }
       ObjectGroup.entries.forEach { assertTrue("$lang group $it", s.objectGroup(it).isNotBlank()) }
       DossierCard.entries.forEach { assertTrue("$lang card $it", s.dossierCard(it).isNotBlank()) }
+      SwissCanton.entries.forEach { assertTrue("$lang canton $it", s.canton(it).isNotBlank()) }
+      LegalProfile.entries.forEach { assertTrue("$lang legal profile $it", s.legalProfile(it).isNotBlank()) }
+      KeyTransferStatus.entries.forEach { assertTrue("$lang key transfer $it", s.keyTransfer(it).isNotBlank()) }
+      UnilateralReason.entries.forEach { assertTrue("$lang unilateral reason $it", s.unilateralReason(it).isNotBlank()) }
+      DeliveryMethod.entries.forEach { assertTrue("$lang delivery $it", s.deliveryMethod(it).isNotBlank()) }
       FinalizationIssue.entries.forEach {
         assertTrue("$lang issue $it", s.finalizationIssue(it).isNotBlank())
       }

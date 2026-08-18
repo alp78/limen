@@ -30,8 +30,8 @@ object Report {
   /**
    * This room's findings, and nothing else.
    *
-   * A room contributes exactly its defects. An item nobody wrote a defect about is not in
-   * the record at all, so it cannot be printed: what is not recorded is in order.
+   * A room contributes exactly its defects here. Its separate inspected flag is what lets
+   * the PDF distinguish an explicitly clean room from one that was never checked.
    */
   fun roomFindings(p: Protocol, roomId: String): List<Numbered> =
     p.defects.withIndex()
@@ -59,12 +59,12 @@ object Report {
   /** Every photograph on the record, findings first and then the supplied objects. */
   fun plates(p: Protocol): List<Plate> = buildList {
     p.defects.forEachIndexed { i, d ->
-      d.photos.forEach { name ->
+      d.photoFiles().forEach { name ->
         add(Plate(name, d.photoEvidence.firstOrNull { it.file == name }?.sha256.orEmpty(), PlateOwner.Finding(i + 1)))
       }
     }
     p.objects.forEach { entry ->
-      entry.photos.forEach { name ->
+      entry.photoFiles().forEach { name ->
         add(Plate(name, entry.photoEvidence.firstOrNull { it.file == name }?.sha256.orEmpty(), PlateOwner.Supplied(entry)))
       }
     }

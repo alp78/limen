@@ -50,6 +50,9 @@ android {
 
     buildTypes {
         debug {
+            // Instrumented navigation checks use a separate package, so they cannot read,
+            // replace or delete the handover records held by the release app on a phone.
+            applicationIdSuffix = ".uitest"
             // Every debug APK carries the minute it was built, so the phone can say which
             // one it is running: Settings > Apps > Limen shows the version. Without this
             // every build reads "1.0" and a stale copy on a device is indistinguishable

@@ -10,13 +10,16 @@ import android.graphics.Typeface
 import android.graphics.pdf.PdfDocument
 import dev.verso.limen.ui.Str
 import java.io.File
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 /**
  * The protocol as an A4 document, drawn with the platform's own PdfDocument: no library,
  * no fonts to embed, black ink on white paper. The layout follows the paper canon it will
  * be compared against at a conciliation hearing: header, parties, the money and meter
  * rubrics this handover actually carries, the supplied objects, the findings numbered by
- * room with the explicit charge column, the TWO separate signature blocks, the deposit
+ * room with the explicit charge column, the record signatures, the deposit
  * release instruction, and the photo annex.
  *
  * The paper prints what was recorded and nothing else. Undamaged surfaces do not appear,
@@ -89,6 +92,7 @@ object PdfExport {
     findings(sheet, p, s)
     if (DossierCard.Notes in cards) remarks(sheet, p, s)
     signatures(sheet, p, s, signatureDir)
+    delivery(sheet, p, s)
     release(sheet, p, s)
     annex(sheet, p, s, photoDir, measuring = total == 0)
     sheet.close()
@@ -246,6 +250,14 @@ object PdfExport {
 
   private fun header(sheet: Sheet, p: Protocol, s: Str) {
     sheet.labeledRow(listOf(s.address to p.address, s.place to p.place))
+    if (p.objectCanton != null) {
+      sheet.labeledRow(
+        listOf(
+          s.cantonLabel to s.canton(p.objectCanton),
+          s.legalBasis to s.legalProfile(p.legalProfile()),
+        )
+      )
+    }
     sheet.labeledRow(
       listOf(
         s.objectDetail to p.objectDetail,
@@ -366,6 +378,9 @@ object PdfExport {
 
   private fun keys(sheet: Sheet, p: Protocol, s: Str) {
     sheet.sectionTitle(s.keysLabel)
+    sheet.wrapped("${s.keyTransferLabel}: ${s.keyTransfer(p.keyTransfer)}", sheet.body)
+    if (p.keyTransferNote.isNotBlank()) sheet.wrapped(p.keyTransferNote, sheet.small)
+    if (p.keyTransfer == KeyTransferStatus.NoPhysicalKeys) return
     val keyText = p.keys.filter { it.count > 0 }.joinToString("   ") { k ->
       val label = if (k.kind == KeyKind.Other && k.label.isNotBlank()) k.label else s.keyKind(k.kind)
       "$label: ${k.count}"
@@ -398,6 +413,7 @@ object PdfExport {
         sheet.wrapped(groupLabel.ifBlank { s.objectGroup(group) }.uppercase(), sheet.label)
         rows.forEach { entry ->
           val detail = buildList {
+            add(if (entry.inspected) s.objectInspected else s.notInspected)
             p.rooms.firstOrNull { it.id == entry.roomId }
               ?.let { add(it.name.ifBlank { s.room(it.kind) }) }
             if (entry.note.isNotBlank()) add(entry.note)
@@ -428,10 +444,10 @@ object PdfExport {
   private fun rooms(sheet: Sheet, p: Protocol, s: Str) {
     if (p.rooms.isEmpty()) return
     sheet.sectionTitle(s.stepInspection)
-    sheet.wrapped(
-      p.rooms.joinToString(" · ") { it.name.ifBlank { s.room(it.kind) } },
-      sheet.body,
-    )
+    p.rooms.forEach { room ->
+      val status = if (room.inspected) s.roomInspected else s.notInspected
+      sheet.wrapped("${room.name.ifBlank { s.room(room.kind) }} · $status", sheet.body)
+    }
     p.rooms.filter { it.hasLegacyGrid() }.forEach { room ->
       sheet.ensure(60f)
       sheet.wrapped(room.name.ifBlank { s.room(room.kind) }.uppercase(), sheet.label)
@@ -446,21 +462,20 @@ object PdfExport {
    * the number under a photograph in the annex names exactly one finding on exactly one
    * page.
    *
-   * A room with nothing recorded in it prints nothing at all. It would be easy to give it
-   * a heading and a dash, and it would be a lie: the rooms are seeded, not visited, so a
-   * dash under BALCONY would state that a balcony was inspected and found in order in a
-   * flat that has no balcony. Silence claims nothing. The rooms themselves are named once
-   * in [rooms], which is a fact the record does hold.
+   * A room explicitly confirmed as inspected prints even when it has no finding. Legacy
+   * seeded rooms remain labelled not inspected, so the PDF never turns their silence into
+   * a claim that somebody checked them.
    */
   private fun findings(sheet: Sheet, p: Protocol, s: Str) {
     sheet.sectionTitle("${s.defects} (${p.defects.size})")
     if (p.defects.isEmpty()) sheet.wrapped("–", sheet.body)
     p.rooms.forEach { room ->
       val found = Report.roomFindings(p, room.id)
-      if (found.isEmpty()) return@forEach
+      if (found.isEmpty() && !room.inspected) return@forEach
       sheet.ensure(60f)
       sheet.wrapped(room.name.ifBlank { s.room(room.kind) }.uppercase(), sheet.label)
-      found.forEach { finding(sheet, p, s, it.defect, it.number) }
+      if (found.isEmpty()) sheet.wrapped(s.inspectedNoDefects, sheet.body)
+      else found.forEach { finding(sheet, p, s, it.defect, it.number) }
       sheet.gap(6f)
     }
 
@@ -627,12 +642,17 @@ object PdfExport {
     // meant it vanished from the paper whenever that optional component was not added.
     if (p.oneSided) {
       sheet.wrapped(s.oneSided.uppercase(), sheet.section)
+      p.unilateralReason?.let { reason ->
+        sheet.wrapped("${s.unilateralReasonLabel}: ${s.unilateralReason(reason)}", sheet.body)
+      }
+      if (p.unilateralNote.isNotBlank()) sheet.wrapped(p.unilateralNote, sheet.small)
       sheet.wrapped(s.infoOneSided, sheet.small)
       sheet.gap(8f)
     }
     sheet.wrapped(s.signRecordMeaning, sheet.small)
     sheet.gap(10f)
     drawPlane(sheet, p, s, signatureDir, Plane.Record)
+    sheet.wrapped(s.inkEvidenceNotice, sheet.small)
 
     // The Swiss ritual, said on the document itself: two identical papers, one per party.
     // In Vaud the RULV require exactly that, and a tenant who reads it here knows to leave
@@ -674,9 +694,30 @@ object PdfExport {
         add(s.role(sig.role))
         if (sig.name.isNotBlank()) add(sig.name)
         if (sig.reservation.isNotBlank()) add("${s.reservationLabel}: ${sig.reservation}")
+        if (sig.epochMs > 0L) add("${s.capturedOn}: ${formatMoment(sig.epochMs)}")
+        add("${s.revisionLabel}: ${sig.contentRevision}")
       }.joinToString(" · ")
       sheet.wrapped(caption, sheet.small)
       sheet.gap(14f)
+    }
+  }
+
+  private fun formatMoment(epochMs: Long): String =
+    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm z")
+      .format(Instant.ofEpochMilli(epochMs).atZone(ZoneId.systemDefault()))
+
+  private fun delivery(sheet: Sheet, p: Protocol, s: Str) {
+    if (p.deliveryReceipts.isEmpty()) return
+    sheet.sectionTitle(s.copyDelivery)
+    sheet.wrapped(s.deliverySelfDeclared, sheet.small)
+    p.deliveryReceipts.sortedBy { it.role.ordinal }.forEach { receipt ->
+      val detail = buildList {
+        add(s.role(receipt.role))
+        add(s.deliveryMethod(receipt.method))
+        if (receipt.epochMs > 0L) add(formatMoment(receipt.epochMs))
+        if (receipt.note.isNotBlank()) add(receipt.note)
+      }.joinToString(" · ")
+      sheet.wrapped(detail, sheet.body)
     }
   }
 

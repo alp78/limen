@@ -34,14 +34,14 @@ import dev.verso.limen.data.Furniture
 import dev.verso.limen.data.ObjectEntry
 import dev.verso.limen.data.ObjectGroup
 import dev.verso.limen.data.Protocol
+import dev.verso.limen.data.photoFiles
 import dev.verso.limen.theme.Limen
 
 /**
  * Everything handed over with the flat, one row per thing.
  *
  * A row rather than a toggle, because two fridges in a kitchen are two facts and each needs
- * its own photograph. A photograph of an appliance on the day of the handover is what ends
- * the argument about it two years later, so the camera sits on the row itself.
+ * its own condition, evidence and findings. The camera sits on the row itself.
  */
 @Composable
 internal fun ObjectsStep(vm: LimenViewModel, s: Str, p: Protocol) {
@@ -182,8 +182,8 @@ private fun ObjectGroupPanel(
 private fun ObjectRow(vm: LimenViewModel, s: Str, p: Protocol, entry: ObjectEntry) {
   val locked = LocalRecordLocked.current
   val intake = rememberPhotoIntake(s) { file, source -> vm.attachObjectPhoto(entry.id, file, source) }
-  val defect = p.defects.firstOrNull { it.objectId == entry.id }
-  val flagged = defect != null
+  val defects = p.defects.filter { it.objectId == entry.id }
+  val flagged = defects.isNotEmpty()
 
   Column(
     Modifier
@@ -212,7 +212,7 @@ private fun ObjectRow(vm: LimenViewModel, s: Str, p: Protocol, entry: ObjectEntr
         IconKey(ButtonGlyph.Gallery, s.gallery, onPress = intake.pickPhoto)
         Spacer(Modifier.width(6.dp))
       }
-      if (!locked || flagged) {
+      if (!locked) {
         IconKey(
           ButtonGlyph.Add,
           s.addDefect,
@@ -220,7 +220,7 @@ private fun ObjectRow(vm: LimenViewModel, s: Str, p: Protocol, entry: ObjectEntr
           outlineColor = if (flagged) Limen.colors.warningOutline else null,
           tint = if (flagged) Limen.colors.warningOutline else null,
         ) {
-          if (defect != null) vm.editDefect(defect.id) else vm.openObjectDefect(entry.id)
+          vm.openObjectDefect(entry.id)
         }
       }
       if (!locked) {
@@ -232,25 +232,39 @@ private fun ObjectRow(vm: LimenViewModel, s: Str, p: Protocol, entry: ObjectEntr
     }
 
     Field(s.objectNote, entry.note) { v -> vm.updateObject(entry.id) { it.copy(note = v) } }
+    Toggle(
+      s.objectInspected,
+      entry.inspected,
+      Modifier.fillMaxWidth(),
+      enabled = !locked,
+    ) { vm.setObjectInspected(entry.id, !entry.inspected) }
 
-    if (entry.photos.isNotEmpty()) {
+    val evidenceFiles = entry.photoFiles()
+    if (evidenceFiles.isNotEmpty()) {
       Row(
         Modifier.horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
       ) {
-        entry.photos.forEach { name ->
+        evidenceFiles.forEach { name ->
           PhotoThumb(vm, s, name, size = 72) { vm.removeObjectPhoto(entry.id, name) }
         }
       }
     }
 
-    defect?.let {
-      Text(
-        "! ${it.text.ifBlank { s.defectText }}",
-        style = MaterialTheme.typography.labelSmall,
-        maxLines = 2,
-        color = Limen.colors.dangerOutline,
-      )
+    if (defects.isNotEmpty()) {
+      Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        defects.forEach { defect ->
+          key(defect.id) {
+            if (locked) {
+              DefectLine(vm, s, p, defect)
+            } else {
+              DismissibleItemRow(s, onRemove = { vm.removeDefect(defect.id) }) {
+                DefectLine(vm, s, p, defect)
+              }
+            }
+          }
+        }
+      }
     }
 
     // Which room it stands in, when that matters. Blank is the honest default: most of what

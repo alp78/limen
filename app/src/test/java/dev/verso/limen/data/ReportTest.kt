@@ -101,4 +101,15 @@ class ReportTest {
   fun aRecordWithoutPhotographsHasNoAnnex() {
     assertEquals(emptyList<Report.Plate>(), Report.plates(record))
   }
+
+  @Test
+  fun evidenceMetadataAloneStillReachesTheAnnex() {
+    val withMigratedEvidence = record.copy(
+      defects = record.defects.map {
+        if (it.id == "d1") it.copy(photoEvidence = listOf(PhotoEvidence("legacy.jpg", "ABC"))) else it
+      },
+    )
+
+    assertEquals(listOf("legacy.jpg"), Report.plates(withMigratedEvidence).map { it.file })
+  }
 }

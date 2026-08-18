@@ -43,7 +43,21 @@ class LegacyCompatTest {
   @Test
   fun fieldsAddedAfterTheDossierNeverReachTheCanonicalJson() {
     val json = canonical.encodeToString(Protocol.serializer(), v2Record())
-    listOf("objects", "contract", "dossier", "itemLabel", "objectId").forEach { key ->
+    listOf(
+      "objects",
+      "contract",
+      "dossier",
+      "itemLabel",
+      "objectId",
+      "objectCanton",
+      "romandFrameworkInLease",
+      "unilateralReason",
+      "unilateralNote",
+      "keyTransfer",
+      "keyTransferNote",
+      "pendingRecordReservations",
+      "inspected",
+    ).forEach { key ->
       assertFalse("$key must not appear in a record that does not use it", json.contains("\"$key\""))
     }
   }

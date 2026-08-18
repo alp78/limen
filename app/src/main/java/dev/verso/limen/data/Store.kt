@@ -2,6 +2,8 @@ package dev.verso.limen.data
 
 import kotlinx.serialization.json.Json
 import java.io.File
+import java.io.InputStream
+import java.io.OutputStream
 import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption.ATOMIC_MOVE
@@ -64,4 +66,10 @@ class Store(private val root: File) {
     photoDir(id).deleteRecursively()
     signatureDir(id).deleteRecursively()
   }
+
+  /** Writes every protocol and its original evidence into a versioned local archive. */
+  fun exportArchive(output: OutputStream) = ArchiveIO.export(root, output)
+
+  /** Restores only complete, valid records and never replaces an id already on this device. */
+  fun importArchive(input: InputStream): ArchiveImportResult = ArchiveIO.import(root, input)
 }

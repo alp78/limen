@@ -21,32 +21,30 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import dev.verso.limen.theme.Limen
 
 /**
- * The two roads for the deposit, side by side with real numbers and outbound links.
- * Deliberately neutral and deliberately shallow: the figures and a link, nothing more.
+ * The two roads for the deposit, side by side with outbound links to current terms.
+ * Deliberately neutral and deliberately shallow: provider identity and a link, nothing more.
  * The application always happens on the provider's own site; the app never recommends,
  * pre-fills or submits anything, which keeps it plainly outside insurance intermediation.
  */
-private data class Offer(val name: String, val figure: String, val url: String)
+private data class Offer(val name: String, val url: String)
 
 private val bankOffers = listOf(
-  Offer("UBS", "0 CHF", "https://www.ubs.com/ch/de/services/accounts-and-cards/accounts/rental-surety-savings-account.html"),
-  Offer("BEKB", "20 CHF", "https://www.bekb.ch"),
-  Offer("ZKB", "50 CHF", "https://www.zkb.ch"),
+  Offer("UBS", "https://www.ubs.com/ch/de/services/accounts-and-cards/accounts/rental-surety-savings-account.html"),
+  Offer("BEKB", "https://www.bekb.ch"),
+  Offer("ZKB", "https://www.zkb.ch"),
 )
 
 private val insuranceOffers = listOf(
-  Offer("AXA", "4%", "https://www.axa.ch/de/rechner/mietkaution.html"),
-  Offer("Helvetia", "4%", "https://www.helvetia.com/ch/web/de/privatkunden/versicherungen/mietkaution.html"),
-  Offer("goCaution", "4.5%", "https://www.gocaution.ch"),
-  Offer("SwissCaution", "5%", "https://www.swisscaution.ch"),
-  Offer("Firstcaution", "5%", "https://www.firstcaution.ch"),
-  Offer("SmartCaution", "5%", "https://www.smartcaution.ch"),
+  Offer("AXA", "https://www.axa.ch/de/rechner/mietkaution.html"),
+  Offer("Helvetia", "https://www.helvetia.com/ch/web/de/privatkunden/versicherungen/mietkaution.html"),
+  Offer("goCaution", "https://www.gocaution.ch"),
+  Offer("SwissCaution", "https://www.swisscaution.ch"),
+  Offer("Firstcaution", "https://www.firstcaution.ch"),
+  Offer("SmartCaution", "https://www.smartcaution.ch"),
 )
 
 @Composable
@@ -73,12 +71,15 @@ fun DepositCompareOverlay(vm: LimenViewModel, s: Str) {
       Modifier.weight(1f).verticalScroll(rememberScrollState()),
       verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
+      Panel(label = s.currentTerms) {
+        Text(s.infoDeposit, style = MaterialTheme.typography.bodySmall, color = Limen.colors.inkDim)
+      }
       Panel(label = s.depositBank) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
           bankOffers.forEach { OfferRow(it, s) { url -> open(context, url, s.openLinkFailed) } }
         }
       }
-      Panel(label = "${s.depositInsurance} · ${s.perYear}") {
+      Panel(label = s.depositInsurance) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
           insuranceOffers.forEach { OfferRow(it, s) { url -> open(context, url, s.openLinkFailed) } }
         }
@@ -99,13 +100,6 @@ private fun OfferRow(offer: Offer, s: Str, onOpen: (String) -> Unit) {
       style = MaterialTheme.typography.bodyMedium,
       color = Limen.colors.ink,
       modifier = Modifier.weight(1f),
-    )
-    Text(
-      offer.figure,
-      fontFamily = FontFamily.Monospace,
-      fontSize = 15.sp,
-      color = Limen.colors.ink,
-      modifier = Modifier.padding(end = 12.dp),
     )
     Chip(s.linkKey, dim = false) { onOpen(offer.url) }
   }

@@ -616,6 +616,7 @@ fun Field(
   isError: Boolean = false,
   trailing: @Composable (() -> Unit)? = null,
   onFocusChanged: ((Boolean) -> Unit)? = null,
+  editableWhenLocked: Boolean = false,
   onChange: (String) -> Unit,
 ) {
   androidx.compose.material3.OutlinedTextField(
@@ -627,7 +628,7 @@ fun Field(
     isError = isError,
     // A finalized record is readable everywhere and writable nowhere, and the keyboard
     // never opening says so better than a keystroke that silently does nothing.
-    readOnly = LocalRecordLocked.current,
+    readOnly = LocalRecordLocked.current && !editableWhenLocked,
     trailingIcon = trailing,
     keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
     label = { Text(label, style = MaterialTheme.typography.labelSmall) },
@@ -649,11 +650,11 @@ fun Field(
 
 /** A count with its two keys: keys are counted, never typed, at the door. */
 @Composable
-fun Stepper(count: Int, onChange: (Int) -> Unit) {
+fun Stepper(count: Int, s: Str, onChange: (Int) -> Unit) {
   Row(verticalAlignment = Alignment.CenterVertically) {
     IconKey(
       glyph = ButtonGlyph.Remove,
-      contentDescription = "Decrease",
+      contentDescription = s.decrease,
       enabled = count > 0,
       onPress = { if (count > 0) onChange(count - 1) },
     )
@@ -664,7 +665,7 @@ fun Stepper(count: Int, onChange: (Int) -> Unit) {
       color = Limen.colors.ink,
       modifier = Modifier.padding(horizontal = 14.dp),
     )
-    IconKey(ButtonGlyph.Add, "Increase") { onChange(count + 1) }
+    IconKey(ButtonGlyph.Add, s.increase) { onChange(count + 1) }
   }
 }
 

@@ -34,14 +34,19 @@ import dev.verso.limen.data.DepositKind
 import dev.verso.limen.data.DossierCard
 import dev.verso.limen.data.KeyCount
 import dev.verso.limen.data.KeyKind
+import dev.verso.limen.data.KeyTransferStatus
 import dev.verso.limen.data.Kind
 import dev.verso.limen.data.Party
 import dev.verso.limen.data.Protocol
 import dev.verso.limen.data.Role
 import dev.verso.limen.data.SwissAddressCandidate
 import dev.verso.limen.data.SwissAddressLookup
+import dev.verso.limen.data.SwissCanton
 import dev.verso.limen.data.SwissDate
 import dev.verso.limen.data.dossierCards
+import dev.verso.limen.data.isVaudRulv
+import dev.verso.limen.data.legalProfile
+import dev.verso.limen.data.supportsRomandFramework
 import dev.verso.limen.sense.Clocks
 import dev.verso.limen.theme.Limen
 import kotlinx.coroutines.delay
@@ -137,7 +142,9 @@ private fun ObjectCard(vm: LimenViewModel, s: Str, p: Protocol) {
   var searching by remember(p.id) { mutableStateOf(false) }
   var matches by remember(p.id) { mutableStateOf(emptyList<SwissAddressCandidate>()) }
   var focused by remember(p.id) { mutableStateOf(emptySet<String>()) }
-  var verified by remember(p.id) { mutableStateOf(p.address.isNotBlank() && p.place.isNotBlank()) }
+  var verified by remember(p.id) {
+    mutableStateOf(p.address.isNotBlank() && p.place.isNotBlank() && p.objectCanton != null)
+  }
   val anyFocus = focused.isNotEmpty()
   val query = listOf(p.address, p.place).filter { it.isNotBlank() }.joinToString(" ")
 
@@ -161,7 +168,9 @@ private fun ObjectCard(vm: LimenViewModel, s: Str, p: Protocol) {
     verified = false
     matches = emptyList()
     searching = false
-    vm.edit(transform)
+    vm.edit { current ->
+      transform(current).copy(objectCanton = null, romandFrameworkInLease = false)
+    }
   }
 
   Panel(label = s.objectLabel, info = s.tipAddress()) {
@@ -178,6 +187,8 @@ private fun ObjectCard(vm: LimenViewModel, s: Str, p: Protocol) {
                 .filter { part -> part.isNotBlank() }.joinToString(" "),
               place = listOf(candidate.postalCode, candidate.city)
                 .filter { part -> part.isNotBlank() }.joinToString(" "),
+              objectCanton = candidate.canton,
+              romandFrameworkInLease = false,
             )
           }
           matches = emptyList()
@@ -191,6 +202,29 @@ private fun ObjectCard(vm: LimenViewModel, s: Str, p: Protocol) {
       ) { value -> editAddress { it.copy(address = value) } }
       Field(s.place, p.place, onFocusChanged = { setFocused("place", it) }) { value ->
         editAddress { it.copy(place = value) }
+      }
+      CantonPicker(s, p.objectCanton) { canton ->
+        vm.edit {
+          it.copy(
+            objectCanton = canton,
+            romandFrameworkInLease = it.romandFrameworkInLease && canton.supportsRomandFramework(),
+          )
+        }
+      }
+      p.objectCanton?.let { canton ->
+        Text(
+          "${s.legalBasis}: ${s.legalProfile(p.legalProfile())}",
+          style = MaterialTheme.typography.labelSmall,
+          color = Limen.colors.inkDim,
+        )
+        if (canton.supportsRomandFramework() && !p.legalProfile().isVaudRulv()) {
+          Toggle(
+            s.romandFrameworkInLease,
+            p.romandFrameworkInLease,
+            Modifier.fillMaxWidth(),
+            enabled = !LocalRecordLocked.current,
+          ) { vm.edit { it.copy(romandFrameworkInLease = !it.romandFrameworkInLease) } }
+        }
       }
       Field(s.objectDetail, p.objectDetail) { v -> vm.edit { it.copy(objectDetail = v) } }
       DateAndTimeRow(
@@ -450,7 +484,38 @@ private fun KeysCard(vm: LimenViewModel, s: Str, p: Protocol, onRemove: () -> Un
   Panel(label = s.keysLabel) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
       CardHeader(s, onRemove)
-      p.keys.forEachIndexed { i, key ->
+      Text(s.keyTransferLabel, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
+      PillRow(
+        KeyTransferStatus.entries.map { it to s.keyTransfer(it) },
+        p.keyTransfer,
+        enabled = !locked,
+      ) { status ->
+        vm.edit { record ->
+          if (status == KeyTransferStatus.NoPhysicalKeys) {
+            record.copy(
+              keyTransfer = status,
+              keyTransferNote = "",
+              keys = record.keys.map { it.copy(count = 0) },
+              rooms = record.rooms.map { it.copy(keysCount = 0) },
+              selfMadeKeys = false,
+            )
+          } else {
+            record.copy(
+              keyTransfer = status,
+              keyTransferNote = record.keyTransferNote.takeIf {
+                status == KeyTransferStatus.Incomplete
+              }.orEmpty(),
+            )
+          }
+        }
+      }
+      if (p.keyTransfer == KeyTransferStatus.Incomplete) {
+        Field(s.keyTransferNote, p.keyTransferNote, singleLine = false) { note ->
+          vm.edit { it.copy(keyTransferNote = note) }
+        }
+      }
+      if (p.keyTransfer != KeyTransferStatus.NoPhysicalKeys) {
+        p.keys.forEachIndexed { i, key ->
         Row(verticalAlignment = Alignment.CenterVertically) {
           Column(Modifier.weight(1f)) {
             Text(
@@ -467,7 +532,7 @@ private fun KeysCard(vm: LimenViewModel, s: Str, p: Protocol, onRemove: () -> Un
               color = Limen.colors.ink,
             )
           } else {
-            Stepper(key.count) { c ->
+            Stepper(key.count, s) { c ->
               vm.edit {
                 it.copy(keys = it.keys.mapIndexed { j, k -> if (j == i) k.copy(count = c) else k })
               }
@@ -480,8 +545,8 @@ private fun KeysCard(vm: LimenViewModel, s: Str, p: Protocol, onRemove: () -> Un
         }
       }
 
-      if (!locked) SmallKey(s.addKeyKind, Modifier.fillMaxWidth()) { adding = !adding }
-      if (adding && !locked) {
+        if (!locked) SmallKey(s.addKeyKind, Modifier.fillMaxWidth()) { adding = !adding }
+        if (adding && !locked) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
           FlowRow(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -504,10 +569,11 @@ private fun KeysCard(vm: LimenViewModel, s: Str, p: Protocol, onRemove: () -> Un
             }
           }
         }
-      }
+        }
 
-      Toggle(s.selfMadeKeys, p.selfMadeKeys, Modifier.fillMaxWidth(), enabled = !locked) {
-        vm.edit { it.copy(selfMadeKeys = !it.selfMadeKeys) }
+        Toggle(s.selfMadeKeys, p.selfMadeKeys, Modifier.fillMaxWidth(), enabled = !locked) {
+          vm.edit { it.copy(selfMadeKeys = !it.selfMadeKeys) }
+        }
       }
     }
   }
@@ -528,6 +594,45 @@ private fun NotesCard(vm: LimenViewModel, s: Str, p: Protocol, onRemove: () -> U
 }
 
 // ── Shared pickers ─────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun CantonPicker(s: Str, selected: SwissCanton?, onSelect: (SwissCanton) -> Unit) {
+  var expanded by remember { mutableStateOf(false) }
+  Box(Modifier.fillMaxWidth()) {
+    KeySurface(
+      modifier = Modifier.fillMaxWidth(),
+      enabled = !LocalRecordLocked.current,
+      shape = RoundedCornerShape(10.dp),
+      onPress = { expanded = true },
+    ) {
+      Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp)) {
+        Text(s.cantonLabel, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
+        Text(
+          selected?.let(s::canton) ?: s.selectCanton,
+          style = MaterialTheme.typography.bodyMedium,
+          color = Limen.colors.ink,
+        )
+      }
+    }
+    DropdownMenu(
+      expanded = expanded,
+      onDismissRequest = { expanded = false },
+      containerColor = Limen.colors.plateRaised,
+      modifier = Modifier.height(420.dp),
+    ) {
+      SwissCanton.entries.forEach { canton ->
+        DropdownMenuItem(
+          text = { Text(s.canton(canton), color = Limen.colors.ink) },
+          enabled = canton != selected,
+          onClick = {
+            onSelect(canton)
+            expanded = false
+          },
+        )
+      }
+    }
+  }
+}
 
 /** The handed-over flat is resolved independently from any participant contact address. */
 @Composable

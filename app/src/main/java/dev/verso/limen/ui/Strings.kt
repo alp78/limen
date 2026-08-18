@@ -7,11 +7,16 @@ import dev.verso.limen.data.DossierCard
 import dev.verso.limen.data.Furniture
 import dev.verso.limen.data.Grade
 import dev.verso.limen.data.ItemKey
+import dev.verso.limen.data.KeyTransferStatus
 import dev.verso.limen.data.KeyKind
+import dev.verso.limen.data.LegalProfile
 import dev.verso.limen.data.ObjectGroup
 import dev.verso.limen.data.Role
 import dev.verso.limen.data.RoomKind
+import dev.verso.limen.data.DeliveryMethod
+import dev.verso.limen.data.SwissCanton
 import dev.verso.limen.data.TenantResponse
+import dev.verso.limen.data.UnilateralReason
 import java.util.Locale
 
 /**
@@ -67,11 +72,11 @@ class Str(val lang: Lang) {
     "Tgi che paja tge, tenor la durada da vita",
   )
   val homeClocks = pick(
-    "The legal clocks of the handover",
-    "Les délais légaux de la remise",
-    "Die gesetzlichen Fristen der Übergabe",
-    "I termini legali della riconsegna",
-    "Ils termins legals da la surdada",
+    "Handover deadlines and practice",
+    "Délais et pratique de la remise",
+    "Fristen und Praxis der Übergabe",
+    "Termini e prassi della consegna",
+    "Termins e pratica da la surdada",
   )
 
   // The case (home).
@@ -109,6 +114,9 @@ class Str(val lang: Lang) {
   val done = pick("DONE", "TERMINÉ", "FERTIG", "FATTO", "FINÌ")
   val delete = pick("DELETE", "SUPPRIMER", "LÖSCHEN", "ELIMINA", "STIZZAR")
   val add = pick("ADD", "AJOUTER", "HINZUFÜGEN", "AGGIUNGI", "AGIUNTAR")
+  val decrease = pick("Decrease", "Diminuer", "Verringern", "Diminuire", "Reducir")
+  val increase = pick("Increase", "Augmenter", "Erhöhen", "Aumentare", "Augmentar")
+  val themeMode = pick("Dark theme", "Thème sombre", "Dunkles Design", "Tema scuro", "Tema stgir")
   val editDefect = pick("EDIT DEFECT", "MODIFIER LE DÉFAUT", "MANGEL BEARBEITEN", "MODIFICA DIFETTO", "MODIFITGAR LA MANCANZA")
 
   // The flow's places. Not stations: nothing here is gated behind anything else.
@@ -154,6 +162,41 @@ class Str(val lang: Lang) {
   val objectLabel = pick("Object", "Objet loué", "Mietobjekt", "Ente locato", "Object da locaziun")
   val address = pick("Street and number", "Rue et numéro", "Strasse und Nummer", "Via e numero", "Via e numer")
   val place = pick("Postcode and place", "NPA et localité", "PLZ und Ort", "NAP e località", "NPA e lieu")
+  val cantonLabel = pick("Canton of the object", "Canton de l'objet", "Kanton des Mietobjekts", "Cantone dell'oggetto", "Chantun da l'object")
+  val selectCanton = pick("SELECT CANTON", "CHOISIR LE CANTON", "KANTON WÄHLEN", "SCEGLI CANTONE", "TSCHERNER CHANTUN")
+  fun canton(canton: SwissCanton): String = "${canton.code} · ${canton.label}"
+  val legalBasis = pick("Applicable basis", "Base applicable", "Anwendbare Grundlage", "Base applicabile", "Basa applitgabla")
+  fun legalProfile(profile: LegalProfile) = when (profile) {
+    LegalProfile.FederalAndLease -> pick(
+      "Federal CO, the lease, and applicable cantonal or local rules",
+      "CO fédéral, bail et règles cantonales ou locales applicables",
+      "Bundesrecht OR, Mietvertrag und anwendbare kantonale oder örtliche Regeln",
+      "CO federale, contratto e regole cantonali o locali applicabili",
+      "DO federal, contract e reglas chantunalas u localas applitgablas",
+    )
+    LegalProfile.RomandContractual -> pick("Romand framework incorporated in the lease", "Contrat-cadre romand intégré au bail", "Westschweizer Rahmenvertrag im Mietvertrag", "Contratto-quadro romando integrato", "Contract general romand integrà")
+    LegalProfile.VaudRulv2020 -> pick(
+      "Vaud RULV, prior generally binding period from 1 July 2020 to 30 June 2026",
+      "RULV Vaud, période obligatoire précédente du 1er juillet 2020 au 30 juin 2026",
+      "Waadtländer RULV, frühere Allgemeinverbindlichkeit vom 1. Juli 2020 bis 30. Juni 2026",
+      "RULV Vaud, precedente periodo obbligatorio dal 1 luglio 2020 al 30 giugno 2026",
+      "RULV Vad, perioda obligatorica precedenta dal 1. fanadur 2020 fin ils 30 da zercladur 2026",
+    )
+    LegalProfile.VaudRulv2026 -> pick(
+      "Vaud RULV, generally binding from 1 July 2026 to 30 June 2032",
+      "RULV Vaud, force obligatoire du 1er juillet 2026 au 30 juin 2032",
+      "Waadtländer RULV, allgemeinverbindlich vom 1. Juli 2026 bis 30. Juni 2032",
+      "RULV Vaud, obbligatorie dal 1 luglio 2026 al 30 giugno 2032",
+      "RULV Vad, obligatoric dal 1. fanadur 2026 fin ils 30 da zercladur 2032",
+    )
+  }
+  val romandFrameworkInLease = pick(
+    "The lease expressly incorporates the Romand framework contract",
+    "Le bail intègre expressément le contrat-cadre romand",
+    "Der Mietvertrag bezieht den Westschweizer Rahmenvertrag ausdrücklich ein",
+    "Il contratto integra espressamente il contratto-quadro romando",
+    "Il contract integrescha explicitamain il contract general romand",
+  )
   val objectDetail = pick("Floor and position", "Étage et position", "Stockwerk und Lage", "Piano e posizione", "Plaun ed posiziun")
   val handoverDate = pick("Date of handover", "Date de la remise", "Datum der Übergabe", "Data della consegna", "Data da la surdada")
   val handoverTime = pick("Time", "Heure", "Uhrzeit", "Ora", "Ura")
@@ -172,6 +215,14 @@ class Str(val lang: Lang) {
   val parties = pick("Parties", "Parties", "Parteien", "Parti", "Partidas")
   val meters = pick("Meter readings", "Relevé des compteurs", "Zählerstände", "Letture dei contatori", "Posiziuns dals contaturs")
   val keysLabel = pick("Keys", "Clés", "Schlüssel", "Chiavi", "Clavs")
+  val keyTransferLabel = pick("Key transfer", "Remise des clés", "Schlüsselübergabe", "Consegna delle chiavi", "Surdada da las clavs")
+  fun keyTransfer(value: KeyTransferStatus) = when (value) {
+    KeyTransferStatus.NotRecorded -> pick("Not recorded", "Non consignée", "Nicht erfasst", "Non registrata", "Betg registrà")
+    KeyTransferStatus.AllTransferred -> pick("All keys and copies transferred", "Toutes les clés et copies remises", "Alle Schlüssel und Kopien übergeben", "Tutte le chiavi e copie consegnate", "Tut las clavs e copias surdadas")
+    KeyTransferStatus.NoPhysicalKeys -> pick("No physical keys", "Aucune clé physique", "Keine physischen Schlüssel", "Nessuna chiave fisica", "Naginas clavs fisicas")
+    KeyTransferStatus.Incomplete -> pick("Incomplete or disputed", "Incomplète ou contestée", "Unvollständig oder bestritten", "Incompleta o contestata", "Incumpletta u contestada")
+  }
+  val keyTransferNote = pick("Missing keys or delivery detail", "Clés manquantes ou détail de remise", "Fehlende Schlüssel oder Übergabedetail", "Chiavi mancanti o dettaglio", "Clavs mancantas u detagl")
   val selfMadeKeys = pick(
     "Copies had been made by the tenant",
     "Le locataire a fait faire des doubles",
@@ -371,6 +422,9 @@ class Str(val lang: Lang) {
     "Nessun difetto registrato in questo locale",
     "Nagina mancanza registrada en quest local",
   )
+  val roomInspected = pick("ROOM INSPECTED", "PIÈCE CONTRÔLÉE", "RAUM GEPRÜFT", "LOCALE CONTROLLATO", "LOCAL CONTROLLÀ")
+  val notInspected = pick("Not inspected", "Non contrôlé", "Nicht geprüft", "Non controllato", "Betg controllà")
+  val inspectedNoDefects = pick("Inspected, no defect recorded", "Contrôlé, aucun défaut consigné", "Geprüft, kein Mangel erfasst", "Controllato, nessun difetto registrato", "Controllà, nagina mancanza registrada")
   val clearRoom = pick("CLEAR ROOM", "VIDER LA PIÈCE", "RAUM LEEREN", "SVUOTA IL LOCALE", "SVIDAR IL LOCAL")
   val removeRoom = pick("REMOVE ROOM", "RETIRER LA PIÈCE", "RAUM ENTFERNEN", "RIMUOVI IL LOCALE", "ALLONTANAR IL LOCAL")
   val areYouSure = pick("ARE YOU SURE?", "ÊTES-VOUS SÛR·E ?", "SIND SIE SICHER?", "SIETE SICURI?", "ESSAS VUS SEGIR?")
@@ -405,6 +459,7 @@ class Str(val lang: Lang) {
   val addCategory = pick("ADD A CATEGORY", "AJOUTER UNE CATÉGORIE", "KATEGORIE HINZUFÜGEN", "AGGIUNGI UNA CATEGORIA", "AGIUNTAR INA CATEGORIA")
   val categoryName = pick("Category name", "Nom de la catégorie", "Name der Kategorie", "Nome della categoria", "Num da la categoria")
   val objectNote = pick("Make, model, serial number", "Marque, modèle, numéro de série", "Marke, Modell, Seriennummer", "Marca, modello, numero di serie", "Marca, model, numer da seria")
+  val objectInspected = pick("ITEM AND CONDITION CHECKED", "OBJET ET ÉTAT CONTRÔLÉS", "GEGENSTAND UND ZUSTAND GEPRÜFT", "OGGETTO E STATO CONTROLLATI", "OBJECT E STADI CONTROLLADS")
   val objectRoom = pick("Where it stands", "Où il se trouve", "Wo er steht", "Dove si trova", "Nua ch'el sa chatta")
   val wholeFlat = pick("The flat", "Le logement", "Die Wohnung", "L'alloggio", "L'abitaziun")
   val noObjects = pick(
@@ -477,6 +532,20 @@ class Str(val lang: Lang) {
   val fixDeadline = pick("By (date)", "D'ici au", "Bis am", "Entro il", "Fin ils")
   val costNote = pick("Cost note / estimate", "Coûts / devis", "Kosten / Voranschlag", "Costi / preventivo", "Custs / preventiv")
   val reservationLabel = pick("Reservation", "Réserve", "Vorbehalt", "Riserva", "Resalva")
+  val reservationBeforeSign = pick(
+    "Enter any reservation before signing. It is sealed with that person's ink.",
+    "Saisissez toute réserve avant de signer. Elle est scellée avec la signature de cette personne.",
+    "Vorbehalt vor dem Unterschreiben eingeben. Er wird mit dieser Unterschrift versiegelt.",
+    "Inserite ogni riserva prima della firma. Sarà sigillata con quella firma.",
+    "Endatar mintga resalva avant la suttascripziun. Ella vegn sigillada cun quella suttascripziun.",
+  )
+  val inkEvidenceNotice = pick(
+    "Captured ink is evidence of the recorded outcome, not a Swiss qualified electronic signature.",
+    "La signature dessinée atteste l'issue consignée; ce n'est pas une signature électronique qualifiée suisse.",
+    "Die erfasste Unterschrift belegt das protokollierte Ergebnis; sie ist keine qualifizierte elektronische Signatur der Schweiz.",
+    "La firma acquisita prova l'esito registrato; non è una firma elettronica qualificata svizzera.",
+    "La suttascripziun registrada documentescha il resultat; ella n'è betg ina suttascripziun electronica qualifitgada svizra.",
+  )
   val photo = pick("PHOTO", "PHOTO", "FOTO", "FOTO", "FOTO")
   val gallery = pick("GALLERY", "GALERIE", "GALERIE", "GALLERIA", "GALARIA")
   val cameraOpenFailed = pick(
@@ -513,18 +582,26 @@ class Str(val lang: Lang) {
     "Quint da custs accessorics fin ils",
   )
   val oneSided = pick(
-    "One-sided handover, other party absent",
-    "Remise unilatérale, partie adverse absente",
-    "Einseitige Abgabe, Gegenpartei abwesend",
-    "Riconsegna unilaterale, controparte assente",
-    "Surdada unilaterala, cuntrapartida absenta",
+    "Unilateral record",
+    "Constat unilatéral",
+    "Einseitiges Protokoll",
+    "Verbale unilaterale",
+    "Protocol unilateral",
   )
+  val unilateralReasonLabel = pick("Reason", "Motif", "Grund", "Motivo", "Motiv")
+  fun unilateralReason(reason: UnilateralReason) = when (reason) {
+    UnilateralReason.OtherPartyAbsent -> pick("Other party absent", "Autre partie absente", "Gegenpartei abwesend", "Controparte assente", "Cuntrapartida absenta")
+    UnilateralReason.RefusedInspection -> pick("Inspection refused", "Contrôle refusé", "Abnahme verweigert", "Controllo rifiutato", "Controlla refusada")
+    UnilateralReason.RemoteKeyReturn -> pick("Keys returned remotely", "Clés remises à distance", "Schlüssel aus der Ferne zurückgegeben", "Chiavi restituite a distanza", "Clavs restituidas a distanza")
+    UnilateralReason.Other -> pick("Other documented reason", "Autre motif documenté", "Anderer dokumentierter Grund", "Altro motivo documentato", "Auter motiv documentà")
+  }
+  val unilateralNote = pick("Facts, notice and witness", "Faits, avis et témoin", "Sachverhalt, Mitteilung und Zeuge", "Fatti, avviso e testimone", "Fats, avis e perditga")
   val infoOneSided = pick(
-    "Nobody on the other side of the threshold: document everything with dated photos, have a neutral witness sign the record, and send the keys by registered mail. The proof of delivery completes the return.",
-    "Personne de l'autre côté du seuil : documentez tout par photos datées, faites signer le constat par un témoin neutre et envoyez les clés en recommandé. La preuve de remise achève la restitution.",
-    "Niemand auf der anderen Seite: alles mit datierten Fotos festhalten, eine neutrale Zeugin den Befund unterschreiben lassen und die Schlüssel eingeschrieben senden. Der Zustellnachweis vollendet die Rückgabe.",
-    "Nessuno dall'altra parte: documentate tutto con foto datate, fate firmare il verbale a un testimone neutrale e spedite le chiavi per raccomandata. La prova di consegna completa la riconsegna.",
-    "Nagin da l'autra vart: documentai tut cun fotos datadas, laschai suttascriver il protocol d'ina perditga neutrala e trametti las clavs cun brev recumandada. La cumprova da la consegna cumpletta la restituziun.",
+    "If the other side is absent or refuses: record the reason, document the condition with dated evidence, use a neutral witness where possible, and return keys by a traceable agreed method. Keep proof of delivery.",
+    "Si l'autre partie est absente ou refuse : consignez le motif, documentez l'état avec des preuves datées, faites appel si possible à un témoin neutre et rendez les clés par une méthode convenue et traçable. Conservez la preuve de remise.",
+    "Ist die andere Seite abwesend oder verweigert sie: Grund festhalten, Zustand mit datierten Belegen dokumentieren, wenn möglich eine neutrale Zeugin beiziehen und Schlüssel auf vereinbarte nachweisbare Weise zurückgeben. Zustellnachweis aufbewahren.",
+    "Se l'altra parte è assente o rifiuta: registrate il motivo, documentate lo stato con prove datate, ricorrete se possibile a un testimone neutrale e restituite le chiavi con un metodo concordato e tracciabile. Conservate la prova di consegna.",
+    "Sche l'autra vart manca u refusescha: registrai il motiv, documentai il stadi cun cumprovas datadas, duvrai sche pussaivel ina perditga neutrala e restitui las clavs cun ina metoda cunvegnida e cumprovabla. Conservai la cumprova da consegna.",
   )
 
 
@@ -536,11 +613,11 @@ class Str(val lang: Lang) {
   val sure = pick("SURE?", "SÛR ?", "SICHER?", "SICURO?", "SEGIR?")
   val noAddress = pick("Address not yet entered", "Adresse pas encore saisie", "Adresse noch nicht erfasst", "Indirizzo non ancora inserito", "Adressa anc betg endatada")
   val infoDeposit = pick(
-    "Three months of rent locked on a bank account, or an insurance premium of 4 to 5 percent of the guarantee per year, never refunded. The account gives the money back one day; the insurance frees it now and costs for as long as the lease runs. Both are legitimate; only the release paperwork differs, and this protocol prints the right one.",
-    "Trois mois de loyer bloqués sur un compte, ou une prime d'assurance de 4 à 5 pour cent de la garantie par an, jamais remboursée. Le compte rend l'argent un jour ; l'assurance le libère tout de suite et coûte aussi longtemps que dure le bail. Les deux sont légitimes ; seule la procédure de libération diffère, et ce protocole imprime la bonne.",
-    "Drei Monatsmieten auf dem Sperrkonto, oder eine Versicherungsprämie von 4 bis 5 Prozent der Garantie pro Jahr, nie zurückerstattet. Das Konto gibt das Geld eines Tages zurück; die Versicherung macht es sofort frei und kostet, solange das Mietverhältnis läuft. Beides ist legitim; nur die Freigabe läuft anders, und dieses Protokoll druckt die richtige.",
-    "Tre mesi di pigione bloccati su un conto, o un premio assicurativo dal 4 al 5 per cento della garanzia all'anno, mai rimborsato. Il conto restituisce i soldi un giorno; l'assicurazione li libera subito e costa finché dura la locazione. Entrambi sono legittimi; cambia solo la procedura di svincolo, e questo verbale stampa quella giusta.",
-    "Trais tschains da locaziun bloccads sin in conto, u ina premia d'assicuranza da 4 fin 5 pertschient da la garanzia per onn, mai restituida. Il conto restituescha ils daners in di; l'assicuranza als libera immediat e custa uschè ditg che la locaziun dura.",
+    "A blocked bank account preserves the deposited capital. Guarantee insurance replaces that cash deposit with a recurring, normally non-refundable premium. Prices and conditions change, so compare current terms directly with the bank or insurer.",
+    "Le compte bloqué conserve le capital déposé. L'assurance de garantie remplace ce dépôt en espèces par une prime périodique, généralement non remboursable. Les prix et conditions changent : vérifiez les conditions actuelles auprès de la banque ou de l'assureur.",
+    "Das Sperrkonto erhält das eingezahlte Kapital. Eine Kautionsversicherung ersetzt diese Bareinlage durch eine wiederkehrende, in der Regel nicht rückzahlbare Prämie. Preise und Bedingungen ändern sich; aktuelle Angaben direkt bei Bank oder Versicherer prüfen.",
+    "Il conto bloccato conserva il capitale depositato. L'assicurazione di garanzia sostituisce il deposito in contanti con un premio periodico, di regola non rimborsabile. Prezzi e condizioni cambiano: verificate quelli attuali presso banca o assicuratore.",
+    "Il conto bloccà mantegna il chapital deposità. L'assicuranza da garanzia remplazza il deposit en daners cun ina premia periodica, per regla betg restituibla. Pretschs e cundiziuns ston vegnir verifitgads tar la banca u l'assicuradur.",
   )
   val photos = pick("Photos", "Photos", "Fotos", "Foto", "Fotos")
 
@@ -553,11 +630,11 @@ class Str(val lang: Lang) {
     "Suttascripziun dal protocol",
   )
   val signRecordMeaning = pick(
-    "This signature confirms one thing only: the defects are correctly recorded. It is not an acceptance of any costs. In the canton of Vaud this is the law of the RULV; everywhere else this protocol says it in writing.",
-    "Cette signature confirme une seule chose : les défauts sont correctement consignés. Elle ne vaut acceptation d'aucun coût. Dans le canton de Vaud, c'est la règle des RULV ; partout ailleurs, ce protocole l'écrit noir sur blanc.",
-    "Diese Unterschrift bestätigt nur eines: die Mängel sind richtig protokolliert. Sie ist keine Übernahme irgendwelcher Kosten. Im Kanton Waadt ist das RULV-Recht; überall sonst schreibt dieses Protokoll es ausdrücklich hin.",
-    "Questa firma conferma una sola cosa: i difetti sono correttamente verbalizzati. Non vale accettazione di alcun costo. Nel canton Vaud è la regola delle RULV; ovunque altrove questo verbale lo scrive espressamente.",
-    "Questa suttascripziun conferma mo ina chaussa: las mancanzas èn registradas correctamain. Ella na vala betg sco acceptaziun da custs.",
+    "This signature confirms the condition report and the reservation printed beside it. Responsibility and any payment remain separate.",
+    "Cette signature confirme l'état des lieux et la réserve imprimée à côté. La responsabilité et tout paiement restent séparés.",
+    "Diese Unterschrift bestätigt das Zustandsprotokoll und den daneben gedruckten Vorbehalt. Verantwortung und eine allfällige Zahlung bleiben getrennt.",
+    "Questa firma conferma lo stato dei luoghi e la riserva stampata accanto. Responsabilità ed eventuali pagamenti restano separati.",
+    "Questa suttascripziun conferma il protocol dal stadi e la resalva stampada dasperas. Responsabladad ed eventuals pajaments restan separads.",
   )
   val signKey = pick("SIGN", "SIGNER", "UNTERSCHREIBEN", "FIRMA", "SUTTASCRIVER")
   val refusedKey = pick("REFUSED", "REFUSÉE", "VERWEIGERT", "RIFIUTATA", "REFUSADA")
@@ -587,10 +664,17 @@ class Str(val lang: Lang) {
   fun finalizationIssue(issue: FinalizationIssue) = when (issue) {
     FinalizationIssue.Address -> pick("Add the street and number", "Indiquez la rue et le numéro", "Strasse und Nummer ergänzen", "Indicate via e numero civico", "Agiuntai via e numer")
     FinalizationIssue.Place -> pick("Add the postcode and place", "Indiquez le NPA et la localité", "PLZ und Ort ergänzen", "Indicate NAP e località", "Agiuntai NPA e lieu")
+    FinalizationIssue.Canton -> pick("Select the object's canton", "Choisissez le canton de l'objet", "Kanton des Mietobjekts wählen", "Scegliete il cantone dell'oggetto", "Tscherner il chantun da l'object")
     FinalizationIssue.HandoverDate -> pick("Add the handover date", "Indiquez la date de remise", "Übergabedatum ergänzen", "Indicate la data di consegna", "Agiuntai la data da surdada")
     FinalizationIssue.HandoverTime -> pick("Add the handover time", "Indiquez l'heure de remise", "Übergabezeit ergänzen", "Indicate l'ora di consegna", "Agiuntai l'ura da surdada")
     FinalizationIssue.Parties -> pick("Name both tenant and landlord / agency", "Nommez le locataire et le bailleur / la régie", "Mieterschaft und Vermieterschaft / Verwaltung benennen", "Indicate conduttore e locatore / amministrazione", "Numnai locatari e locatur / administraziun")
+    FinalizationIssue.Rooms -> pick("Confirm every listed room was inspected", "Confirmez le contrôle de chaque pièce", "Prüfung jedes aufgeführten Raums bestätigen", "Confermate ogni locale controllato", "Confermai mintga local controllà")
+    FinalizationIssue.Objects -> pick("Confirm every supplied item was checked", "Confirmez chaque objet fourni", "Jeden mitübergebenen Gegenstand bestätigen", "Confermate ogni oggetto fornito", "Confermai mintga object surdà")
+    FinalizationIssue.Dossier -> pick("Complete or remove every added dossier component", "Complétez ou retirez chaque rubrique ajoutée au dossier", "Jede hinzugefügte Dossierrubrik ausfüllen oder entfernen", "Completate o rimuovete ogni rubrica aggiunta al dossier", "Cumplettai u allontanai mintga rubrica agiuntada al dossier")
+    FinalizationIssue.Keys -> pick("Record a consistent key-transfer outcome and missing-key details", "Consignez une remise des clés cohérente et le détail des clés manquantes", "Stimmige Schlüsselübergabe und fehlende Schlüssel erfassen", "Registrate una consegna coerente e i dettagli delle chiavi mancanti", "Registrai ina surdada coerenta e detagls da clavs mancantas")
+    FinalizationIssue.UnilateralReason -> pick("State why this record is unilateral", "Indiquez pourquoi le constat est unilatéral", "Grund für das einseitige Protokoll angeben", "Indicate perché il verbale è unilaterale", "Inditgai pertge il protocol è unilateral")
     FinalizationIssue.DefectText -> pick("Describe every defect precisely", "Décrivez chaque défaut précisément", "Jeden Mangel präzise beschreiben", "Descrivete ogni difetto con precisione", "Descrivai mintga mancanza precis")
+    FinalizationIssue.Evidence -> pick("Restore every referenced photo and signature file", "Rétablissez chaque photo et signature référencée", "Alle referenzierten Fotos und Unterschriften wiederherstellen", "Ripristinate ogni foto e firma indicata", "Restaurai mintga foto e suttascripziun inditgada")
     FinalizationIssue.RecordOutcomes -> pick("Record each required signature or refusal", "Consignez chaque signature ou refus requis", "Jede erforderliche Unterschrift oder Verweigerung erfassen", "Registrate ogni firma o rifiuto richiesto", "Registrai mintga suttascripziun u refusa necessaria")
   }
 
@@ -600,6 +684,25 @@ class Str(val lang: Lang) {
   val pdfLanguage = pick("Language of the PDF", "Langue du PDF", "Sprache des PDF", "Lingua del PDF", "Lingua dal PDF")
   val open = pick("OPEN", "OUVRIR", "ÖFFNEN", "APRI", "AVRIR")
   val share = pick("SHARE", "PARTAGER", "TEILEN", "CONDIVIDI", "CUNDIVIDER")
+  val capturedOn = pick("Captured", "Saisie", "Erfasst", "Acquisita", "Registrada")
+  val revisionLabel = pick("Record revision", "Révision du constat", "Protokollrevision", "Revisione del verbale", "Revisiun dal protocol")
+  val copyDelivery = pick("Copies delivered", "Copies remises", "Kopien zugestellt", "Copie consegnate", "Copias surdadas")
+  val recordCopyFor = pick("Record copy for", "Consigner la copie pour", "Kopie erfassen für", "Registra copia per", "Registrar copia per")
+  val deliveryDetail = pick("Recipient, address or delivery reference", "Destinataire, adresse ou référence d'envoi", "Empfänger, Adresse oder Zustellreferenz", "Destinatario, indirizzo o riferimento di consegna", "Destinatari, adressa u referenza da consegna")
+  val clearDelivery = pick("Clear delivery record", "Effacer la remise", "Zustellnachweis löschen", "Cancella consegna", "Stizzar la consegna")
+  fun deliveryMethod(method: DeliveryMethod) = when (method) {
+    DeliveryMethod.InPerson -> pick("In person", "En main propre", "Persönlich", "Di persona", "Persunalmain")
+    DeliveryMethod.Electronic -> pick("Electronic share", "Envoi électronique", "Elektronisch", "Invio elettronico", "Tramess electronic")
+    DeliveryMethod.RegisteredMail -> pick("Registered mail", "Courrier recommandé", "Eingeschriebene Post", "Posta raccomandata", "Posta recumandada")
+    DeliveryMethod.Other -> pick("Other documented method", "Autre mode documenté", "Andere dokumentierte Art", "Altro metodo documentato", "Autra moda documentada")
+  }
+  val deliverySelfDeclared = pick(
+    "Confirm only after an identical copy was actually handed over or sent. This self-declared post-finalization metadata is not covered by the evidence fingerprint.",
+    "Confirmez seulement après la remise ou l'envoi effectif d'une copie identique. Cette métadonnée autodéclarée après finalisation n'est pas couverte par l'empreinte des preuves.",
+    "Erst bestätigen, nachdem eine identische Kopie tatsächlich übergeben oder gesendet wurde. Diese selbst deklarierte Metadatenangabe nach Abschluss ist nicht vom Beleg-Fingerabdruck gedeckt.",
+    "Confermate solo dopo aver realmente consegnato o inviato una copia identica. Questo metadato autodichiarato dopo la finalizzazione non è coperto dall'impronta delle prove.",
+    "Confermai pir suenter che ina copia identica è vegnida surdada u tramessa. Questa metadata declerada sez suenter la finalisaziun n'è betg cumpigliada da l'impronta da las cumprovas.",
+  )
   val openFileFailed = pick(
     "No app could open this PDF.",
     "Aucune app ne peut ouvrir ce PDF.",
@@ -650,18 +753,18 @@ class Str(val lang: Lang) {
     "Liberaziun dal deposit da locaziun",
   )
   val releaseBank = pick(
-    "The blocked account is released only with the signatures of BOTH parties on the bank's release form, or by a court. If the landlord asserts no claim legally within one year of the end of the tenancy, the bank pays the deposit back on the tenant's sole demand (Art. 257e CO).",
-    "Le compte bloqué n'est libéré qu'avec les signatures des DEUX parties sur la formule de la banque, ou par un tribunal. Si le bailleur ne fait valoir aucune prétention en justice dans l'année suivant la fin du bail, la banque restitue la garantie à la seule demande du locataire (art. 257e CO).",
-    "Das Sperrkonto wird nur mit den Unterschriften BEIDER Parteien auf dem Formular der Bank freigegeben, oder durch ein Gericht. Macht die Vermieterschaft innert eines Jahres nach Mietende keinen Anspruch rechtlich geltend, zahlt die Bank das Depot auf alleiniges Verlangen der Mieterschaft zurück (Art. 257e OR).",
-    "Il conto bloccato si svincola solo con le firme di ENTRAMBE le parti sul modulo della banca, o per decisione del giudice. Se il locatore non fa valere alcuna pretesa in giudizio entro un anno dalla fine della locazione, la banca restituisce il deposito su sola richiesta del conduttore (art. 257e CO).",
-    "Il conto bloccà vegn liberà mo cun las suttascripziuns da TUTTAS DUAS partidas sin il formular da la banca, u tras in tribunal. Sch'il locatur na fa betg valair ina pretensiun giuridicamain entaifer in onn, restituescha la banca il deposit sin dumonda dal locatari (art. 257e DO).",
+    "Under Art. 257e CO, the bank may release the blocked deposit with both parties' agreement, an unopposed payment order, or an enforceable judgment. If the landlord starts no court, debt-enforcement or bankruptcy claim within one year after the tenancy ends, the tenant may request repayment from the bank.",
+    "Selon l'art. 257e CO, la banque peut libérer la garantie avec l'accord des deux parties, un commandement de payer non frappé d'opposition ou un jugement exécutoire. Si le bailleur n'engage aucune procédure judiciaire, poursuite ou faillite dans l'année suivant la fin du bail, le locataire peut demander la restitution à la banque.",
+    "Nach Art. 257e OR darf die Bank das Depot mit Zustimmung beider Parteien, aufgrund eines rechtskräftigen Zahlungsbefehls oder eines rechtskräftigen Urteils freigeben. Leitet die Vermieterschaft innert eines Jahres nach Mietende kein Gerichts-, Betreibungs- oder Konkursverfahren ein, kann die Mieterschaft die Rückzahlung verlangen.",
+    "Secondo l'art. 257e CO, la banca può liberare il deposito con l'accordo di entrambe le parti, un precetto esecutivo non opposto o una sentenza esecutiva. Se entro un anno dalla fine della locazione il locatore non avvia un'azione giudiziaria, esecutiva o fallimentare, il conduttore può chiedere la restituzione alla banca.",
+    "Tenor l'art. 257e DO po la banca liberar il deposit cun il consentiment da tuttas duas partidas, in cumond da pajament senza opposiziun u ina sentenzia executabla. Senza procedura giudiziala, d'execuziun u da concurs entaifer in onn po il locatari pretender la restituziun.",
   )
   val releaseInsurance = pick(
-    "The guarantee insurance is released at the express request of the landlord or agency to the insurer. Open defects can block the release only if they are noted in this protocol or notified within the legal window. The premium already paid is not refunded.",
-    "L'assurance de garantie est libérée sur demande expresse du bailleur ou de la régie auprès de l'assureur. Des défauts ouverts ne peuvent bloquer la libération que s'ils figurent dans ce protocole ou ont été signalés dans le délai légal. La prime déjà payée n'est pas remboursée.",
-    "Die Garantieversicherung wird auf ausdrückliches Verlangen der Vermieterschaft oder Verwaltung beim Versicherer freigegeben. Offene Mängel können die Freigabe nur blockieren, wenn sie in diesem Protokoll stehen oder fristgerecht gerügt wurden. Die bezahlte Prämie wird nicht zurückerstattet.",
-    "L'assicurazione di garanzia si svincola su richiesta espressa del locatore o dell'amministrazione all'assicuratore. Difetti aperti possono bloccare lo svincolo solo se figurano in questo verbale o sono stati notificati nei termini legali. Il premio già pagato non viene rimborsato.",
-    "L'assicuranza da garanzia vegn liberada sin dumonda expressa dal locatur u da l'administraziun tar l'assicuradur. La premia gia pajada na vegn betg restituida.",
+    "A guarantee insurance is not a blocked bank account. Follow the insurer's current cancellation and release procedure; provider terms govern, and premiums already paid are normally not refunded.",
+    "Une assurance de garantie n'est pas un compte bancaire bloqué. Suivez la procédure actuelle de résiliation et de libération de l'assureur ; ses conditions s'appliquent et les primes déjà payées ne sont en principe pas remboursées.",
+    "Eine Kautionsversicherung ist kein Sperrkonto. Das aktuelle Kündigungs- und Freigabeverfahren des Versicherers befolgen; dessen Bedingungen gelten, und bezahlte Prämien werden in der Regel nicht zurückerstattet.",
+    "Un'assicurazione di garanzia non è un conto bloccato. Seguite la procedura attuale dell'assicuratore per disdetta e svincolo; valgono le sue condizioni e i premi già pagati di regola non sono rimborsati.",
+    "Ina assicuranza da garanzia n'è betg in conto bloccà. Suandai la procedura actuala da l'assicuradur per la disditga e liberaziun; sias cundiziuns valan e premias pajadas na vegnan per regla betg restituidas.",
   )
   val refusedNote = pick(
     "Signature refused",
@@ -680,11 +783,11 @@ class Str(val lang: Lang) {
   val tenantShare = pick("Tenant's share", "Part du locataire", "Anteil Mieterschaft", "Quota del conduttore", "Part dal locatari")
   val remainingValue = pick("Remaining value", "Valeur résiduelle", "Restwert", "Valore residuo", "Valur restanta")
   val ironRules = pick(
-    "Nothing is owed past the full lifespan, however real the damage. Normal wear is never payable. The age counts from the last renovation, not from the start of the lease.",
-    "Rien n'est dû au-delà de la longévité, si réel que soit le dégât. L'usure normale ne se paie jamais. L'âge court depuis la dernière rénovation, pas depuis le début du bail.",
-    "Nach Ablauf der Lebensdauer ist nichts geschuldet, so real der Schaden auch ist. Normale Abnützung ist nie zu bezahlen. Das Alter zählt ab der letzten Renovation, nicht ab Mietbeginn.",
-    "Oltre la durata di vita non si deve nulla, per quanto reale sia il danno. L'usura normale non si paga mai. L'età conta dall'ultimo rinnovo, non dall'inizio della locazione.",
-    "Suenter la durada da vita na vegn nagut debità. L'isanza normala na vegn mai pajada. La vegliadetgna quinta da l'ultima renovaziun.",
+    "Normal wear is not charged to the tenant. For damage beyond normal wear, the usual lifespan helps estimate residual value; repair, actual loss and the circumstances still matter. Count age from the last installation or renovation when known.",
+    "L'usure normale n'est pas imputée au locataire. Pour un dégât dépassant l'usure normale, la longévité usuelle aide à estimer la valeur résiduelle ; la réparation, le dommage réel et les circonstances restent déterminants. Comptez l'âge depuis la dernière pose ou rénovation connue.",
+    "Normale Abnützung wird der Mieterschaft nicht belastet. Bei darüber hinausgehendem Schaden hilft die übliche Lebensdauer, den Restwert zu schätzen; Reparatur, tatsächlicher Schaden und Umstände bleiben massgebend. Das Alter zählt ab bekanntem Einbau oder letzter Renovation.",
+    "L'usura normale non è addebitata al conduttore. Per danni che la superano, la durata usuale aiuta a stimare il valore residuo; riparazione, danno effettivo e circostanze restano determinanti. Calcolate l'età dall'ultima installazione o ristrutturazione nota.",
+    "L'isanza normala na vegn betg debitada al locatari. Per donns che van pli lunsch gida la durada usitada a stimar la valur restanta; reparatura, donn effectiv e circumstanzas restan decisivs. Quintai da l'installaziun u renovaziun enconuschenta.",
   )
   val tableDisclaimer = pick(
     "Publicly cited values from the joint MV/HEV lifespan table. The table itself is not binding; the full current edition is sold by HEV and MV.",
@@ -733,9 +836,9 @@ class Str(val lang: Lang) {
 
   // The deadlines face.
   val keysReturnedOn = pick("Keys returned on", "Clés rendues le", "Schlüssel zurück am", "Chiavi riconsegnate il", "Clavs restituidas ils")
-  val safeBy = pick("Safe if posted by", "Sûr si posté d'ici au", "Sicher, wenn aufgegeben bis", "Sicuro se spedito entro il", "Segir sche tramess fin ils")
-  val listBy = pick("List posted by", "Liste postée d'ici au", "Liste aufgegeben bis", "Lista spedita entro il", "Glista tramessa fin ils")
-  val latestBy = pick("Case law's outer edge", "Limite de la jurisprudence", "Äusserste Grenze der Praxis", "Limite della giurisprudenza", "Ultim termin da la pratica")
+  val safeBy = pick("2-working-day target", "Objectif : 2 jours ouvrables", "Ziel: 2 Werktage", "Obiettivo: 2 giorni lavorativi", "Finamira: 2 dis da lavur")
+  val listBy = pick("Contractual 10-day date", "Date contractuelle à 10 jours", "Vertragliches 10-Tage-Datum", "Data contrattuale a 10 giorni", "Data contractuala da 10 dis")
+  val latestBy = pick("3-working-day practice reference", "Repère pratique : 3 jours ouvrables", "Praxiswert: 3 Werktage", "Riferimento pratico: 3 giorni lavorativi", "Valur da pratica: 3 dis da lavur")
   val clockExitTitle = pick(
     "Landlord's defect notice",
     "Avis des défauts du bailleur",
@@ -744,11 +847,11 @@ class Str(val lang: Lang) {
     "Notificaziun da mancanzas dal locatur",
   )
   val clockExitBody = pick(
-    "After getting ALL keys back, the landlord must notify the tenant of every charged defect in writing, itemized, within 2 to 3 working days (Art. 267a CO; BGer 4A_388/2013). Registered mail. Vague or late notice forfeits every claim; one week is already too late.",
-    "Après réception de TOUTES les clés, le bailleur doit signaler par écrit au locataire chaque défaut imputé, poste par poste, dans les 2 à 3 jours ouvrables (art. 267a CO ; TF 4A_388/2013). En recommandé. Un avis vague ou tardif fait perdre toute prétention ; une semaine est déjà trop tard.",
-    "Nach Erhalt ALLER Schlüssel muss die Vermieterschaft jeden angelasteten Mangel schriftlich und einzeln innert 2 bis 3 Werktagen rügen (Art. 267a OR; BGer 4A_388/2013). Eingeschrieben. Eine vage oder späte Rüge verwirkt jeden Anspruch; eine Woche ist bereits zu spät.",
-    "Dopo aver ricevuto TUTTE le chiavi, il locatore deve notificare per iscritto al conduttore ogni difetto imputato, voce per voce, entro 2 o 3 giorni lavorativi (art. 267a CO; TF 4A_388/2013). Per raccomandata. Una notifica vaga o tardiva fa decadere ogni pretesa; una settimana è già troppo tardi.",
-    "Suenter avair survegnì TUT las clavs sto il locatur notifitgar en scrit mintga mancanza entaifer 2 fin 3 dis da lavur (art. 267a DO). Cun brev recumandada. Ina notificaziun vaga u tardiva fa perder mintga pretensiun.",
+    "Art. 267a CO requires the landlord to inspect on return and notify the tenant immediately of each defect for which liability is claimed. BGer 4A_388/2013 reports usual guidance of 2 to 3 working days, another view up to one week, and confirms that circumstances decide. Send an itemized notice without delay and keep proof of delivery.",
+    "L'art. 267a CO impose au bailleur de vérifier la chose à sa restitution et d'aviser immédiatement le locataire de chaque défaut dont il entend le rendre responsable. L'arrêt TF 4A_388/2013 mentionne une pratique de 2 à 3 jours ouvrables, une autre opinion allant jusqu'à une semaine, et rappelle que les circonstances décident. Envoyez sans délai un avis détaillé et conservez la preuve d'envoi.",
+    "Art. 267a OR verlangt, dass die Vermieterschaft bei der Rückgabe prüft und der Mieterschaft jeden Mangel, für den sie einstehen soll, sofort meldet. BGer 4A_388/2013 nennt als übliche Richtlinie 2 bis 3 Werktage, eine andere Auffassung bis zu einer Woche, und stellt auf die Umstände ab. Eine einzelne, nachweisbare Mitteilung ohne Verzug senden.",
+    "L'art. 267a CO impone al locatore di esaminare la cosa alla riconsegna e di notificare immediatamente al conduttore ogni difetto di cui intende renderlo responsabile. La sentenza TF 4A_388/2013 menziona una prassi di 2 o 3 giorni lavorativi, un'altra opinione fino a una settimana, e conferma che contano le circostanze. Inviate senza ritardo una notifica dettagliata e conservate la prova.",
+    "L'art. 267a DO pretenda che il locatur examineschia l'object tar la restituziun e notifitgeschia immediat mintga mancanza imputada al locatari. La sentenzia TF 4A_388/2013 menziunescha 2 fin 3 dis da lavur sco pratica usitada, in'autra opiniun fin ad in'emna, e resguarda las circumstanzas. Tramettai senza retard ina glista detagliada e conservai la cumprova.",
   )
   val clockEntryTitle = pick(
     "Tenant's move-in list",
@@ -758,35 +861,35 @@ class Str(val lang: Lang) {
     "Glista da mancanzas tar l'entrada",
   )
   val clockEntryBody = pick(
-    "Defects found after moving in should go to the landlord in writing within about 10 days, registered. Without that list, the previous tenant's damage can land on your deposit at the exit.",
-    "Les défauts découverts après l'emménagement se signalent par écrit dans les 10 jours environ, en recommandé. Sans cette liste, les dégâts du locataire précédent peuvent retomber sur votre garantie à la sortie.",
-    "Nach dem Einzug entdeckte Mängel gehören innert rund 10 Tagen schriftlich und eingeschrieben zur Vermieterschaft. Ohne diese Liste können die Schäden der Vormieterschaft beim Auszug auf Ihrem Depot landen.",
-    "I difetti scoperti dopo il trasloco vanno segnalati per iscritto entro circa 10 giorni, per raccomandata. Senza questa lista, i danni del conduttore precedente possono ricadere sul vostro deposito alla riconsegna.",
-    "Mancanzas chattadas suenter l'entrada duain ir en scrit al locatur entaifer var 10 dis, cun brev recumandada.",
+    "Check the lease and applicable cantonal terms. If they set a ten-day period for additions to the move-in record, meet it; otherwise report additional defects promptly in writing and keep proof. Ten days is not a uniform federal statutory deadline.",
+    "Vérifiez le bail et les règles cantonales applicables. S'ils prévoient dix jours pour compléter l'état des lieux d'entrée, respectez ce délai ; sinon, signalez rapidement tout défaut supplémentaire par écrit et conservez la preuve. Dix jours ne constituent pas un délai légal fédéral uniforme.",
+    "Mietvertrag und anwendbare kantonale Regeln prüfen. Sehen sie zehn Tage für Ergänzungen zum Einzugsprotokoll vor, ist diese Frist einzuhalten; andernfalls zusätzliche Mängel rasch schriftlich melden und den Nachweis aufbewahren. Zehn Tage sind keine einheitliche bundesrechtliche Frist.",
+    "Verificate il contratto e le regole cantonali applicabili. Se prevedono dieci giorni per completare il verbale d'entrata, rispettate tale termine; altrimenti segnalate rapidamente per iscritto gli ulteriori difetti e conservate la prova. Dieci giorni non sono un termine legale federale uniforme.",
+    "Controllai il contract e las reglas chantunalas applitgablas. Sch'ellas fixeschan diesch dis per cumplettar il protocol d'entrada, observai quel termin; uschiglio annunziai svelt en scrit ulteriuras mancanzas e conservai la cumprova. Diesch dis n'èn betg in termin federal unitar.",
   )
   val clockHiddenTitle = pick("Hidden defects", "Défauts cachés", "Verdeckte Mängel", "Difetti nascosti", "Mancanzas zuppadas")
   val clockHiddenBody = pick(
-    "A defect no customary inspection could see must be notified immediately upon discovery, or the claim dies with the delay.",
-    "Un défaut invisible lors d'un contrôle usuel doit être signalé immédiatement à sa découverte, sinon la prétention s'éteint avec le retard.",
-    "Ein bei üblicher Prüfung nicht erkennbarer Mangel ist sofort nach der Entdeckung zu rügen, sonst erlischt der Anspruch mit der Verspätung.",
-    "Un difetto non riconoscibile con un controllo usuale va notificato immediatamente alla scoperta, altrimenti la pretesa si estingue con il ritardo.",
-    "Ina mancanza betg visibla tar ina controlla usitada sto vegnir notifitgada immediat suenter la scuverta.",
+    "Under Art. 267a CO, a defect that could not be found during the customary inspection must be notified immediately after discovery; delay puts the related claim at risk.",
+    "Selon l'art. 267a CO, un défaut impossible à découvrir lors du contrôle usuel doit être signalé immédiatement après sa découverte ; un retard met en péril la prétention correspondante.",
+    "Nach Art. 267a OR muss ein bei üblicher Prüfung nicht erkennbarer Mangel sofort nach der Entdeckung gemeldet werden; eine Verzögerung gefährdet den entsprechenden Anspruch.",
+    "Secondo l'art. 267a CO, un difetto non riconoscibile con il controllo usuale va notificato immediatamente dopo la scoperta; un ritardo mette a rischio la relativa pretesa.",
+    "Tenor l'art. 267a DO sto ina mancanza betg visibla tar ina controlla usitada vegnir notifitgada immediat suenter la scuverta; in retard periclitescha la pretensiun.",
   )
   val clockDepositTitle = pick("The deposit's year", "L'année de la garantie", "Das Jahr des Depots", "L'anno del deposito", "L'onn dal deposit")
   val clockDepositBody = pick(
-    "If the landlord asserts no claim legally within one year of the end of the tenancy, the bank pays the blocked deposit back on the tenant's sole demand (Art. 257e CO).",
-    "Si le bailleur ne fait valoir aucune prétention en justice dans l'année suivant la fin du bail, la banque restitue la garantie bloquée à la seule demande du locataire (art. 257e CO).",
-    "Macht die Vermieterschaft innert eines Jahres nach Mietende keinen Anspruch rechtlich geltend, zahlt die Bank das gesperrte Depot auf alleiniges Verlangen der Mieterschaft zurück (Art. 257e OR).",
-    "Se il locatore non fa valere alcuna pretesa in giudizio entro un anno dalla fine della locazione, la banca restituisce il deposito bloccato su sola richiesta del conduttore (art. 257e CO).",
-    "Sch'il locatur na fa betg valair ina pretensiun entaifer in onn, restituescha la banca il deposit sin dumonda suletta dal locatari (art. 257e DO).",
+    "Under Art. 257e CO, the bank releases the blocked deposit with both parties' agreement, an unopposed payment order or an enforceable judgment. If the landlord starts no court, debt-enforcement or bankruptcy claim within one year after the tenancy ends, the tenant may request repayment from the bank.",
+    "Selon l'art. 257e CO, la banque libère la garantie avec l'accord des deux parties, un commandement de payer non frappé d'opposition ou un jugement exécutoire. Si le bailleur n'engage aucune procédure judiciaire, poursuite ou faillite dans l'année suivant la fin du bail, le locataire peut demander la restitution à la banque.",
+    "Nach Art. 257e OR gibt die Bank das Depot mit Zustimmung beider Parteien, aufgrund eines rechtskräftigen Zahlungsbefehls oder eines rechtskräftigen Urteils frei. Leitet die Vermieterschaft innert eines Jahres nach Mietende kein Gerichts-, Betreibungs- oder Konkursverfahren ein, kann die Mieterschaft die Rückzahlung verlangen.",
+    "Secondo l'art. 257e CO, la banca libera il deposito con l'accordo di entrambe le parti, un precetto esecutivo non opposto o una sentenza esecutiva. Se entro un anno dalla fine della locazione il locatore non avvia un'azione giudiziaria, esecutiva o fallimentare, il conduttore può chiedere la restituzione alla banca.",
+    "Tenor l'art. 257e DO liberescha la banca il deposit cun il consentiment da tuttas duas partidas, in cumond da pajament senza opposiziun u ina sentenzia executabla. Senza procedura giudiziala, d'execuziun u da concurs entaifer in onn po il locatari pretender la restituziun.",
   )
   val clockReturnTitle = pick("The return day", "Le jour de la restitution", "Der Rückgabetag", "Il giorno della riconsegna", "Il di da la restituziun")
   val clockReturnBody = pick(
-    "The flat is due back on the lease's last day within business hours; a weekend or holiday shifts it to the next working day. Local custom in Zurich and Bern: noon of the following day. The état des lieux is best made in empty rooms, in daylight, and either party may bring a person versed in tenancy law.",
-    "Le logement se restitue le dernier jour du bail pendant les heures ouvrables ; un week-end ou un jour férié reporte au jour ouvrable suivant. Usage local à Zurich et Berne : midi le lendemain. L'état des lieux se fait de préférence dans des locaux vides, de jour, et chaque partie peut se faire accompagner d'une personne au fait du droit du bail.",
-    "Die Wohnung ist am letzten Tag der Miete zu Geschäftszeiten zurückzugeben; Wochenende oder Feiertag verschieben auf den nächsten Werktag. Ortsgebrauch in Zürich und Bern: 12 Uhr am Folgetag. Das Protokoll entsteht am besten in leeren Räumen, bei Tageslicht, und jede Partei darf eine mietrechtskundige Person beiziehen.",
-    "L'alloggio si riconsegna l'ultimo giorno della locazione in orario d'ufficio; un fine settimana o un giorno festivo spostano al giorno lavorativo successivo. Uso locale a Zurigo e Berna: mezzogiorno del giorno dopo. Il verbale si fa preferibilmente in locali vuoti, di giorno, e ogni parte può farsi accompagnare da una persona esperta di diritto di locazione.",
-    "L'abitaziun vegn restituida l'ultim di da la locaziun durant las uras da fatschenta; ina fin d'emna u in di da festa spostan al proxim di da lavur.",
+    "Check the lease, the agreed appointment and local practice for the exact return time. Where a due date falls on a recognized Sunday or holiday, Art. 78 CO generally moves performance to the next working day unless the agreement provides otherwise. Inspect empty rooms in good light and record who attended.",
+    "Vérifiez le bail, le rendez-vous convenu et l'usage local pour l'heure exacte. Lorsqu'une échéance tombe un dimanche ou un jour férié reconnu, l'art. 78 CO reporte en principe l'exécution au prochain jour ouvrable, sauf convention contraire. Inspectez les locaux vides sous un bon éclairage et notez les présences.",
+    "Für die genaue Rückgabezeit Mietvertrag, vereinbarten Termin und Ortsgebrauch prüfen. Fällt ein Fälligkeitstag auf einen anerkannten Sonntag oder Feiertag, verschiebt Art. 78 OR die Leistung grundsätzlich auf den nächsten Werktag, sofern nichts anderes vereinbart ist. Leere Räume bei gutem Licht prüfen und Anwesende festhalten.",
+    "Per l'ora esatta verificate contratto, appuntamento concordato e uso locale. Se la scadenza cade di domenica o in un giorno festivo riconosciuto, l'art. 78 CO sposta di regola la prestazione al giorno lavorativo successivo, salvo accordo contrario. Ispezionate locali vuoti con buona luce e annotate i presenti.",
+    "Per l'ura exacta controllai il contract, il termin fixà e la pratica locala. Croda il termin sin ina dumengia u in firà renconuschì, sposta l'art. 78 DO per regla la prestaziun sin il proxim di da lavur, sche betg fixà auter. Inspectai locals vids cun buna glisch e registrai las persunas preschentas.",
   )
   // Structured tooltips: a lead line, then bullets. The screens never print small text;
   // everything below lives behind an info mark.
@@ -800,18 +903,18 @@ class Str(val lang: Lang) {
     ),
     listOf(
       pick(
-        "It is not an acceptance of any costs",
-        "Elle ne vaut acceptation d'aucun coût",
-        "Sie ist keine Übernahme irgendwelcher Kosten",
-        "Non vale accettazione di alcun costo",
-        "Ella na vala betg sco acceptaziun da custs",
+        "Responsibility and any amount are handled separately",
+        "La responsabilité et tout montant sont traités séparément",
+        "Verantwortung und ein allfälliger Betrag werden getrennt behandelt",
+        "Responsabilità ed eventuali importi sono trattati separatamente",
+        "Responsabladad ed eventuals imports vegnan tractads separadamain",
       ),
       pick(
-        "In Vaud this is RULV law; everywhere else the PDF says it in writing",
-        "Dans le canton de Vaud, c'est la règle des RULV ; ailleurs le PDF l'écrit noir sur blanc",
-        "Im Kanton Waadt ist das RULV-Recht; überall sonst schreibt es das PDF ausdrücklich hin",
-        "Nel canton Vaud è la regola delle RULV; altrove il PDF lo scrive espressamente",
-        "En il chantun Vad è quai il dretg da las RULV; dapertut auter al scriva il PDF",
+        "Any reservation entered before signing is printed beside that person's outcome",
+        "Toute réserve saisie avant la signature est imprimée à côté de l'issue de cette personne",
+        "Ein vor der Unterschrift erfasster Vorbehalt steht neben dem Ergebnis dieser Person",
+        "Ogni riserva inserita prima della firma è stampata accanto all'esito della persona",
+        "Mintga resalva endatada avant la suttascripziun vegn stampada dasper il resultat da la persuna",
       ),
       pick(
         "It may be refused; a refusal is simply recorded",
@@ -833,18 +936,18 @@ class Str(val lang: Lang) {
     ),
     listOf(
       pick(
-        "Blocked account: the money comes back one day; release needs both signatures",
-        "Compte bloqué : l'argent revient un jour ; libération à deux signatures",
-        "Sperrkonto: das Geld kommt eines Tages zurück; Freigabe mit beiden Unterschriften",
-        "Conto bloccato: i soldi tornano un giorno; svincolo con entrambe le firme",
-        "Conto bloccà: ils daners returnan in di; liberaziun cun tuttas duas suttascripziuns",
+        "Blocked account: release follows Art. 257e CO, including agreement or an enforceable title",
+        "Compte bloqué : la libération suit l'art. 257e CO, notamment l'accord ou un titre exécutoire",
+        "Sperrkonto: Freigabe nach Art. 257e OR, insbesondere mit Zustimmung oder Vollstreckungstitel",
+        "Conto bloccato: lo svincolo segue l'art. 257e CO, incluso l'accordo o un titolo esecutivo",
+        "Conto bloccà: liberaziun tenor l'art. 257e DO, cun consentiment u in titel executabel",
       ),
       pick(
-        "Insurance (SwissCaution and others): 4 to 5 percent per year, never refunded",
-        "Assurance (SwissCaution et autres) : 4 à 5 pour cent par an, jamais remboursés",
-        "Versicherung (SwissCaution und andere): 4 bis 5 Prozent pro Jahr, nie zurückerstattet",
-        "Assicurazione (SwissCaution e altri): dal 4 al 5 per cento all'anno, mai rimborsato",
-        "Assicuranza (SwissCaution ed auters): 4 fin 5 pertschient per onn, mai restituì",
+        "Guarantee insurance: compare the provider's current recurring premium and refund terms",
+        "Assurance de garantie : comparez la prime périodique et les conditions de remboursement actuelles",
+        "Kautionsversicherung: aktuelle wiederkehrende Prämie und Rückerstattungsbedingungen vergleichen",
+        "Assicurazione di garanzia: confrontate il premio periodico e le condizioni di rimborso attuali",
+        "Assicuranza da garanzia: cumparegliai la premia periodica e las cundiziuns actualas da restituziun",
       ),
       pick(
         "The exit protocol ends with the release step that matches",
@@ -886,8 +989,8 @@ class Str(val lang: Lang) {
     listOf(
       pick("Photograph everything, dated", "Tout photographier, avec date", "Alles fotografieren, datiert", "Fotografare tutto, con data", "Fotografar tut, cun data"),
       pick("A neutral witness signs the record", "Un témoin neutre signe le constat", "Eine neutrale Zeugin unterschreibt den Befund", "Un testimone neutrale firma il rilievo", "Ina perditga neutrala suttascriva il protocol"),
-      pick("The keys go back by registered mail", "Les clés partent en recommandé", "Die Schlüssel gehen eingeschrieben zurück", "Le chiavi tornano per raccomandata", "Las clavs van enavos cun brev recumandada"),
-      pick("The delivery proof completes the return", "La preuve de remise achève la restitution", "Der Zustellnachweis vollendet die Rückgabe", "La prova di consegna completa la riconsegna", "La cumprova da consegna cumplettescha la restituziun"),
+      pick("Return keys by an agreed, traceable method", "Rendre les clés par une méthode convenue et traçable", "Schlüssel auf vereinbarte, nachweisbare Weise zurückgeben", "Restituire le chiavi con un metodo concordato e tracciabile", "Restituir las clavs cun ina metoda cunvegnida e cumprovabla"),
+      pick("Keep proof of the key delivery", "Conserver la preuve de remise des clés", "Nachweis der Schlüsselzustellung aufbewahren", "Conservare la prova di consegna delle chiavi", "Conservar la cumprova da consegna da las clavs"),
     ),
   )
 
@@ -900,11 +1003,11 @@ class Str(val lang: Lang) {
       "L'aritmetica da la tabella paritetica da MV ed HEV.",
     ),
     listOf(
-      pick("Past the full lifespan nothing is owed", "Au-delà de la longévité, rien n'est dû", "Nach Ablauf der Lebensdauer ist nichts geschuldet", "Oltre la durata di vita non si deve nulla", "Suenter la durada da vita na vegn nagut debità"),
-      pick("Normal wear is never payable", "L'usure normale ne se paie jamais", "Normale Abnützung ist nie zu bezahlen", "L'usura normale non si paga mai", "L'isanza normala na vegn mai pajada"),
-      pick("Age counts from the last renovation, not the lease", "L'âge court depuis la dernière rénovation, pas depuis le bail", "Das Alter zählt ab der letzten Renovation, nicht ab Mietbeginn", "L'età conta dall'ultimo rinnovo, non dalla locazione", "La vegliadetgna quinta da l'ultima renovaziun"),
+      pick("Lifespan estimates residual value; actual repair and loss still matter", "La longévité estime la valeur résiduelle ; la réparation et le dommage réels restent déterminants", "Die Lebensdauer schätzt den Restwert; tatsächliche Reparatur und Schaden bleiben massgebend", "La durata stima il valore residuo; riparazione e danno effettivi restano determinanti", "La durada stima la valur restanta; reparatura e donn effectiv restan decisivs"),
+      pick("Normal wear is not charged to the tenant", "L'usure normale n'est pas imputée au locataire", "Normale Abnützung wird der Mieterschaft nicht belastet", "L'usura normale non è addebitata al conduttore", "L'isanza normala na vegn betg debitada al locatari"),
+      pick("Use the known installation or renovation date", "Utilisez la date connue de pose ou de rénovation", "Bekanntes Einbau- oder Renovationsdatum verwenden", "Usate la data nota di installazione o ristrutturazione", "Duvrai la data enconuschenta da l'installaziun u renovaziun"),
       pick("Values here are public citations; the full table is sold by HEV and MV", "Valeurs publiques ; la table complète est vendue par HEV et ASLOCA", "Öffentliche Werte; die vollständige Tabelle verkaufen HEV und MV", "Valori pubblici; la tabella completa è venduta da HEV e ASI", "Valurs publicas; la tabella cumpletta vendan HEV e MV"),
-      pick("Not legal advice; conciliation is free everywhere", "Pas un conseil juridique ; la conciliation est gratuite partout", "Keine Rechtsberatung; die Schlichtung ist überall kostenlos", "Non è consulenza legale; la conciliazione è gratuita ovunque", "Nagin cussegl giuridic; la mediaziun è gratuita dapertut"),
+      pick("Not legal advice; conciliation has no court fee, but your own costs may remain", "Pas un conseil juridique ; la conciliation est sans frais judiciaires, mais vos propres frais peuvent subsister", "Keine Rechtsberatung; im Schlichtungsverfahren fallen keine Gerichtskosten an, eigene Kosten können bleiben", "Non è consulenza legale; la conciliazione non comporta spese giudiziarie, ma possono restare costi propri", "Nagin cussegl giuridic; la mediaziun n'ha nagins custs giudizials, ma agens custs pon restar"),
     ),
   )
 
@@ -918,8 +1021,9 @@ class Str(val lang: Lang) {
     ),
     listOf(
       pick("Exit notice: Art. 267a CO and BGer 4A_388/2013", "Avis des défauts : art. 267a CO et TF 4A_388/2013", "Mängelrüge: Art. 267a OR und BGer 4A_388/2013", "Notifica dei difetti: art. 267a CO e TF 4A_388/2013", "Notificaziun: art. 267a DO e TF 4A_388/2013"),
+      pick("Cantonal and local holidays are not calculated; check the calendar", "Les jours fériés cantonaux et locaux ne sont pas calculés ; vérifiez le calendrier", "Kantonale und lokale Feiertage werden nicht berechnet; Kalender prüfen", "Le festività cantonali e locali non sono calcolate; verificate il calendario", "Firaus chantunals e locals na vegnan betg calculads; controllai il chalender"),
       pick("Deposit: Art. 257e CO", "Garantie : art. 257e CO", "Depot: Art. 257e OR", "Deposito: art. 257e CO", "Deposit: art. 257e DO"),
-      pick("The conciliation authority is free in all of Switzerland", "L'autorité de conciliation est gratuite dans toute la Suisse", "Die Schlichtungsbehörde ist in der ganzen Schweiz kostenlos", "L'autorità di conciliazione è gratuita in tutta la Svizzera", "L'autoritad da mediaziun è gratuita en tut la Svizra"),
+      pick("No court fee is charged in conciliation proceedings; personal costs may remain", "La procédure de conciliation ne comporte pas de frais judiciaires ; des frais personnels peuvent subsister", "Im Schlichtungsverfahren werden keine Gerichtskosten erhoben; eigene Kosten können bleiben", "Nella procedura di conciliazione non sono riscosse spese giudiziarie; possono restare costi personali", "En la procedura da mediaziun na vegnan incassads nagins custs giudizials; agens custs pon restar"),
     ),
   )
 
@@ -974,18 +1078,18 @@ class Str(val lang: Lang) {
     ),
     listOf(
       pick(
-        "Immediate delivery to both is what a court looks at first",
-        "La remise immédiate aux deux est ce qu'un tribunal regarde en premier",
-        "Die sofortige Zustellung an beide ist, was ein Gericht zuerst prüft",
-        "La consegna immediata a entrambi è ciò che un tribunale guarda per primo",
-        "La consegna immediata ad omadus è quai ch'in tribunal guarda l'emprim",
+        "Prompt delivery to both creates clear proof of what each party received and when",
+        "La remise rapide aux deux établit clairement ce que chaque partie a reçu et quand",
+        "Rasche Zustellung an beide belegt klar, was jede Partei wann erhalten hat",
+        "La consegna rapida a entrambi prova chiaramente cosa ha ricevuto ciascuna parte e quando",
+        "La consegna svelta ad omadus cumprova cleramain tge che mintga partida ha survegnì e cura",
       ),
       pick(
-        "Exit defects still need the registered letter within 2 to 3 working days",
-        "Les défauts de sortie exigent toujours le recommandé sous 2 à 3 jours ouvrables",
-        "Auszugsmängel brauchen weiterhin den eingeschriebenen Brief innert 2 bis 3 Werktagen",
-        "I difetti di riconsegna richiedono sempre la raccomandata entro 2 o 3 giorni lavorativi",
-        "Las mancanzas da sortida dovran vinavant la brev recumandada entaifer 2 fin 3 dis da lavur",
+        "Exit defects still require prompt, itemized and provable notice under Art. 267a CO",
+        "Les défauts de sortie exigent toujours un avis rapide, détaillé et prouvable selon l'art. 267a CO",
+        "Auszugsmängel verlangen weiterhin eine rasche, einzelne und nachweisbare Mitteilung nach Art. 267a OR",
+        "I difetti di riconsegna richiedono sempre una notifica rapida, dettagliata e comprovabile secondo l'art. 267a CO",
+        "Mancanzas da sortida pretendan vinavant ina notificaziun svelta, detagliada e cumprovabla tenor l'art. 267a DO",
       ),
       pick(
         "A drawn signature is an acknowledgement in this record, not a qualified electronic signature",
@@ -1061,6 +1165,7 @@ class Str(val lang: Lang) {
     "Nagina app po avrir questa pagina web.",
   )
   val perYear = pick("per year", "par an", "pro Jahr", "all'anno", "per onn")
+  val currentTerms = pick("Current terms", "Conditions actuelles", "Aktuelle Bedingungen", "Condizioni attuali", "Cundiziuns actualas")
 
   fun tipCompare() = Tip(
     pick(
@@ -1079,11 +1184,11 @@ class Str(val lang: Lang) {
         "Conto: ils daners restan Voss e returnan; els èn mo bloccads",
       ),
       pick(
-        "Insurance: the capital stays free, the premium is never refunded",
-        "Assurance : le capital reste libre, la prime n'est jamais remboursée",
-        "Versicherung: das Kapital bleibt frei, die Prämie wird nie zurückerstattet",
-        "Assicurazione: il capitale resta libero, il premio non è mai rimborsato",
-        "Assicuranza: il chapital resta liber, la premia na vegn mai restituida",
+        "Insurance: the capital stays free; premiums are normally non-refundable under current terms",
+        "Assurance : le capital reste libre ; les primes sont en principe non remboursables selon les conditions actuelles",
+        "Versicherung: Das Kapital bleibt frei; Prämien sind nach aktuellen Bedingungen in der Regel nicht rückzahlbar",
+        "Assicurazione: il capitale resta libero; secondo le condizioni attuali i premi di regola non sono rimborsabili",
+        "Assicuranza: il chapital resta liber; tenor las cundiziuns actualas na vegnan premias per regla betg restituidas",
       ),
       pick(
         "Insurance is no waiver: damages stay owed, the insurer pays and recovers from you",
@@ -1093,11 +1198,11 @@ class Str(val lang: Lang) {
         "L'assicuranza na libera betg: donns restan debitads, l'assicuradur paja e sa regressa tar Vus",
       ),
       pick(
-        "Yearly premiums as published, July 2026; the application happens on the provider's site",
-        "Primes annuelles publiées, juillet 2026 ; la souscription se fait sur le site du prestataire",
-        "Jahresprämien wie publiziert, Juli 2026; der Abschluss geschieht auf der Website des Anbieters",
-        "Premi annui come pubblicati, luglio 2026; la sottoscrizione avviene sul sito del fornitore",
-        "Premias annualas sco publitgadas, fanadur 2026; la conclusiun ha lieu sin la pagina dal purschider",
+        "Prices and conditions change; verify them on the provider's site before choosing",
+        "Les prix et conditions changent ; vérifiez-les sur le site du prestataire avant de choisir",
+        "Preise und Bedingungen ändern sich; vor der Wahl auf der Website des Anbieters prüfen",
+        "Prezzi e condizioni cambiano; verificateli sul sito del fornitore prima di scegliere",
+        "Pretschs e cundiziuns sa midan; controllai els sin la pagina dal purschider avant da tscherner",
       ),
     ),
   )
@@ -1176,6 +1281,89 @@ class Str(val lang: Lang) {
     "ALLE SITZUNGEN",
     "TUTTE LE SESSIONI",
     "TUTTAS LAS SESIUNS",
+  )
+  val dataAndPrivacy = pick(
+    "DATA, BACKUP & PRIVACY",
+    "DONNÉES, SAUVEGARDE ET CONFIDENTIALITÉ",
+    "DATEN, SICHERUNG UND DATENSCHUTZ",
+    "DATI, BACKUP E PRIVACY",
+    "DATAS, SEGIREZZA E PROTECZIUN",
+  )
+  val privacyTitle = pick(
+    "Privacy information",
+    "Information sur la protection des données",
+    "Datenschutzinformation",
+    "Informativa sulla privacy",
+    "Infurmaziun davart la protecziun da datas",
+  )
+  val privacyParagraphs = listOf(
+    pick(
+      "The person or organisation using this installation decides why and how personal data is recorded and is the data controller. A professional operator must give participants its identity, contact details and any additional notice its processing requires.",
+      "La personne ou l'organisation qui utilise cette installation décide pourquoi et comment les données personnelles sont consignées et en est le responsable du traitement. Un opérateur professionnel doit communiquer aux participants son identité, ses coordonnées et toute information supplémentaire requise.",
+      "Die Person oder Organisation, die diese Installation nutzt, bestimmt Zweck und Mittel der Bearbeitung und ist die Verantwortliche. Professionelle Betreiber müssen den Beteiligten ihre Identität, Kontaktdaten und alle zusätzlich erforderlichen Informationen mitteilen.",
+      "La persona o organizzazione che usa questa installazione decide perché e come registrare i dati personali ed è il titolare del trattamento. Un operatore professionale deve fornire ai partecipanti identità, recapiti e ogni ulteriore informazione richiesta.",
+      "La persuna u organisaziun che dovra questa installaziun decida pertge e co datas persunalas vegnan registradas ed è responsabla. In gestiunari professiunal sto communitgar identitad, contact e mintga ulteriura infurmaziun necessaria.",
+    ),
+    pick(
+      "Protocols, photos and drawn signatures stay in this app's private storage. Limen has no developer account or developer-operated server and sends no protocol data to the developer.",
+      "Les états des lieux, photos et signatures dessinées restent dans l'espace privé de l'app. Limen n'a ni compte développeur ni serveur exploité par le développeur et ne lui transmet aucune donnée du constat.",
+      "Protokolle, Fotos und gezeichnete Unterschriften bleiben im privaten App-Speicher. Limen hat kein Entwicklerkonto und keinen vom Entwickler betriebenen Server; Protokolldaten gehen nicht an den Entwickler.",
+      "Verbali, foto e firme disegnate restano nello spazio privato dell'app. Limen non dispone di un account o server gestito dallo sviluppatore e non gli invia dati del verbale.",
+      "Protocols, fotos e suttascripziuns dissegnadas restan en la memoria privata da l'app. Limen n'ha nagin conto u server dal sviluppader e na trametta naginas datas dal protocol al sviluppader.",
+    ),
+    pick(
+      "When you request an official Swiss address suggestion, the typed search text and ordinary network metadata go to the federal swisstopo service. Opening provider links sends data under that website's own terms.",
+      "Lorsque vous demandez une suggestion d'adresse suisse officielle, le texte saisi et les métadonnées réseau usuelles sont transmis au service fédéral swisstopo. L'ouverture d'un lien de prestataire relève des conditions de ce site.",
+      "Bei einer amtlichen Schweizer Adresssuche gehen der eingegebene Suchtext und übliche Netzwerkdaten an den Bundesdienst swisstopo. Für geöffnete Anbieterlinks gelten die Bedingungen der jeweiligen Website.",
+      "Quando richiedete un suggerimento ufficiale per un indirizzo svizzero, il testo digitato e i normali metadati di rete sono inviati al servizio federale swisstopo. Ai link dei fornitori si applicano le condizioni del relativo sito.",
+      "Tar ina dumonda d'ina adressa svizra uffiziala vegnan il text endatà e metadatas da rait usitadas tramess al servetsch federal swisstopo. Per links da purschiders valan lur atgnas cundiziuns.",
+    ),
+    pick(
+      "A PDF or backup leaves private storage only when you export, share or restore it. You choose the receiving app or person. A backup contains the record, original photos and signature ink; protect it like the signed paper original.",
+      "Un PDF ou une sauvegarde ne quitte l'espace privé que lorsque vous l'exportez, le partagez ou le restaurez. Vous choisissez l'app ou la personne destinataire. La sauvegarde contient le constat, les photos originales et les tracés de signature ; protégez-la comme l'original papier signé.",
+      "PDF oder Sicherung verlassen den privaten Speicher nur beim Exportieren, Teilen oder Wiederherstellen. Sie wählen App oder Empfänger. Die Sicherung enthält Protokoll, Originalfotos und Unterschriftsbilder; schützen Sie sie wie das unterzeichnete Papieroriginal.",
+      "Un PDF o backup lascia lo spazio privato solo quando lo esportate, condividete o ripristinate. Scegliete voi l'app o la persona destinataria. Il backup contiene verbale, foto originali e tratti di firma; proteggetelo come l'originale cartaceo firmato.",
+      "In PDF u backup banduna la memoria privata mo sche Vus exportais, cundividais u restaurais el. Vus tschernis l'app u la persuna destinataria. Il backup cuntegna protocol, fotos originalas e suttascripziuns; protegì el sco l'original sin palpiri.",
+    ),
+    pick(
+      "Records remain until you delete them or remove app data. Use the device lock, keep copies only as long as needed, and direct access, correction or deletion requests to the person or organisation operating this installation.",
+      "Les constats restent jusqu'à leur suppression ou l'effacement des données de l'app. Verrouillez l'appareil, ne gardez les copies que le temps nécessaire et adressez les demandes d'accès, de rectification ou d'effacement à l'exploitant de cette installation.",
+      "Protokolle bleiben bis zur Löschung oder Entfernung der App-Daten. Gerätesperre verwenden, Kopien nur solange nötig aufbewahren und Auskunfts-, Berichtigungs- oder Löschbegehren an den Betreiber dieser Installation richten.",
+      "I verbali restano finché li eliminate o cancellate i dati dell'app. Usate il blocco del dispositivo, conservate le copie solo quanto necessario e rivolgete le richieste di accesso, rettifica o cancellazione a chi gestisce questa installazione.",
+      "Protocols restan fin che Vus stizzais els u las datas da l'app. Duvrai la bloccada dal telefon, conservai copias mo uschè ditg sco necessari e drizzai dumondas d'access, rectificaziun u stizzada al gestiunari da questa installaziun.",
+    ),
+  )
+  val backupTitle = pick("Backup and restore", "Sauvegarde et restauration", "Sichern und wiederherstellen", "Backup e ripristino", "Segirezza e restauraziun")
+  val backupBody = pick(
+    "Create a complete archive before changing phones or clearing app data. Restore validates evidence and imports only new protocol ids; existing records are never overwritten.",
+    "Créez une archive complète avant de changer de téléphone ou d'effacer les données de l'app. La restauration vérifie les preuves et n'importe que de nouveaux identifiants ; aucun constat existant n'est écrasé.",
+    "Vor einem Gerätewechsel oder Löschen der App-Daten eine vollständige Sicherung erstellen. Die Wiederherstellung prüft Belege und importiert nur neue Protokoll-IDs; bestehende Protokolle werden nie überschrieben.",
+    "Create un archivio completo prima di cambiare telefono o cancellare i dati dell'app. Il ripristino verifica le prove e importa solo nuovi identificativi; i verbali esistenti non vengono mai sovrascritti.",
+    "Creai in archiv cumplet avant da midar telefon u stizzar las datas da l'app. La restauraziun controllescha las cumprovas ed importescha mo novas IDs; protocols existents na vegnan mai remplazzads.",
+  )
+  val createBackup = pick("CREATE BACKUP", "CRÉER LA SAUVEGARDE", "SICHERUNG ERSTELLEN", "CREA BACKUP", "CREAR SEGIREZZA")
+  val restoreBackup = pick("RESTORE", "RESTAURER", "WIEDERHERSTELLEN", "RIPRISTINA", "RESTAURAR")
+  val working = pick("Working...", "Traitement...", "Wird verarbeitet...", "Elaborazione...", "Elavurar...")
+  val archiveFailed = pick(
+    "Backup operation failed. No existing record was changed.",
+    "L'opération de sauvegarde a échoué. Aucun constat existant n'a été modifié.",
+    "Sicherungsvorgang fehlgeschlagen. Kein bestehendes Protokoll wurde verändert.",
+    "Operazione di backup non riuscita. Nessun verbale esistente è stato modificato.",
+    "L'operaziun da segirezza n'è betg reussida. Nagin protocol existent è vegnì midà.",
+  )
+  fun archiveSaved(name: String) = pick(
+    "Saved to Downloads/Limen as $name",
+    "Enregistré dans Téléchargements/Limen sous $name",
+    "Unter Downloads/Limen als $name gespeichert",
+    "Salvato in Download/Limen come $name",
+    "Memorisà en Downloads/Limen sco $name",
+  )
+  fun archiveRestored(result: dev.verso.limen.data.ArchiveImportResult) = pick(
+    "Restored ${result.imported}; kept ${result.skippedExisting} existing; rejected ${result.rejected} invalid.",
+    "Restaurés : ${result.imported} ; existants conservés : ${result.skippedExisting} ; invalides refusés : ${result.rejected}.",
+    "Wiederhergestellt: ${result.imported}; bestehend belassen: ${result.skippedExisting}; ungültig abgelehnt: ${result.rejected}.",
+    "Ripristinati: ${result.imported}; esistenti mantenuti: ${result.skippedExisting}; non validi rifiutati: ${result.rejected}.",
+    "Restaurads: ${result.imported}; existents mantegnids: ${result.skippedExisting}; nunvalids refusads: ${result.rejected}.",
   )
   val sessionIdentity = pick("Your identity", "Votre identité", "Ihre Identität", "La vostra identità", "Vossa identitad")
   val firstName = pick("First name", "Prénom", "Vorname", "Nome", "Prenum")
@@ -1280,18 +1468,18 @@ class Str(val lang: Lang) {
       "Duas mitads, en l'urden che vus vulais: quai ch'ins vesa e tutga, e quai ch'è sin palpiri.",
     )
     FlowStep.Inspection -> pick(
-      "Go through the flat in your own order. A room you never enter is a room with nothing wrong in it.",
-      "Parcourez le logement dans votre ordre. Une pièce où vous n'entrez pas est une pièce sans défaut.",
-      "Geht in eurer eigenen Reihenfolge durch. Ein Raum, den ihr nicht betretet, ist ein Raum ohne Mangel.",
-      "Percorrete l'alloggio nel vostro ordine. Un locale in cui non entrate è un locale senza difetti.",
-      "Giai tras l'abitaziun en voss agen urden. In local che vus n'entrais betg è in local senza mancanzas.",
+      "Go through the flat in your own order. Confirm every listed room after checking it, even when there is no defect.",
+      "Parcourez le logement dans l'ordre qui vous convient. Confirmez chaque pièce après contrôle, même sans défaut.",
+      "Geht in eurer eigenen Reihenfolge durch. Bestätigt jeden aufgeführten Raum nach der Prüfung, auch ohne Mangel.",
+      "Percorrete l'alloggio nell'ordine che preferite. Confermate ogni locale dopo il controllo, anche senza difetti.",
+      "Giai tras l'abitaziun en voss agen urden. Confermai mintga local suenter la controlla, era senza mancanzas.",
     )
     FlowStep.Objects -> pick(
-      "One row per thing handed over, with a photograph of it. A photo now settles the argument later.",
-      "Une ligne par objet remis, avec sa photo. Une photo aujourd'hui tranche la discussion plus tard.",
-      "Eine Zeile je übergebenem Gegenstand, mit Foto. Ein Foto heute beendet die Diskussion später.",
-      "Una riga per ogni oggetto consegnato, con la sua foto. Una foto oggi chiude la discussione domani.",
-      "Ina lingia per mintga object surdà, cun sia foto. Ina foto oz finescha la discussiun pli tard.",
+      "Use one row per supplied item, confirm its condition and add a clear photo when useful.",
+      "Utilisez une ligne par objet fourni, confirmez son état et ajoutez une photo nette si utile.",
+      "Je mitgeliefertem Gegenstand eine Zeile verwenden, Zustand bestätigen und bei Bedarf ein klares Foto hinzufügen.",
+      "Usate una riga per ogni oggetto fornito, confermatene lo stato e aggiungete una foto chiara se utile.",
+      "Duvrai ina lingia per mintga object furnì, confermai ses stadi ed agiuntai ina foto clera sche util.",
     )
     FlowStep.Dossier -> pick(
       "The paperwork around the handover. Add a component only when this handover has it.",
@@ -1301,18 +1489,18 @@ class Str(val lang: Lang) {
       "Ils documents enturn la surdada. Agiuntai ina rubrica mo sch'ella pertutga questa surdada.",
     )
     FlowStep.Review -> pick(
-      "Read the findings aloud together. Mark who carries each defect before anyone signs.",
-      "Relisez les constats ensemble. Indiquez qui assume chaque défaut avant de signer.",
-      "Geht die Befunde gemeinsam durch. Haltet fest, wer welchen Mangel trägt, bevor unterschrieben wird.",
-      "Rileggete i rilievi insieme. Indicate chi si assume ogni difetto prima di firmare.",
-      "Legì ils resultats ensemen. Notai tgi che surpiglia mintga defect avant che suttascriver.",
+      "Read the findings aloud together and record each side's position. Signing does not decide liability or payment.",
+      "Relisez les constats ensemble et consignez la position de chacun. La signature ne décide ni la responsabilité ni le paiement.",
+      "Geht die Befunde gemeinsam durch und haltet beide Positionen fest. Die Unterschrift entscheidet weder Haftung noch Zahlung.",
+      "Rileggete insieme i rilievi e registrate la posizione di ciascuno. La firma non decide responsabilità o pagamento.",
+      "Legì ils resultats ensemen e registrai la posiziun da mintga vart. La suttascripziun na decida betg responsabladad u pajament.",
     )
     FlowStep.Sign -> pick(
-      "Review who must sign or refuse the handover record. This signature does not accept costs.",
-      "Vérifiez qui doit signer ou refuser le constat. Cette signature n'accepte aucun coût.",
-      "Prüft, wer das Übergabeprotokoll unterzeichnet oder verweigert. Diese Unterschrift übernimmt keine Kosten.",
-      "Verificate chi deve firmare o rifiutare il verbale. Questa firma non accetta alcun costo.",
-      "Controllai tgi che sto suttascriver u refusar il protocol. Questa suttascripziun n'accepta nagins custs.",
+      "Review who must sign or refuse the handover record and record any reservation first.",
+      "Vérifiez qui doit signer ou refuser le constat et consignez d'abord toute réserve.",
+      "Prüft, wer das Übergabeprotokoll unterzeichnet oder verweigert, und erfasst Vorbehalte zuerst.",
+      "Verificate chi deve firmare o rifiutare il verbale e registrate prima ogni riserva.",
+      "Controllai tgi che sto suttascriver u refusar il protocol e registrai l'emprim mintga resalva.",
     )
     FlowStep.Export -> pick(
       "Export the PDF and hand a copy to each side right now.",
@@ -1332,10 +1520,10 @@ class Str(val lang: Lang) {
   )
 
   val notAdvice = pick(
-    "Practice values with their sources; not legal advice. In a dispute, the conciliation authority is free of charge everywhere in Switzerland.",
-    "Valeurs de pratique avec leurs sources ; pas un conseil juridique. En cas de litige, l'autorité de conciliation est gratuite dans toute la Suisse.",
-    "Praxiswerte mit ihren Quellen; keine Rechtsberatung. Im Streitfall ist die Schlichtungsbehörde in der ganzen Schweiz kostenlos.",
-    "Valori di pratica con le loro fonti; non è una consulenza legale. In caso di lite, l'autorità di conciliazione è gratuita in tutta la Svizzera.",
-    "Valurs da pratica cun lur funtaunas; nagin cussegl giuridic. En cas da dispita è l'autoritad da mediaziun gratuita en tut la Svizra.",
+    "Practice values with their sources; not legal advice. No court fee is charged in conciliation proceedings, but your own advice, representation or other costs may remain.",
+    "Valeurs de pratique avec leurs sources ; pas un conseil juridique. La procédure de conciliation ne comporte pas de frais judiciaires, mais vos frais de conseil, de représentation ou autres peuvent subsister.",
+    "Praxiswerte mit ihren Quellen; keine Rechtsberatung. Im Schlichtungsverfahren werden keine Gerichtskosten erhoben; eigene Beratungs-, Vertretungs- oder andere Kosten können bleiben.",
+    "Valori di pratica con le loro fonti; non è una consulenza legale. Nella procedura di conciliazione non sono riscosse spese giudiziarie; possono restare costi propri di consulenza, rappresentanza o altro.",
+    "Valurs da pratica cun lur funtaunas; nagin cussegl giuridic. En la procedura da mediaziun na vegnan incassads nagins custs giudizials; agens custs da cussegliaziun, represchentanza u auters pon restar.",
   )
 }

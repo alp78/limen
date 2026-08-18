@@ -170,7 +170,7 @@ fun NewSessionScreen(
       Spacer(Modifier.weight(1f))
       LangMenu(vm.lang, vm::selectLang)
       Spacer(Modifier.width(4.dp))
-      ThemeToggle(vm.darkTheme, vm::toggleTheme)
+      ThemeToggle(vm.darkTheme, s.themeMode, vm::toggleTheme)
     }
     Column(
       Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()),

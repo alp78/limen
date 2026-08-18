@@ -24,6 +24,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,16 +36,16 @@ import dev.verso.limen.data.Kind
 import dev.verso.limen.data.Protocol
 import dev.verso.limen.theme.Limen
 
-private enum class HomePage { Landing, NewSession, Sessions }
+private enum class HomePage { Landing, NewSession, Sessions, DataPrivacy }
 
 /** The landing offers choices, not an identity gate or a partially exposed case list. */
 @Composable
 fun HomeScreen(modifier: Modifier = Modifier, vm: LimenViewModel = viewModel(), s: Str) {
-  var page by remember { mutableStateOf(HomePage.Landing) }
-  var entryToSeed by remember { mutableStateOf<Protocol?>(null) }
+  var page by rememberSaveable { mutableStateOf(HomePage.Landing) }
+  var entryToSeedId by rememberSaveable { mutableStateOf<String?>(null) }
   BackHandler(enabled = page != HomePage.Landing) {
     page = HomePage.Landing
-    entryToSeed = null
+    entryToSeedId = null
   }
 
   when (page) {
@@ -52,14 +53,15 @@ fun HomeScreen(modifier: Modifier = Modifier, vm: LimenViewModel = viewModel(), 
       modifier = modifier,
       vm = vm,
       s = s,
-      onNewSession = { entryToSeed = null; page = HomePage.NewSession },
+      onNewSession = { entryToSeedId = null; page = HomePage.NewSession },
       onSessions = { page = HomePage.Sessions },
+      onDataPrivacy = { page = HomePage.DataPrivacy },
     )
     HomePage.NewSession -> NewSessionScreen(
       vm = vm,
       s = s,
-      entryToSeed = entryToSeed,
-      onBack = { entryToSeed = null; page = HomePage.Landing },
+      entryToSeed = entryToSeedId?.let { id -> vm.protocols.firstOrNull { it.id == id } },
+      onBack = { entryToSeedId = null; page = HomePage.Landing },
     )
     HomePage.Sessions -> SessionsScreen(
       modifier = modifier,
@@ -67,7 +69,13 @@ fun HomeScreen(modifier: Modifier = Modifier, vm: LimenViewModel = viewModel(), 
       s = s,
       onBack = { page = HomePage.Landing },
       onEmpty = { page = HomePage.Landing },
-      onSeedExit = { entry -> entryToSeed = entry; page = HomePage.NewSession },
+      onSeedExit = { entry -> entryToSeedId = entry.id; page = HomePage.NewSession },
+    )
+    HomePage.DataPrivacy -> DataPrivacyScreen(
+      modifier = modifier,
+      vm = vm,
+      s = s,
+      onBack = { page = HomePage.Landing },
     )
   }
 }
@@ -79,6 +87,7 @@ private fun LandingScreen(
   s: Str,
   onNewSession: () -> Unit,
   onSessions: () -> Unit,
+  onDataPrivacy: () -> Unit,
 ) {
   Column(
     modifier
@@ -91,7 +100,7 @@ private fun LandingScreen(
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
       LangMenu(vm.lang, vm::selectLang)
       Spacer(Modifier.weight(1f))
-      ThemeToggle(vm.darkTheme, vm::toggleTheme)
+      ThemeToggle(vm.darkTheme, s.themeMode, vm::toggleTheme)
     }
     Spacer(Modifier.weight(1f))
     LimenMark(size = 172.dp)
@@ -107,6 +116,8 @@ private fun LandingScreen(
     LandingKey(s.startNewSession, onPress = onNewSession)
     Spacer(Modifier.height(10.dp))
     LandingKey(s.allSessions, enabled = vm.protocols.isNotEmpty(), onPress = onSessions)
+    Spacer(Modifier.height(10.dp))
+    LandingKey(s.dataAndPrivacy, onPress = onDataPrivacy)
     Spacer(Modifier.height(24.dp))
   }
 }
@@ -155,7 +166,7 @@ private fun SessionsScreen(
       Text(s.allSessions, style = MaterialTheme.typography.titleMedium, color = Limen.colors.ink, modifier = Modifier.weight(1f))
       LangMenu(vm.lang, vm::selectLang)
       Spacer(Modifier.width(4.dp))
-      ThemeToggle(vm.darkTheme, vm::toggleTheme)
+      ThemeToggle(vm.darkTheme, s.themeMode, vm::toggleTheme)
     }
     Spacer(Modifier.height(14.dp))
     if (vm.protocols.isEmpty()) {
@@ -232,6 +243,7 @@ private fun ProtocolCard(
       }
       // The status chip: the one place the seal green is allowed to appear.
       val (label, sealed) = when {
+        p.isFinalized() && p.isExported() && p.deliveryComplete() -> s.copyDelivery to true
         p.isFinalized() && p.isExported() -> s.exported to true
         p.isFinalized() -> s.finalized to true
         p.isSigned() -> s.awaitingSignatures to false

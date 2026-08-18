@@ -1,7 +1,6 @@
 package dev.verso.limen.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,27 +17,23 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.verso.limen.data.Appliance
 import dev.verso.limen.data.Defect
+import dev.verso.limen.data.DepositKind
+import dev.verso.limen.data.DossierCard
 import dev.verso.limen.data.Furniture
 import dev.verso.limen.data.ItemKey
 import dev.verso.limen.data.Kind
@@ -46,6 +41,8 @@ import dev.verso.limen.data.ObjectEntry
 import dev.verso.limen.data.ObjectGroup
 import dev.verso.limen.data.Protocol
 import dev.verso.limen.data.TenantResponse
+import dev.verso.limen.data.carries
+import dev.verso.limen.data.legalProfile
 import dev.verso.limen.theme.Limen
 
 /**
@@ -116,7 +113,7 @@ private fun FlowMast(vm: LimenViewModel, s: Str, p: Protocol) {
       )
     }
     InfoTip(s.tipStep(vm.flowStep))
-    ThemeToggle(vm.darkTheme, vm::toggleTheme)
+    ThemeToggle(vm.darkTheme, s.themeMode, vm::toggleTheme)
   }
 }
 
@@ -256,55 +253,18 @@ internal fun ConfirmDialog(s: Str, body: String, onConfirm: () -> Unit, onDismis
   )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun DismissibleItemRow(onRemove: () -> Unit, content: @Composable () -> Unit) {
-  val state = rememberSwipeToDismissBoxState(
-    positionalThreshold = { distance -> distance * 0.35f },
-    confirmValueChange = { value ->
-      if (value == SwipeToDismissBoxValue.EndToStart) {
-        onRemove()
-        true
-      } else {
-        false
-      }
-    },
-  )
-  SwipeToDismissBox(
-    state = state,
-    backgroundContent = {
-      Box(
-        Modifier
-          .fillMaxSize()
-          .clip(RoundedCornerShape(10.dp))
-          .background(Limen.colors.dangerOutline)
-          .padding(end = 18.dp),
-        contentAlignment = Alignment.CenterEnd,
-      ) {
-        TrashGlyph(Modifier.size(24.dp))
-      }
-    },
-    enableDismissFromStartToEnd = false,
-    modifier = Modifier.fillMaxWidth(),
-  ) {
-    content()
-  }
-}
-
-/** Drawn to match the app's line icons and to remain crisp against the red swipe reveal. */
-@Composable
-private fun TrashGlyph(modifier: Modifier = Modifier) {
-  Canvas(modifier) {
-    val stroke = size.minDimension * 0.12f
-    val left = size.width * 0.28f
-    val right = size.width * 0.72f
-    val top = size.height * 0.32f
-    val bottom = size.height * 0.78f
-    drawLine(Color.White, Offset(size.width * 0.2f, top), Offset(size.width * 0.8f, top), stroke, StrokeCap.Round)
-    drawLine(Color.White, Offset(size.width * 0.42f, size.height * 0.2f), Offset(size.width * 0.58f, size.height * 0.2f), stroke, StrokeCap.Round)
-    drawLine(Color.White, Offset(left, top), Offset(left, bottom), stroke, StrokeCap.Round)
-    drawLine(Color.White, Offset(right, top), Offset(right, bottom), stroke, StrokeCap.Round)
-    drawLine(Color.White, Offset(left, bottom), Offset(right, bottom), stroke, StrokeCap.Round)
+internal fun DismissibleItemRow(s: Str, onRemove: () -> Unit, content: @Composable () -> Unit) {
+  Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+    Box(Modifier.weight(1f)) { content() }
+    Spacer(Modifier.width(6.dp))
+    IconKey(
+      ButtonGlyph.Delete,
+      s.delete,
+      destructive = true,
+      tick = Tick.Reject,
+      onPress = onRemove,
+    )
   }
 }
 
@@ -347,11 +307,162 @@ internal fun DefectLine(vm: LimenViewModel, s: Str, p: Protocol, d: Defect, show
 // ── Review ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
+private fun ReviewLine(label: String, value: String) {
+  if (value.isBlank()) return
+  Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Text(label, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim, modifier = Modifier.weight(0.42f))
+    Text(value, style = MaterialTheme.typography.bodyMedium, color = Limen.colors.ink, modifier = Modifier.weight(0.58f))
+  }
+}
+
+@Composable
+private fun ReviewIdentity(s: Str, p: Protocol) {
+  Panel(label = s.objectLabel) {
+    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+      ReviewLine(s.protocolKind, if (p.kind == Kind.Entry) s.entry else s.exit)
+      ReviewLine(s.address, p.address)
+      ReviewLine(s.place, p.place)
+      ReviewLine(s.cantonLabel, p.objectCanton?.let(s::canton).orEmpty())
+      ReviewLine(s.objectDetail, p.objectDetail)
+      ReviewLine(s.handoverDate, listOf(p.handoverDate, p.handoverTime).filter { it.isNotBlank() }.joinToString(" · "))
+      ReviewLine(s.legalBasis, s.legalProfile(p.legalProfile()))
+    }
+  }
+  Panel(label = s.parties) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+      p.parties.filter { it.name.isNotBlank() }.forEach { party ->
+        val detail = listOf(
+          party.name,
+          party.representedBy.takeIf { it.isNotBlank() }?.let { "${s.representedBy}: $it" },
+          party.address.takeIf { it.isNotBlank() },
+          party.phone.takeIf { it.isNotBlank() },
+          party.email.takeIf { it.isNotBlank() },
+        ).filterNotNull().joinToString(" · ")
+        ReviewLine(s.role(party.role), detail)
+      }
+    }
+  }
+}
+
+@Composable
+private fun ReviewInspection(s: Str, p: Protocol) {
+  Panel(label = s.stepInspection) {
+    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+      p.rooms.forEach { room ->
+        val roomName = room.name.ifBlank { s.room(room.kind) }
+        val findingCount = p.defects.count { it.roomId == room.id && it.objectId.isBlank() }
+        val state = listOf(
+          if (room.inspected) s.roomInspected else s.notInspected,
+          s.countDefects(findingCount).takeIf { findingCount > 0 },
+        ).filterNotNull().joinToString(" · ")
+        ReviewLine(roomName, state)
+      }
+      p.objects.forEach { entry ->
+        val findingCount = p.defects.count { it.objectId == entry.id }
+        val state = listOf(
+          if (entry.inspected) s.objectInspected else s.notInspected,
+          s.countDefects(findingCount).takeIf { findingCount > 0 },
+        ).filterNotNull().joinToString(" · ")
+        ReviewLine(entry.displayName(s), state)
+      }
+    }
+  }
+}
+
+@Composable
+private fun ReviewDossier(s: Str, p: Protocol) {
+  Panel(label = s.stepDossier) {
+    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+      if (p.carries(DossierCard.Contract)) {
+        val contract = p.contract
+        ReviewLine(
+          s.contract,
+          listOf(
+            contract.monthlyRentChf.takeIf { it.isNotBlank() }?.let { "${s.monthlyRent}: $it" },
+            contract.serviceChargesChf.takeIf { it.isNotBlank() }?.let { "${s.serviceCharges}: $it" },
+            contract.startDate.takeIf { it.isNotBlank() }?.let { "${s.tenancyStart}: $it" },
+            contract.endDate.takeIf { it.isNotBlank() }?.let { "${s.tenancyEnd}: $it" },
+            contract.noticeDate.takeIf { it.isNotBlank() }?.let { "${s.noticeDate}: $it" },
+          ).filterNotNull().joinToString(" · "),
+        )
+      }
+      if (p.carries(DossierCard.Deposit)) {
+        val deposit = p.deposit
+        ReviewLine(
+          s.deposit,
+          listOf(
+            s.depositKind(deposit.kind),
+            deposit.amountChf.takeIf { it.isNotBlank() }?.let { "CHF $it" },
+            when (deposit.kind) {
+              DepositKind.BankAccount -> deposit.bank
+              DepositKind.Insurance -> deposit.provider
+              DepositKind.None -> ""
+            }.takeIf { it.isNotBlank() },
+            deposit.policyNo.takeIf { it.isNotBlank() },
+            deposit.account.takeIf { it.isNotBlank() },
+          ).filterNotNull().joinToString(" · "),
+        )
+      }
+      ReviewMeters(s, p)
+      ReviewKeys(s, p)
+      if (p.carries(DossierCard.Notes)) {
+        ReviewLine(s.remarks, p.remarks)
+        ReviewLine(s.chargesBy, p.chargesStatementBy)
+      }
+    }
+  }
+}
+
+@Composable
+private fun ReviewMeters(s: Str, p: Protocol) {
+  if (!p.carries(DossierCard.Meters)) return
+  val meters = listOf(
+    s.meterElec1 to p.meters.electricity1,
+    s.meterElec2 to p.meters.electricity2,
+    s.meterGas to p.meters.gas,
+    s.meterWater to p.meters.water,
+    s.meterHotWater to p.meters.hotWater,
+    s.meterOil to p.meters.heatingOil,
+  ).filter { (_, value) -> value.isNotBlank() }
+  ReviewLine(s.meters, meters.joinToString(" · ") { (label, value) -> "$label: $value" })
+}
+
+@Composable
+private fun ReviewKeys(s: Str, p: Protocol) {
+  if (!p.carries(DossierCard.Keys)) return
+  val counts = buildList {
+    p.keys.filter { it.count > 0 }.forEach { key ->
+      val label = if (key.kind == dev.verso.limen.data.KeyKind.Other && key.label.isNotBlank()) {
+        key.label
+      } else {
+        s.keyKind(key.kind)
+      }
+      add("$label: ${key.count}")
+    }
+    p.rooms.filter { it.keysCount > 0 }.forEach { room ->
+      add("${room.name.ifBlank { s.room(room.kind) }}: ${room.keysCount}")
+    }
+  }
+  ReviewLine(
+    s.keysLabel,
+    listOf(
+      s.keyTransfer(p.keyTransfer),
+      counts.joinToString(", ").takeIf { it.isNotBlank() },
+      p.keyTransferNote.takeIf { it.isNotBlank() },
+      s.selfMadeKeys.takeIf { p.selfMadeKeys },
+    ).filterNotNull().joinToString(" · "),
+  )
+}
+
+@Composable
 private fun ReviewStep(vm: LimenViewModel, s: Str, p: Protocol) {
   Column(
     Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
     verticalArrangement = Arrangement.spacedBy(10.dp),
   ) {
+    ReviewIdentity(s, p)
+    ReviewInspection(s, p)
+    ReviewDossier(s, p)
     Panel(
       label = "${s.defects} (${p.defects.size})",
       info = s.tipCharged(),

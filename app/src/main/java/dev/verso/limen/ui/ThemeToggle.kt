@@ -11,29 +11,31 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import dev.verso.limen.R
 import dev.verso.limen.theme.Limen
 
 /** Compact mode control using Material's native track and thumb, not a switch inside a button. */
 @Composable
-fun ThemeToggle(dark: Boolean, onToggle: () -> Unit) {
+fun ThemeToggle(dark: Boolean, description: String, onToggle: () -> Unit) {
   Switch(
     checked = dark,
     onCheckedChange = { onToggle() },
-    modifier = Modifier.width(52.dp),
+    modifier = Modifier.width(52.dp).semantics { contentDescription = description },
     thumbContent = {
       if (dark) {
         Icon(
           imageVector = Icons.Outlined.DarkMode,
-          contentDescription = "Dark mode",
+          contentDescription = null,
           modifier = Modifier.size(SwitchDefaults.IconSize),
           tint = Limen.colors.action,
         )
       } else {
         Icon(
           painter = painterResource(R.drawable.ic_theme_sun),
-          contentDescription = "Light mode",
+          contentDescription = null,
           modifier = Modifier.size(SwitchDefaults.IconSize),
           tint = Color.Unspecified,
         )

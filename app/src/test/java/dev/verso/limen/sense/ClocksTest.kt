@@ -32,13 +32,15 @@ class ClocksTest {
   }
 
   @Test
-  fun returnDueShiftsOffTheWeekend() {
-    // A lease ending Saturday is returnable the next working day.
+  fun returnDueShiftsSundayOrRecognizedHolidayButNotSaturday() {
     val saturday = LocalDate.of(2026, 8, 1)
-    assertEquals(LocalDate.of(2026, 8, 3), Clocks.returnDue(saturday))
-    // A weekday stays put.
+    assertEquals(saturday, Clocks.returnDue(saturday))
+    assertEquals(LocalDate.of(2026, 8, 3), Clocks.returnDue(LocalDate.of(2026, 8, 2)))
     val wednesday = LocalDate.of(2026, 8, 5)
-    assertEquals(wednesday, Clocks.returnDue(wednesday))
+    assertEquals(
+      LocalDate.of(2026, 8, 6),
+      Clocks.returnDue(wednesday, setOf(wednesday)),
+    )
   }
 
   @Test

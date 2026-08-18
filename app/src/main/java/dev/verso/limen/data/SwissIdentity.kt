@@ -91,6 +91,7 @@ data class SwissAddressCandidate(
   val flatNumber: String,
   val postalCode: String,
   val city: String,
+  val canton: SwissCanton? = null,
 ) {
   val label: String get() = "$street $flatNumber, $postalCode $city"
 }
@@ -142,11 +143,16 @@ object SwissAddressLookup {
         ?.trim()
         ?: return@mapNotNull null
       val match = addressLabel.matchEntire(label) ?: return@mapNotNull null
+      val canton = attrs["detail"]?.jsonPrimitive?.content
+        ?.trim()
+        ?.substringAfterLast(' ')
+        ?.let(SwissCanton::fromCode)
       SwissAddressCandidate(
         street = match.groupValues[1],
         flatNumber = match.groupValues[2],
         postalCode = match.groupValues[3],
         city = match.groupValues[4],
+        canton = canton,
       )
     }.distinct().take(6)
   }

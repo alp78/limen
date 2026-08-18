@@ -3,6 +3,7 @@ package dev.verso.limen.data
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertThrows
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -60,11 +61,37 @@ class ProtocolIntegrityTest {
       id = "p1",
       kind = Kind.Entry,
       createdEpochMs = 1L,
-      signatures = listOf(Signature(Role.Tenant, plane = Plane.Record, contentRevision = 3)),
+      signatures = listOf(
+        Signature(Role.Tenant, plane = Plane.Record, file = "tenant-record.png", contentRevision = 3)
+      ),
       contentRevision = 3,
     )
 
     assertTrue(signed.isSigned())
     assertFalse(signed.copy(contentRevision = 4).isSigned())
+  }
+
+  @Test
+  fun missingEvidenceFailsClosed() {
+    val photos = File(tmp.root, "missing-photos").apply { mkdirs() }
+    val ink = File(tmp.root, "missing-ink").apply { mkdirs() }
+    val record = Protocol(
+      id = "p2",
+      kind = Kind.Entry,
+      createdEpochMs = 1L,
+      defects = listOf(Defect(id = "d2", photos = listOf("gone.jpg"))),
+    )
+
+    assertEquals(listOf("photo/gone.jpg"), ProtocolIntegrity.missingEvidence(record, photos, ink))
+    assertThrows(IllegalArgumentException::class.java) {
+      ProtocolIntegrity.fingerprint(record, photos, ink)
+    }
+    assertFalse(
+      ProtocolIntegrity.matches(
+        record.copy(finalizedEpochMs = 2L, evidenceFingerprint = "not-a-real-fingerprint"),
+        photos,
+        ink,
+      )
+    )
   }
 }

@@ -44,9 +44,8 @@ import dev.verso.limen.theme.Limen
 /**
  * The inspection: a grid of rooms and, inside one, its findings.
  *
- * No walking order and no checklist. People go through a flat in the order the flat is
- * built and the damage is found, and a room they never open is a room with nothing wrong
- * in it. Only a defect is recorded, so only a defect is printed.
+ * No forced walking order. People go through a flat in the order it is built, explicitly
+ * confirm each room they inspect, and add as many findings as its condition requires.
  */
 @Composable
 internal fun InspectionStep(vm: LimenViewModel, s: Str, p: Protocol) {
@@ -73,8 +72,10 @@ private fun RoomGrid(vm: LimenViewModel, s: Str, p: Protocol) {
     ) {
       p.rooms.forEach { room ->
         RoomKey(
+          s = s,
           label = room.name.ifBlank { s.room(room.kind) },
           defects = p.defects.count { it.roomId == room.id },
+          inspected = room.inspected,
         ) { vm.openRoom(room.id) }
       }
     }
@@ -127,7 +128,7 @@ private fun RoomGrid(vm: LimenViewModel, s: Str, p: Protocol) {
 
 /** A room on the grid: its name, and how many findings it holds, amber when it holds any. */
 @Composable
-private fun RoomKey(label: String, defects: Int, onPress: () -> Unit) {
+private fun RoomKey(s: Str, label: String, defects: Int, inspected: Boolean, onPress: () -> Unit) {
   val flagged = defects > 0
   KeySurface(
     modifier = Modifier.width(164.dp),
@@ -147,11 +148,19 @@ private fun RoomKey(label: String, defects: Int, onPress: () -> Unit) {
       )
       Spacer(Modifier.height(4.dp))
       Text(
-        if (flagged) "! $defects" else "–",
+        when {
+          flagged -> "! $defects${if (inspected) " · ✓" else ""}"
+          inspected -> "✓ ${s.inspectedNoDefects}"
+          else -> s.notInspected
+        },
         fontFamily = FontFamily.Monospace,
         fontWeight = if (flagged) FontWeight.Bold else FontWeight.Normal,
         fontSize = 13.sp,
-        color = if (flagged) Limen.colors.dangerOutline else Limen.colors.inkDim,
+        color = when {
+          flagged -> Limen.colors.dangerOutline
+          inspected -> Limen.colors.seal
+          else -> Limen.colors.inkDim
+        },
       )
     }
   }
@@ -195,17 +204,28 @@ private fun RoomDetail(vm: LimenViewModel, s: Str, p: Protocol, room: Room) {
       Field(s.roomName, room.name) { v -> vm.renameRoom(room.id, v) }
     }
 
+    Toggle(
+      s.roomInspected,
+      room.inspected,
+      Modifier.fillMaxWidth(),
+      enabled = !locked,
+    ) { vm.setRoomInspected(room.id, !room.inspected) }
+
     if (!locked) ItemPicker(s, room.kind) { key, label -> vm.openDefect(room.id, key, label) }
 
     if (roomDefects.isEmpty()) {
-      Text(s.roomClean, style = MaterialTheme.typography.bodyMedium, color = Limen.colors.inkDim)
+      Text(
+        if (room.inspected) s.inspectedNoDefects else s.roomClean,
+        style = MaterialTheme.typography.bodyMedium,
+        color = if (room.inspected) Limen.colors.seal else Limen.colors.inkDim,
+      )
     } else {
       Panel(label = "${s.defects} (${roomDefects.size})", warning = true) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
           roomDefects.forEach { d ->
             key(d.id) {
               if (locked) DefectLine(vm, s, p, d)
-              else DismissibleItemRow(onRemove = { vm.removeDefect(d.id) }) {
+              else DismissibleItemRow(s, onRemove = { vm.removeDefect(d.id) }) {
                 DefectLine(vm, s, p, d)
               }
             }
