@@ -2,8 +2,6 @@ package dev.verso.limen.ui
 
 import android.content.Intent
 import android.widget.Toast
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -26,9 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import dev.verso.limen.data.DepositKind
 import dev.verso.limen.data.DeliveryMethod
 import dev.verso.limen.data.Kind
@@ -98,7 +93,7 @@ internal fun SignStep(vm: LimenViewModel, s: Str, p: Protocol) {
       }
     }
 
-    val issues = vm.completionIssues(p)
+    val issues = remember(p) { vm.completionIssues(p) }
     // A record that is already frozen has nothing to freeze. The key stayed on screen when
     // this step became reachable after finalization, and it did nothing when pressed.
     if (!LocalRecordLocked.current) Panel(label = s.finalizeRecord, info = s.tipFinalize()) {
@@ -217,7 +212,7 @@ private fun SignRow(
 @Composable
 internal fun ExportStep(vm: LimenViewModel, s: Str, p: Protocol) {
   val context = LocalContext.current
-  // The document landing is the other moment that ends something, and it arrives after
+  // The finished document is the other moment that ends something, and it arrives after
   // the key was released, so the confirmation is played by the result rather than the tap.
   val play = rememberTick()
   androidx.compose.runtime.LaunchedEffect(vm.exported) {
@@ -353,10 +348,23 @@ internal fun ExportStep(vm: LimenViewModel, s: Str, p: Protocol) {
           modifier = Modifier.fillMaxWidth(),
           enabled = !vm.amendmentInProgress,
         ) { vm.createAmendment() }
+        if (vm.amendmentError) {
+          Text(
+            s.amendFailed,
+            style = MaterialTheme.typography.bodySmall,
+            color = Limen.colors.dangerOutline,
+          )
+        }
       }
     }
 
-    SmallKey(s.done, Modifier.fillMaxWidth()) { vm.closeFlow() }
+    // Closed only when nothing is still being written: leaving mid-export used to take the
+    // record out from under the writer that was about to stamp it.
+    SmallKey(
+      if (vm.exporting) "…" else s.done,
+      Modifier.fillMaxWidth(),
+      enabled = !vm.exporting,
+    ) { vm.closeFlow() }
     Spacer(Modifier.height(12.dp))
     }
   }

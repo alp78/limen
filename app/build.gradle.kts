@@ -47,7 +47,7 @@ android {
     compileSdk = 36
     defaultConfig {
         applicationId = "dev.verso.limen"
-        // 29 because the finished protocol lands in MediaStore.Downloads, which arrived
+        // 29 because the finished protocol is written to MediaStore.Downloads, which arrived
         // with scoped storage; everything else here would run on 26.
         minSdk = 29
         targetSdk = 36
@@ -164,5 +164,9 @@ dependencies {
   androidTestImplementation(libs.androidx.test.core)
   androidTestImplementation(libs.androidx.test.ext.junit)
   androidTestImplementation(libs.androidx.test.runner)
+  // Not imported anywhere, and not removable for that reason: compose-ui-test-junit4 drags in
+  // espresso 3.5.0, which reflects on InputManager.getInstance, a hidden API newer Android no
+  // longer has. Every instrumented test then dies in Espresso.onIdle. This line is a version
+  // floor, not a dependency.
   androidTestImplementation(libs.androidx.test.espresso.core)
 }

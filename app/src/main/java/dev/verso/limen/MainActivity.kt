@@ -14,9 +14,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -24,12 +26,13 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
+import dev.verso.limen.theme.Limen
 import dev.verso.limen.theme.LimenTheme
 import dev.verso.limen.ui.FlowScreen
+import dev.verso.limen.ui.HomePage
 import dev.verso.limen.ui.HomeScreen
 import dev.verso.limen.ui.LimenViewModel
 import dev.verso.limen.ui.Str
-import dev.verso.limen.theme.Limen
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.collect
 
@@ -54,16 +57,25 @@ class MainActivity : ComponentActivity() {
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
       }
 
+      // Held here rather than inside HomeScreen, which is swapped out of the composition
+      // whole whenever a record opens: remembered there, the page was forgotten on every
+      // return from a handover.
+      var homePage by rememberSaveable { mutableStateOf(HomePage.Landing) }
+      var entryToSeedId by rememberSaveable { mutableStateOf<String?>(null) }
+
       // The system bars follow the in-app switch rather than the system setting, otherwise
       // the status icons go invisible the moment the plaster inverts.
-      LaunchedEffect(vm.darkTheme, vm.working) {
+      // Keyed on whether a record is open, not on the record: keyed on the record itself it
+      // reconfigured the window on every keystroke.
+      val recordOpen = vm.working != null
+      LaunchedEffect(vm.darkTheme, recordOpen) {
         val transparent = android.graphics.Color.TRANSPARENT
         enableEdgeToEdge(
           statusBarStyle =
-            if (vm.working == null || vm.darkTheme) SystemBarStyle.dark(transparent)
+            if (!recordOpen || vm.darkTheme) SystemBarStyle.dark(transparent)
             else SystemBarStyle.light(transparent, transparent),
           navigationBarStyle =
-            if (vm.working == null || vm.darkTheme) SystemBarStyle.dark(transparent)
+            if (!recordOpen || vm.darkTheme) SystemBarStyle.dark(transparent)
             else SystemBarStyle.light(transparent, transparent),
         )
       }
@@ -99,7 +111,15 @@ class MainActivity : ComponentActivity() {
               predictiveBackProgress = backProgress,
             )
           } else {
-            HomeScreen(modifier = Modifier.fillMaxSize(), vm = vm, s = s)
+            HomeScreen(
+              modifier = Modifier.fillMaxSize(),
+              vm = vm,
+              s = s,
+              page = homePage,
+              entryToSeedId = entryToSeedId,
+              onPage = { homePage = it },
+              onSeed = { entryToSeedId = it },
+            )
           }
         }
       }

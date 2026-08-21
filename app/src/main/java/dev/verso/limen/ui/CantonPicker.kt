@@ -13,6 +13,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material.icons.Icons
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.outlined.ArrowDropDown
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -61,7 +64,7 @@ fun CantonPicker(s: Str, selected: SwissCanton?, onSelect: (SwissCanton) -> Unit
           overflow = TextOverflow.Ellipsis,
         )
       }
-      Text("▾", color = Limen.colors.inkDim)
+      Icon(Icons.Outlined.ArrowDropDown, contentDescription = null, tint = Limen.colors.inkDim)
     }
   }
 

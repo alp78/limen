@@ -26,6 +26,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -48,6 +50,7 @@ import dev.verso.limen.data.Kind
 import dev.verso.limen.data.ObjectEntry
 import dev.verso.limen.data.ObjectGroup
 import dev.verso.limen.data.Protocol
+import dev.verso.limen.data.SwissDate
 import dev.verso.limen.data.TenantResponse
 import dev.verso.limen.data.carries
 import dev.verso.limen.data.legalProfile
@@ -357,7 +360,7 @@ internal fun DefectLine(vm: LimenViewModel, s: Str, p: Protocol, d: Defect, show
         )
       }
     }
-    Text("›", fontSize = 18.sp, color = Limen.colors.inkDim)
+    Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = null, tint = Limen.colors.inkDim)
   }
 }
 
@@ -381,7 +384,13 @@ private fun ReviewIdentity(s: Str, p: Protocol) {
       ReviewLine(s.place, p.place)
       ReviewLine(s.cantonLabel, p.objectCanton?.let(s::canton).orEmpty())
       ReviewLine(s.objectDetail, p.objectDetail)
-      ReviewLine(s.handoverDate, listOf(p.handoverDate, p.handoverTime).filter { it.isNotBlank() }.joinToString(" · "))
+      // Swiss, like every other date the operator sees and every date on the paper. The
+      // review used to be the one screen that showed the ISO form held on disk.
+      ReviewLine(
+        s.handoverDate,
+        listOf(SwissDate.display(p.handoverDate), p.handoverTime)
+          .filter { it.isNotBlank() }.joinToString(" · "),
+      )
       ReviewLine(s.legalBasis, s.legalProfile(p.legalProfile()))
     }
   }
@@ -490,10 +499,10 @@ private fun ReviewDossier(s: Str, p: Protocol) {
           listOf(
             contract.monthlyRentChf.takeIf { it.isNotBlank() }?.let { "${s.monthlyRent}: $it" },
             contract.serviceChargesChf.takeIf { it.isNotBlank() }?.let { "${s.serviceCharges}: $it" },
-            contract.conclusionDate.takeIf { it.isNotBlank() }?.let { "${s.leaseConcludedOn}: $it" },
-            contract.startDate.takeIf { it.isNotBlank() }?.let { "${s.tenancyStart}: $it" },
-            contract.endDate.takeIf { it.isNotBlank() }?.let { "${s.tenancyEnd}: $it" },
-            contract.noticeDate.takeIf { it.isNotBlank() }?.let { "${s.noticeDate}: $it" },
+            contract.conclusionDate.takeIf { it.isNotBlank() }?.let { "${s.leaseConcludedOn}: ${SwissDate.display(it)}" },
+            contract.startDate.takeIf { it.isNotBlank() }?.let { "${s.tenancyStart}: ${SwissDate.display(it)}" },
+            contract.endDate.takeIf { it.isNotBlank() }?.let { "${s.tenancyEnd}: ${SwissDate.display(it)}" },
+            contract.noticeDate.takeIf { it.isNotBlank() }?.let { "${s.noticeDate}: ${SwissDate.display(it)}" },
           ).filterNotNull().joinToString(" · "),
         )
       }
@@ -518,7 +527,7 @@ private fun ReviewDossier(s: Str, p: Protocol) {
       ReviewKeys(s, p)
       if (p.carries(DossierCard.Notes)) {
         ReviewLine(s.remarks, p.remarks)
-        ReviewLine(s.chargesBy, p.chargesStatementBy)
+        ReviewLine(s.chargesBy, SwissDate.display(p.chargesStatementBy))
       }
     }
   }

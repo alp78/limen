@@ -22,6 +22,7 @@ internal object ArchiveIO {
   private const val MANIFEST = "limen-archive.txt"
   private const val MARKER = "LIMEN_ARCHIVE\nversion=1\n"
   private const val MAX_ENTRIES = 20_000
+  private const val STAGE_PREFIX = ".archive-import-"
   private const val MAX_UNPACKED_BYTES = 2L * 1024L * 1024L * 1024L
 
   private val json = Json { ignoreUnknownKeys = true }
@@ -45,7 +46,13 @@ internal object ArchiveIO {
 
   fun import(root: File, input: InputStream): ArchiveImportResult {
     root.mkdirs()
-    val stage = File(root, ".archive-import-${System.nanoTime()}").apply { mkdirs() }
+    // A restore killed part way through leaves its stage behind, and nothing else ever swept
+    // them: on a phone that has lost the app mid-import twice, two unpacked copies of the
+    // whole archive sat in filesDir for good.
+    root.listFiles()
+      ?.filter { it.isDirectory && it.name.startsWith(STAGE_PREFIX) }
+      ?.forEach { it.deleteRecursively() }
+    val stage = File(root, "$STAGE_PREFIX${System.nanoTime()}").apply { mkdirs() }
     try {
       unpack(stage, input)
       require(File(stage, MANIFEST).readText() == MARKER) { "Not a Limen archive" }

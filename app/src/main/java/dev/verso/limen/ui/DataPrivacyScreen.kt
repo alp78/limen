@@ -43,7 +43,10 @@ fun DataPrivacyScreen(
   onBack: () -> Unit,
 ) {
   var archiveAction by rememberSaveable { mutableStateOf<ArchiveAction?>(null) }
-  var pendingRestore by remember { mutableStateOf<android.net.Uri?>(null) }
+  // Saveable alongside the action it belongs to. Held in a plain remember, a recreation after
+  // the document picker brought the password dialog back with no Uri behind it, and the
+  // restore then did nothing at all: no busy state, no error, no message.
+  var pendingRestore by rememberSaveable { mutableStateOf<android.net.Uri?>(null) }
   val restore = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
     if (uri != null) {
       pendingRestore = uri
@@ -167,8 +170,11 @@ private fun ArchivePasswordDialog(
   onDismiss: () -> Unit,
   onConfirm: (String) -> Unit,
 ) {
-  var password by rememberSaveable(action) { mutableStateOf("") }
-  var confirmation by rememberSaveable(action) { mutableStateOf("") }
+  // Deliberately NOT saveable: saved instance state is written out to the system, and a
+  // backup password is the one thing in this app that must not go anywhere near it. The cost
+  // is retyping it after a rotation, which is the right side of that trade.
+  var password by remember(action) { mutableStateOf("") }
+  var confirmation by remember(action) { mutableStateOf("") }
   val isExport = action == ArchiveAction.Export
   val valid = password.isNotBlank() && (!isExport || password.length >= 12 && password == confirmation)
 

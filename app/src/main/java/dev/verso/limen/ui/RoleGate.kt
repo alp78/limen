@@ -34,10 +34,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import dev.verso.limen.data.Kind
-import dev.verso.limen.data.AddressCountry
 import dev.verso.limen.data.CountryDirectory
 import dev.verso.limen.data.InternationalPhone
-import dev.verso.limen.data.PhoneCountry
 import dev.verso.limen.data.Protocol
 import dev.verso.limen.data.Role
 import dev.verso.limen.data.SessionIdentity
@@ -109,7 +107,11 @@ fun NewSessionScreen(
     phone = phone,
     phoneRegion = phoneRegionCode,
   )
-  val canStart = (!usesSwissAddress || addressVerified) && identity.hasRequiredFields() &&
+  // Not gated on the swisstopo round trip. The lookup returns an empty list for no network,
+  // a timeout and an unknown address alike, and an inspector standing in an empty flat with no
+  // signal could not start a session at all, with nothing on screen saying why. The address
+  // shape is still checked by hasRequiredFields; the lookup is now a confirmation, not a gate.
+  val canStart = identity.hasRequiredFields() &&
     (actor != Actor.Agency || company.trim().length >= 2)
   val addressQuery = listOf(street, flatNumber, postalCode, city)
     .filter { it.isNotBlank() }
@@ -248,6 +250,13 @@ fun NewSessionScreen(
             Text(s.addressSearching, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
           }
           if (usesSwissAddress && addressFieldsFocused) AddressMatches(addressMatches, ::selectAddress)
+          if (usesSwissAddress && addressVerified) {
+            Text(
+              s.addressVerified,
+              style = MaterialTheme.typography.labelSmall,
+              color = Limen.colors.seal,
+            )
+          }
           Field(
             s.street,
             street,

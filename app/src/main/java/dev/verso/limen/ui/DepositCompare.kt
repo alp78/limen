@@ -20,6 +20,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import dev.verso.limen.theme.Limen
@@ -53,7 +54,13 @@ fun DepositCompareOverlay(vm: LimenViewModel, s: Str) {
   BackHandler { vm.setDepositCompare(false) }
 
   Column(
-    Modifier.fillMaxSize().background(Limen.colors.plate).padding(horizontal = 20.dp),
+    Modifier
+      .fillMaxSize()
+      .background(Limen.colors.plate)
+      // A background paints but does not hit-test, so every tap that missed a row here went
+      // through to the masthead underneath: two of them on the back key closed the record.
+      .pointerInput(Unit) { awaitPointerEventScope { while (true) { awaitPointerEvent() } } }
+      .padding(horizontal = 20.dp),
   ) {
     Spacer(Modifier.height(18.dp))
     Row(verticalAlignment = Alignment.CenterVertically) {

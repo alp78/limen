@@ -3,7 +3,6 @@ package dev.verso.limen.ui
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -32,6 +31,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import dev.verso.limen.data.PhotoSource
+import dev.verso.limen.photo.PhotoDecode
 import dev.verso.limen.theme.Limen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -66,19 +66,24 @@ fun rememberPhotoIntake(s: Str, onFile: (File, PhotoSource) -> Unit): PhotoIntak
     rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
       val slot = cameraSlot?.let(::File)
       cameraSlot = null
-      if (ok && slot != null && slot.exists()) onFile(slot, PhotoSource.Camera)
+      // length, not exists: the slot is a temp file this app created, so it exists whatever
+      // the camera did. An OEM camera that reports success without writing, or a full disk,
+      // left a zero-byte file that the evidence hash then refused outright.
+      if (ok && slot != null && slot.length() > 0L) onFile(slot, PhotoSource.Camera) else slot?.delete()
     }
 
   val pickVisual =
     rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
       if (uri != null) {
         val slot = File(captureDir(context), "pick${System.currentTimeMillis()}.jpg")
-        runCatching {
+        val copied = runCatching {
           context.contentResolver.openInputStream(uri)?.use { input ->
             slot.outputStream().use { input.copyTo(it) }
-          }
-        }
-        if (slot.exists()) onFile(slot, PhotoSource.Gallery)
+          } != null
+        }.getOrDefault(false)
+        // A copy that failed part way leaves a truncated file behind, and attaching that as
+        // evidence is worse than attaching nothing: it hashes and prints as a torn picture.
+        if (copied && slot.length() > 0L) onFile(slot, PhotoSource.Gallery) else slot.delete()
       }
     }
 
@@ -91,7 +96,10 @@ fun rememberPhotoIntake(s: Str, onFile: (File, PhotoSource) -> Unit): PhotoIntak
         dir.listFiles()?.forEach { it.delete() }
         val slot = File.createTempFile("cap", ".jpg", dir)
         cameraSlot = slot.absolutePath
-        val uri = FileProvider.getUriForFile(context, "dev.verso.limen.files", slot)
+        // Read from the package rather than written twice: the manifest declares the
+        // authority as ${applicationId}.files, and the debug build carries a .uitest suffix,
+        // so a hardcoded authority threw on every debug install the moment the key was hit.
+        val uri = FileProvider.getUriForFile(context, "${context.packageName}.files", slot)
         try {
           takePicture.launch(uri)
         } catch (_: ActivityNotFoundException) {
@@ -141,7 +149,9 @@ fun PhotoThumb(vm: LimenViewModel, s: Str, name: String, size: Int = 84, onRemov
     // square is a picture and nothing else.
     if (LocalRecordLocked.current) return@Box
     KeySurface(
-      modifier = Modifier.align(Alignment.TopEnd).padding(3.dp).size(30.dp),
+      // 44dp, not the 30dp it was: this is a destructive key and it was the one target in
+      // the app below the size a thumb actually hits.
+      modifier = Modifier.align(Alignment.TopEnd).padding(3.dp).size(44.dp),
       shape = RoundedCornerShape(8.dp),
       fillColor = Limen.colors.danger,
       outlineColor = Limen.colors.dangerOutline,
@@ -152,21 +162,11 @@ fun PhotoThumb(vm: LimenViewModel, s: Str, name: String, size: Int = 84, onRemov
         ButtonGlyph.Delete.vector(),
         contentDescription = s.delete,
         tint = Limen.colors.dangerOutline,
-        modifier = Modifier.size(15.dp),
+        modifier = Modifier.size(18.dp),
       )
     }
   }
 }
 
-/** The thumbnail read: bounds first, then a sample big enough for the square shown. */
-private fun decodeThumb(file: File): Bitmap? {
-  if (!file.exists()) return null
-  val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-  BitmapFactory.decodeFile(file.absolutePath, bounds)
-  if (bounds.outWidth <= 0) return null
-  val sample = (maxOf(bounds.outWidth, bounds.outHeight) / 320).coerceAtLeast(1)
-  return BitmapFactory.decodeFile(
-    file.absolutePath,
-    BitmapFactory.Options().apply { inSampleSize = sample },
-  )
-}
+/** The thumbnail read, through the same upright decoder the exported annex prints from. */
+private fun decodeThumb(file: File): Bitmap? = PhotoDecode.sampled(file, 320)

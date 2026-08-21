@@ -6,28 +6,24 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.verso.limen.sense.LifeKey
@@ -114,14 +110,19 @@ fun WearAssessment(s: Str, modifier: Modifier = Modifier) {
             }
             Field(s.ageYears, age, Modifier.weight(1f)) { v -> age = v.take(5) }
           }
-          Field(s.repairCost, cost) { v -> cost = v.take(9) }
+          Field(
+            s.repairCost,
+            cost,
+            keyboardType = KeyboardType.Decimal,
+            isError = cost.isNotBlank() && swissNumber(cost) == null,
+          ) { v -> cost = v.take(12) }
         }
       }
 
       // The answer.
-      val lifespanV = lifespan.replace(',', '.').toDoubleOrNull() ?: 0.0
-      val ageV = age.replace(',', '.').toDoubleOrNull()
-      val costV = cost.replace(',', '.').toDoubleOrNull()
+      val lifespanV = swissNumber(lifespan) ?: 0.0
+      val ageV = swissNumber(age)
+      val costV = swissNumber(cost)
       if (lifespanV > 0 && ageV != null) {
         val fraction = Zeitwert.remainingFraction(lifespanV, ageV)
         Panel(label = s.tenantShare) {
@@ -145,3 +146,18 @@ fun WearAssessment(s: Str, modifier: Modifier = Modifier) {
       }
   }
 }
+
+/** The Swiss thousands separator, straight and typographic alike. */
+private const val GROUPING_MARKS = "'’"
+
+/**
+ * A figure as a person actually types it here: "1'200.50", "1 200,50", "1200.5".
+ *
+ * The apostrophe is the Swiss thousands separator and toDoubleOrNull refuses it, so a cost
+ * entered the normal way parsed as null. The headline then silently changed unit from francs
+ * to a percentage, with nothing on the field to say the figure had been ignored.
+ */
+private fun swissNumber(typed: String): Double? = typed
+  .filterNot { it in GROUPING_MARKS || it.isWhitespace() }
+  .replace(',', '.')
+  .toDoubleOrNull()

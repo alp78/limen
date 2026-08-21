@@ -12,6 +12,7 @@ import dev.verso.limen.data.Contract
 import dev.verso.limen.data.ControllerIdentity
 import dev.verso.limen.data.ArchiveImportResult
 import dev.verso.limen.data.Defect
+import dev.verso.limen.data.isUntouched
 import dev.verso.limen.data.Deposit
 import dev.verso.limen.data.DossierCard
 import dev.verso.limen.data.ItemKey
@@ -32,7 +33,6 @@ import dev.verso.limen.data.Room
 import dev.verso.limen.data.RoomKind
 import dev.verso.limen.data.SessionIdentity
 import dev.verso.limen.data.Store
-import dev.verso.limen.data.Templates
 import dev.verso.limen.data.dossierCards
 import dev.verso.limen.data.hasRequiredFields
 import dev.verso.limen.data.photoFiles
@@ -47,6 +47,9 @@ import java.time.LocalDate
 private const val KEY_DARK = "darkTheme"
 private const val KEY_LANG = "lang"
 private const val KEY_OPEN = "openProtocol"
+private const val KEY_STEP = "openStep"
+private const val KEY_ROOM = "openRoom"
+private const val KEY_DEFECT = "openDefect"
 private const val KEY_ROLE = "myRole"
 private const val KEY_NAME = "profileName"
 private const val KEY_COMPANY = "profileCompany"
@@ -63,6 +66,9 @@ private const val KEY_CONTROLLER_PHONE = "controllerPhone"
  * writes once, short enough that it is over before a thumb reaches the next control.
  */
 private const val SAVE_DELAY_MS = 400L
+
+/** How far back the flow can retrace. Deep enough for any real walk, bounded so it cannot grow. */
+private const val MAX_TRAIL = 12
 
 /**
  * The protocol flow opens from the case and owns the screen until it is closed. It is restored
@@ -101,6 +107,7 @@ enum class FinalizationIssue {
   HandoverTime,
   LegalOverlay,
   Parties,
+  NoRooms,
   Rooms,
   Objects,
   Dossier,
@@ -114,7 +121,7 @@ enum class FinalizationIssue {
 /** Why an export is withheld, rather than silently producing a misleading document. */
 enum class ExportIssue { NotFinalized, IntegrityMismatch, Failed }
 
-enum class UndoKind { Defect, Photo, Object }
+enum class UndoKind { Defect, Photo, Object, KeyCounts }
 
 data class UndoNotice(val token: Long, val kind: UndoKind)
 
@@ -183,11 +190,6 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     profileCompany = company.trim()
     prefs.edit().putString(KEY_ROLE, role.name).putString(KEY_NAME, profileName)
       .putString(KEY_COMPANY, profileCompany).apply()
-  }
-
-  fun updateProfileName(name: String) {
-    profileName = name
-    prefs.edit().putString(KEY_NAME, name).apply()
   }
 
   /** Forgets who holds the phone: back to the first question, nothing else touched. */
@@ -292,6 +294,9 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
   var flowStep by mutableStateOf(FlowStep.Hub)
     private set
 
+  /** The steps walked to get here, so back retraces the route rather than guessing it. */
+  private var flowTrail by mutableStateOf(emptyList<FlowStep>())
+
   /**
    * The room being inspected, or null while the grid of rooms is showing. Held by id rather
    * than by index so removing a room cannot silently open a different one.
@@ -309,6 +314,14 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
   var amendmentInProgress by mutableStateOf(false)
     private set
 
+  /** A disk that filled while the photographs were being copied, said rather than swallowed. */
+  var amendmentError by mutableStateOf(false)
+    private set
+
+  fun clearAmendmentError() {
+    amendmentError = false
+  }
+
   var finalizationIssues by mutableStateOf(emptyList<FinalizationIssue>())
     private set
 
@@ -318,27 +331,25 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
   var undoNotice by mutableStateOf<UndoNotice?>(null)
     private set
 
+  /** The record as it stood before the defect editor wrote its shell, keyed by that shell's id. */
+  private var defectShell: Pair<String, Protocol>? = null
+
   private var pendingUndo: PendingUndo? = null
   private var undoJob: kotlinx.coroutines.Job? = null
-
-  init {
-    val openId = prefs.getString(KEY_OPEN, null)
-    if (!openId.isNullOrBlank()) {
-      val recovered = store.load(openId)
-      if (recovered != null) {
-        setActiveProtocol(recovered)
-        flowStep = FlowStep.Hub
-      } else {
-        prefs.edit().remove(KEY_OPEN).apply()
-      }
-    }
-  }
 
   fun photoDir(): File? = working?.let { store.photoDir(it.id) }
   fun signatureDir(): File? = working?.let { store.signatureDir(it.id) }
 
   private fun setActiveProtocol(protocol: Protocol?) {
     commitUndo()
+    // Everything below belongs to the record being left, not to the one arriving. An
+    // amendment switches protocols without an intervening close, and inherited these: the
+    // parent's exported PDF was then offered on the amendment's own export step.
+    exported = null
+    exportIssue = null
+    pdfLang = null
+    defectShell = null
+    flowTrail = emptyList()
     working = protocol
     entryBaseline = protocol
       ?.takeIf { it.kind == Kind.Exit && it.seedId.isNotBlank() }
@@ -391,6 +402,15 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     }
   }
 
+  /**
+   * An edit whose only cost is entered numbers rather than a record of its own, offered
+   * back through the same undo bar the removals use. "No physical keys" is the one pill
+   * that silently zeroes counts the operator typed by hand.
+   */
+  fun editUndoably(transform: (Protocol) -> Protocol) {
+    reversibleEdit(UndoKind.KeyCounts, transform = transform)
+  }
+
   fun undo(token: Long) {
     val pending = pendingUndo?.takeIf { it.token == token } ?: return
     val current = working
@@ -406,10 +426,6 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     } else {
       commitUndo(token)
     }
-  }
-
-  fun dismissUndo(token: Long) {
-    commitUndo(token)
   }
 
   private fun commitUndo(token: Long? = null) {
@@ -500,18 +516,21 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     saveJob?.cancel()
     saveJob = null
     val p = working ?: return
+    if (finalizing) return
     runCatching { store.save(p) }
+    // The place in the walk is part of what "still open" means. The system camera routinely
+    // kills this process while the shutter is open, and coming back to the case home instead
+    // of the room being photographed is the moment the picture reads as lost.
+    prefs.edit()
+      .putString(KEY_STEP, flowStep.name)
+      .putString(KEY_ROOM, openRoomId)
+      .putString(KEY_DEFECT, editingDefectId)
+      .apply()
   }
 
   override fun onCleared() {
     flush()
     super.onCleared()
-  }
-
-  /** Starts an immutable session identity and then opens the guided handover. */
-  fun startNewSession(role: Role, name: String, kind: Kind) {
-    chooseRole(role, name)
-    createProtocol(kind, role, name)
   }
 
   /** Starts the walk only after the new-session form has supplied a complete validated identity. */
@@ -534,7 +553,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     )
   }
 
-  fun createProtocol(
+  private fun createProtocol(
     kind: Kind,
     sessionRole: Role? = myRole,
     sessionName: String = profileName,
@@ -567,7 +586,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
           Role.Tenant,
           name = if (sessionRole == Role.Tenant) resolvedName else "",
           // At an exit the starter's contact address IS the new address the deposit
-          // letter goes to, so it lands in the form's "Neue Adresse" field directly.
+          // letter goes to, so it reaches the form's "Neue Adresse" field directly.
           address = if (sessionRole == Role.Tenant && kind == Kind.Exit) {
             listOf(resolvedIdentity.addressLine, resolvedIdentity.placeLine)
               .filter { it.isNotBlank() }.joinToString(", ")
@@ -598,65 +617,6 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
       dossier = listOf(DossierCard.Keys),
       rooms = emptyList(),
       roomSetupComplete = false,
-    )
-    store.save(p)
-    setActiveProtocol(p)
-    flowStep = FlowStep.Hub
-    openRoomId = null
-    prefs.edit().putString(KEY_OPEN, p.id).apply()
-  }
-
-  /**
-   * The exit protocol grown from the stored entry one: the flat's structure, the parties,
-   * the deposit and the flags of what was new at entry carry over; the grades and defects
-   * do not, because the walk is about to find out.
-   */
-  fun seedExitFrom(
-    entry: Protocol,
-    sessionRole: Role = myRole ?: Role.Tenant,
-    sessionName: String = profileName,
-  ) {
-    if (!entry.isFinalized()) return
-    chooseRole(sessionRole, sessionName)
-    flush()
-    val now = System.currentTimeMillis()
-    val p = entry.copy(
-      id = "p$now",
-      kind = Kind.Exit,
-      sessionRole = sessionRole,
-      sessionName = sessionName.trim(),
-      controllerIdentity = if (controllerIdentity.isBlank()) {
-        ControllerIdentity(contactName = sessionName.trim())
-      } else {
-        controllerIdentity
-      },
-      createdEpochMs = now,
-      handoverDate = LocalDate.now().toString(),
-      handoverTime = "",
-      lastProtocolDate = entry.handoverDate,
-      rooms = entry.rooms.map(::freshRoom),
-      roomSetupComplete = true,
-      objects = entry.objects.map(::freshObject),
-      defects = emptyList(),
-      remarks = "",
-      chargesStatementBy = "",
-      oneSided = false,
-      unilateralReason = null,
-      unilateralNote = "",
-      legalOverlay = dev.verso.limen.data.LegalOverlayRecord(),
-      keyTransfer = dev.verso.limen.data.KeyTransferStatus.NotRecorded,
-      keyTransferNote = "",
-      pendingRecordReservations = emptyMap(),
-      signatures = emptyList(),
-      seedId = entry.id,
-      amendedFromId = "",
-      contentRevision = 0,
-      finalizedEpochMs = 0,
-      evidenceFingerprint = "",
-      deliveryReceipts = emptyList(),
-      deliveryMetadataEpochMs = 0,
-      exportedEpochMs = 0,
-      meters = Meters(),
     )
     store.save(p)
     setActiveProtocol(p)
@@ -754,7 +714,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     flush()
     val p = store.load(id) ?: return
     setActiveProtocol(p)
-    // A reopened record lands on its hub whether it is signed or not. A finalized one used
+    // A reopened record opens on its hub whether it is signed or not. A finalized one used
     // to open straight onto Export with every way back out of the flow, which made the
     // signed protocol the one thing in the app nobody could go back and read.
     flowStep = FlowStep.Hub
@@ -776,11 +736,18 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     setActiveProtocol(null)
     editingDefectId = null
     openRoomId = null
-    exported = null
-    exportIssue = null
+    flowTrail = emptyList()
+    // Per-record view state, cleared with the record. The comparison sheet used to survive
+    // the close and paint itself over the next protocol opened.
+    showDepositCompare = false
     finalizationIssues = emptyList()
     finalizationError = false
-    prefs.edit().remove(KEY_OPEN).apply()
+    prefs.edit()
+      .remove(KEY_OPEN)
+      .remove(KEY_STEP)
+      .remove(KEY_ROOM)
+      .remove(KEY_DEFECT)
+      .apply()
     protocols = store.list()
   }
 
@@ -790,7 +757,15 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
    * pass through. Locking the navigation as well was belt and braces that cost the reading.
    */
   fun goTo(step: FlowStep) {
+    if (step == flowStep) return
+    // A trail, not the static parent chain. A finalized record's hub opens the document
+    // directly, and following parents back out of it cost three presses to undo one tap.
+    flowTrail = (flowTrail + flowStep).takeLast(MAX_TRAIL)
     flowStep = step
+    // Leaving the inspection by any route closes the open room. Clearing it only inside
+    // flowBack left it set on the seal-bar route, and the next INSPECTION tap then opened
+    // a room detail instead of the grid of rooms.
+    if (step != FlowStep.Inspection) openRoomId = null
   }
 
   /** The people whose record outcome is required before this phone can freeze the record. */
@@ -854,7 +829,11 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
   fun createAmendment() {
     val p = working ?: return
     if (!p.isFinalized() || amendmentInProgress) return
+    // The one protocol switch that had no flush before it: a debounced write still in the
+    // air would have been aimed at the record being left.
+    flush()
     amendmentInProgress = true
+    amendmentError = false
     viewModelScope.launch {
       val result = withContext(Dispatchers.IO) {
         runCatching {
@@ -863,6 +842,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
             id = "p$now",
             createdEpochMs = now,
             amendedFromId = p.id,
+            amendedFromFingerprint = p.evidenceFingerprint,
             contentRevision = 0,
             finalizedEpochMs = 0,
             evidenceFingerprint = "",
@@ -879,6 +859,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
         }
       }
       amendmentInProgress = false
+      result.onFailure { amendmentError = true }
       result.onSuccess { draft ->
         setActiveProtocol(draft)
         finalizationIssues = emptyList()
@@ -899,6 +880,13 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     }
     if (flowStep == FlowStep.Inspection && openRoomId != null) {
       openRoomId = null
+      return
+    }
+    val trailed = flowTrail.lastOrNull()
+    if (trailed != null) {
+      flowTrail = flowTrail.dropLast(1)
+      flowStep = trailed
+      if (trailed != FlowStep.Inspection) openRoomId = null
       return
     }
     val parent = flowStep.parent
@@ -1050,7 +1038,15 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
           keyTransfer = dev.verso.limen.data.KeyTransferStatus.NotRecorded,
           keyTransferNote = "",
         )
-        DossierCard.Notes -> p.copy(remarks = "", chargesStatementBy = "")
+        // oneSided goes with it: it is edited on this card, it derives this card back at
+        // Protocol.dossierCards, and a record with no notes cannot state why it is one-sided.
+        DossierCard.Notes -> p.copy(
+          remarks = "",
+          chargesStatementBy = "",
+          oneSided = false,
+          unilateralReason = null,
+          unilateralNote = "",
+        )
       }
     }
   }
@@ -1061,7 +1057,10 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
    */
   private fun setDossier(transform: (List<DossierCard>) -> List<DossierCard>) {
     edit { p ->
-      p.copy(dossier = transform(p.dossierCards()).distinct().sortedBy { it.ordinal })
+      p.copy(
+        dossier = transform(p.dossierCards()).distinct().sortedBy { it.ordinal },
+        dossierChosen = true,
+      )
     }
   }
 
@@ -1070,6 +1069,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
   fun openDefect(roomId: String, item: ItemKey?, itemLabel: String = "") {
     if (contentLocked()) return
     val id = "d${System.currentTimeMillis()}"
+    val base = working
     edit { p ->
       p.copy(defects = p.defects + Defect(
         id = id,
@@ -1078,6 +1078,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
         itemLabel = itemLabel.trim(),
       ))
     }
+    defectShell = base?.let { id to it }
     editingDefectId = id
   }
 
@@ -1085,7 +1086,9 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
   fun openObjectDefect(objectId: String) {
     if (contentLocked()) return
     val id = "d${System.currentTimeMillis()}"
+    val base = working
     edit { p -> p.copy(defects = p.defects + Defect(id = id, objectId = objectId)) }
+    defectShell = base?.let { id to it }
     editingDefectId = id
   }
 
@@ -1098,12 +1101,32 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     edit { p -> p.copy(defects = p.defects.map { if (it.id == id) transform(it) else it }) }
   }
 
-  /** Closing the editor discards an empty shell rather than keeping a blank finding. */
+  /**
+   * Closing the editor discards the shell it opened with, and only that. A finding can carry
+   * a charge, a deadline, a tenant response or a reservation without a word of description,
+   * and testing emptiness on the description alone threw all of it away with no undo.
+   *
+   * When nothing else moved in between, the record is put back exactly as it stood before the
+   * shell was written: [Protocol.isCurrent] reads contentRevision, so a pair of edits that
+   * cancel used to turn both parties' signatures stale on a record whose content never moved.
+   */
   fun closeDefect() {
     val id = editingDefectId ?: return
-    val d = working?.defects?.firstOrNull { it.id == id }
-    if (d != null && d.text.isBlank() && d.photos.isEmpty()) removeDefect(id, allowUndo = false)
     editingDefectId = null
+    val base = defectShell?.takeIf { it.first == id }?.second
+    defectShell = null
+    val p = working ?: return
+    if (p.isFinalized() || finalizing) return
+    val d = p.defects.firstOrNull { it.id == id } ?: return
+    if (!d.isUntouched()) return
+    val without = p.copy(defects = p.defects.filterNot { it.id == id })
+    val unchanged = base != null &&
+      without.copy(
+        contentRevision = base.contentRevision,
+        exportedEpochMs = base.exportedEpochMs,
+      ) == base
+    working = if (unchanged) base else without
+    scheduleSave()
   }
 
   fun removeDefect(id: String, allowUndo: Boolean = true) {
@@ -1143,25 +1166,44 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
       ?: "e${ownerId.hashCode().toUInt().toString(16)}"
     val name = "$ownerToken-${System.currentTimeMillis()}-${existing + 1}.jpg"
     val target = File(dir, name)
-    runCatching { source.copyTo(target, overwrite = true) }.getOrElse { return null }
+    runCatching { source.copyTo(target, overwrite = true) }.getOrElse {
+      target.delete()
+      return null
+    }
     source.delete()
+    // fileHash refuses an empty or unreadable file, and a copy onto a full card still
+    // produces one. Dropping the photograph is the right answer; throwing here took the
+    // process down inside the activity-result callback, with the camera just closed.
+    val hash = runCatching { ProtocolIntegrity.fileHash(target) }.getOrElse {
+      target.delete()
+      return null
+    }
     return PhotoEvidence(
       file = name,
-      sha256 = ProtocolIntegrity.fileHash(target),
+      sha256 = hash,
       capturedEpochMs = System.currentTimeMillis(),
       source = photoSource,
     )
   }
 
+  /**
+   * The copy and the SHA-256 run off this thread: both walk the whole JPEG, and a gallery
+   * pick of a twelve-megapixel photograph froze the frame for as long as three passes take,
+   * right after the picker closed and the hand is waiting to see the thumbnail.
+   */
   fun attachPhoto(defectId: String, source: File, photoSource: PhotoSource = PhotoSource.Unknown) {
     if (contentLocked()) return
     val had = working?.defects?.firstOrNull { it.id == defectId }?.photos?.size ?: 0
-    val evidence = copyPhoto(defectId, had, source, photoSource) ?: return
-    updateDefect(defectId) {
-      it.copy(
-        photos = it.photos + evidence.file,
-        photoEvidence = it.photoEvidence.filterNot { photo -> photo.file == evidence.file } + evidence,
-      )
+    viewModelScope.launch {
+      val evidence = withContext(Dispatchers.IO) {
+        copyPhoto(defectId, had, source, photoSource)
+      } ?: return@launch
+      updateDefect(defectId) {
+        it.copy(
+          photos = it.photos + evidence.file,
+          photoEvidence = it.photoEvidence.filterNot { photo -> photo.file == evidence.file } + evidence,
+        )
+      }
     }
   }
 
@@ -1180,12 +1222,16 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
   fun attachObjectPhoto(objectId: String, source: File, photoSource: PhotoSource = PhotoSource.Unknown) {
     if (contentLocked()) return
     val had = working?.objects?.firstOrNull { it.id == objectId }?.photos?.size ?: 0
-    val evidence = copyPhoto(objectId, had, source, photoSource) ?: return
-    updateObject(objectId) {
-      it.copy(
-        photos = it.photos + evidence.file,
-        photoEvidence = it.photoEvidence.filterNot { photo -> photo.file == evidence.file } + evidence,
-      )
+    viewModelScope.launch {
+      val evidence = withContext(Dispatchers.IO) {
+        copyPhoto(objectId, had, source, photoSource)
+      } ?: return@launch
+      updateObject(objectId) {
+        it.copy(
+          photos = it.photos + evidence.file,
+          photoEvidence = it.photoEvidence.filterNot { photo -> photo.file == evidence.file } + evidence,
+        )
+      }
     }
   }
 
@@ -1208,13 +1254,36 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     signatureDir()?.let { File(it, name).delete() }
   }
 
-  /** Keeps the ink: the PNG lands beside the protocol, the record points at it. */
+  /**
+   * Keeps the ink: the PNG is written beside the protocol and the record points at it.
+   *
+   * Staged and moved rather than written in place, and the compress result is read. A
+   * compress that failed part way left a truncated PNG with a length, which passed the
+   * evidence check and printed as an empty rule under a full signature caption.
+   */
   fun keepSignature(role: Role, plane: Plane, bitmap: android.graphics.Bitmap) {
     if (contentLocked()) return
     val dir = signatureDir() ?: return
     val name = "${role.name.lowercase()}-${plane.name.lowercase()}.png"
-    File(dir, name).outputStream().use {
-      bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
+    val target = File(dir, name)
+    val staged = File(dir, "$name.part")
+    val wrote = runCatching {
+      staged.outputStream().use {
+        bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
+      }
+    }.getOrDefault(false)
+    if (!wrote || staged.length() == 0L) {
+      staged.delete()
+      return
+    }
+    target.delete()
+    if (!staged.renameTo(target)) {
+      val copied = runCatching { staged.copyTo(target, overwrite = true) }.isSuccess
+      staged.delete()
+      if (!copied || target.length() == 0L) {
+        target.delete()
+        return
+      }
     }
     val partyName = working?.parties?.firstOrNull { it.role == role }?.name.orEmpty()
     editSignatures { p ->
@@ -1340,16 +1409,26 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
         }
       }
       exporting = false
+      // The export outlives the screen that started it. Everything it writes back is bound
+      // to the record it was started for: closing the flow mid-export used to stamp the
+      // moment onto whatever draft happened to be open when the writer finished, and
+      // recordDelivery then refused forever on the record that really had been exported.
+      val stillOpen = working?.id == p.id
       if (result == null) {
-        exportIssue = ExportIssue.IntegrityMismatch
+        if (stillOpen) exportIssue = ExportIssue.IntegrityMismatch
       } else {
         result.fold(
           onSuccess = { out ->
-            exported = out
-            editMetadata { q -> q.copy(exportedEpochMs = System.currentTimeMillis()) }
+            val stamped = p.copy(exportedEpochMs = System.currentTimeMillis())
+            withContext(Dispatchers.IO) { runCatching { store.save(stamped) } }
+            if (stillOpen) {
+              exported = out
+              working = stamped
+            }
+            protocols = store.list()
           },
           onFailure = {
-            exportIssue = ExportIssue.Failed
+            if (stillOpen) exportIssue = ExportIssue.Failed
           },
         )
       }
@@ -1375,5 +1454,33 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
   fun toggleTheme() {
     darkTheme = !darkTheme
     prefs.edit().putBoolean(KEY_DARK, darkTheme).apply()
+  }
+
+  /**
+   * Reopens whatever record was on screen when the process last ended.
+   *
+   * Declared last on purpose: it calls [setActiveProtocol], which clears view state held in
+   * properties further down the class, and Kotlin initializes properties in declaration
+   * order. Run from the top, it touched delegates that did not exist yet.
+   */
+  init {
+    val openId = prefs.getString(KEY_OPEN, null)
+    if (!openId.isNullOrBlank()) {
+      val recovered = store.load(openId)
+      if (recovered != null) {
+        setActiveProtocol(recovered)
+        flowStep = prefs.getString(KEY_STEP, null)
+          ?.let { name -> FlowStep.entries.firstOrNull { it.name == name } }
+          ?: FlowStep.Hub
+        // Both are checked against the record rather than trusted: a room or a finding can
+        // have been removed by an amendment, or by another restore, since the process died.
+        openRoomId = prefs.getString(KEY_ROOM, null)
+          ?.takeIf { id -> recovered.rooms.any { it.id == id } }
+        editingDefectId = prefs.getString(KEY_DEFECT, null)
+          ?.takeIf { id -> recovered.defects.any { it.id == id } }
+      } else {
+        prefs.edit().remove(KEY_OPEN).apply()
+      }
+    }
   }
 }

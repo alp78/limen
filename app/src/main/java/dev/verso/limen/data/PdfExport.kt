@@ -9,6 +9,7 @@ import android.graphics.Paint
 import android.graphics.Typeface
 import android.graphics.pdf.PdfDocument
 import dev.verso.limen.ui.Str
+import dev.verso.limen.photo.PhotoDecode
 import java.io.File
 import java.time.Instant
 import java.time.ZoneId
@@ -298,7 +299,7 @@ object PdfExport {
     )
     if (p.lastProtocolDate.isNotBlank()) {
       sheet.labeledRow(
-        listOf("${s.protocolKind} (${s.entry.lowercase()})" to SwissDate.display(p.lastProtocolDate))
+        listOf(s.lastProtocol to SwissDate.display(p.lastProtocolDate))
       )
     }
   }
@@ -308,7 +309,15 @@ object PdfExport {
     sheet.sectionTitle(s.pdfFinalized)
     sheet.wrapped("${s.fingerprint}: ${p.evidenceFingerprint}", sheet.small)
     if (p.amendedFromId.isNotBlank()) {
-      sheet.wrapped("${s.pdfAmends}: ${p.amendedFromId}", sheet.small)
+      // By the reference the amended document actually prints on itself. The raw store id
+      // ("p1758912345678") appears on no PDF anywhere, so it identified nothing to a reader.
+      // By the reference the amended document actually prints on itself. The raw store id
+      // ("p1758912345678") appears on no PDF anywhere, so it identified nothing to a reader.
+      val amended = p.amendedFromFingerprint
+        .takeIf { it.isNotBlank() }
+        ?.let { "LIMEN-${it.take(16)}" }
+        ?: p.amendedFromId
+      sheet.wrapped("${s.pdfAmends}: $amended", sheet.small)
     }
   }
 
@@ -327,7 +336,10 @@ object PdfExport {
         sheet.small,
       )
     }
-    p.legalOverlay.checks.keys.sortedBy { it.ordinal }.forEach { requirement ->
+    // Only the requirements this record still resolves. Printed from the raw answer map, a
+    // deposit set back to None left "Deposit proof: Confirmed" on a record stating there is
+    // no deposit, which neither the panel nor the completeness gate would ever have shown.
+    overlay.requirements.sortedBy { it.ordinal }.forEach { requirement ->
       val status = p.legalOverlay.status(requirement) ?: return@forEach
       sheet.wrapped(
         "${s.legalRequirement(requirement)}: ${s.legalCheckStatus(status)}",
@@ -402,14 +414,14 @@ object PdfExport {
     when (p.deposit.kind) {
       DepositKind.Insurance -> sheet.labeledRow(
         listOf(
-          s.depositInsurance to p.deposit.provider,
+          s.depositProvider to p.deposit.provider,
           s.depositPolicy to p.deposit.policyNo,
           s.depositAmount to p.deposit.amountChf,
         )
       )
       DepositKind.BankAccount -> sheet.labeledRow(
         listOf(
-          s.depositBank to p.deposit.bank,
+          s.depositBankName to p.deposit.bank,
           s.depositAccount to p.deposit.account,
           s.depositAmount to p.deposit.amountChf,
         )
@@ -470,10 +482,10 @@ object PdfExport {
 
   /** Everything supplied with the flat, one line each, grouped the way it was entered. */
   private fun objects(sheet: Sheet, p: Protocol, s: Str) {
-    if (p.objects.isEmpty()) {
-      legacyExtras(sheet, p, s)
-      return
-    }
+    // Both, when a record carries both. Returning after the legacy block only while objects
+    // was empty meant adding one row to a seeded exit dropped the whole inherited inventory.
+    legacyExtras(sheet, p, s)
+    if (p.objects.isEmpty()) return
     sheet.sectionTitle(s.objects)
     p.objects
       .groupBy { it.group to it.groupLabel }
@@ -694,12 +706,13 @@ object PdfExport {
 
   /** The Notes component: free remarks and the service-charge date, when it is on the record. */
   private fun remarks(sheet: Sheet, p: Protocol, s: Str) {
-    if (p.remarks.isNotBlank()) {
-      sheet.sectionTitle(s.remarks)
-      sheet.wrapped(p.remarks, sheet.body)
-    }
+    if (p.remarks.isBlank() && p.chargesStatementBy.isBlank()) return
+    // Hoisted above both branches: opened only inside the remarks branch, a service-charge
+    // date with no remarks printed under the DEFECTS heading, reading as the last finding.
+    sheet.sectionTitle(s.remarks)
+    if (p.remarks.isNotBlank()) sheet.wrapped(p.remarks, sheet.body)
     if (p.chargesStatementBy.isNotBlank()) {
-      sheet.gap(8f)
+      if (p.remarks.isNotBlank()) sheet.gap(8f)
       sheet.wrapped("${s.chargesBy} ${SwissDate.display(p.chargesStatementBy)}", sheet.body)
     }
   }
@@ -882,38 +895,13 @@ object PdfExport {
   }
 
   /** Whether a photo file would decode at all: the bounds pass, for counting pages. */
-  private fun readable(file: File): Boolean {
-    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-    BitmapFactory.decodeFile(file.absolutePath, bounds)
-    return bounds.outWidth > 0 && bounds.outHeight > 0
-  }
+  /**
+   * Whether a plate decodes, which the counting pass and the rendering pass must answer
+   * identically or the printed "page N of M" lies about a document already signed.
+   */
+  private fun readable(file: File): Boolean = PhotoDecode.readable(file)
 
-  /** EXIF-blind fast decode at roughly [targetWidth]; the camera writes upright JPEGs here. */
-  private fun decodeDown(file: File, targetWidth: Int): Bitmap? {
-    if (!file.exists()) return null
-    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-    BitmapFactory.decodeFile(file.absolutePath, bounds)
-    if (bounds.outWidth <= 0) return null
-    val sample = (bounds.outWidth / targetWidth).coerceAtLeast(1)
-    val bmp = BitmapFactory.decodeFile(
-      file.absolutePath,
-      BitmapFactory.Options().apply { inSampleSize = sample },
-    ) ?: return null
-    // The one camera reality PdfDocument does not forgive: sideways EXIF rotation.
-    val exif = runCatching { androidx.exifinterface.media.ExifInterface(file.absolutePath) }.getOrNull()
-    val rotation = when (exif?.getAttributeInt(
-      androidx.exifinterface.media.ExifInterface.TAG_ORIENTATION,
-      androidx.exifinterface.media.ExifInterface.ORIENTATION_NORMAL,
-    )) {
-      androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_90 -> 90f
-      androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_180 -> 180f
-      androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_270 -> 270f
-      else -> 0f
-    }
-    if (rotation == 0f) return bmp
-    val m = android.graphics.Matrix().apply { postRotate(rotation) }
-    val rotated = Bitmap.createBitmap(bmp, 0, 0, bmp.width, bmp.height, m, true)
-    if (rotated != bmp) bmp.recycle()
-    return rotated
-  }
+  /** The plate at roughly [targetWidth], turned upright by the shared decoder. */
+  private fun decodeDown(file: File, targetWidth: Int): Bitmap? =
+    PhotoDecode.sampled(file, targetWidth)
 }

@@ -150,4 +150,55 @@ class CompletionRulesTest {
     assertTrue(FinalizationIssue.LegalOverlay in issues(base.copy(legalOverlay = LegalOverlayRecord())))
     assertTrue(issues(base).isEmpty())
   }
+
+  @Test
+  fun removingTheKeysCardRemovesTheKeyRuleWithIt() {
+    // The rule used to be the one component check that was not gated on the card. Removing
+    // Keys took the only control that can record an outcome off the screen and left the
+    // record permanently unfinalizable, with nothing anywhere to answer the complaint.
+    val withoutKeys = complete(Kind.Entry, Role.Tenant).copy(
+      dossier = emptyList(),
+      dossierChosen = true,
+      keys = emptyList(),
+      keyTransfer = KeyTransferStatus.NotRecorded,
+    )
+    assertTrue(issues(withoutKeys).isEmpty())
+  }
+
+  @Test
+  fun theKeysCardStillDemandsAnOutcomeWhileItIsOnTheRecord() {
+    val unanswered = complete(Kind.Entry, Role.Tenant).copy(keyTransfer = KeyTransferStatus.NotRecorded)
+    assertEquals(listOf(FinalizationIssue.Keys), issues(unanswered))
+  }
+
+  @Test
+  fun theKeysChipAgreesWithTheGate() {
+    // A ticked chip beside a blocked FINALIZE is the failure this pairing exists to stop.
+    val noCountEntered = complete(Kind.Entry, Role.Tenant).copy(keys = emptyList())
+    assertEquals(false, keyOutcomeRecorded(noCountEntered))
+    assertEquals(listOf(FinalizationIssue.Keys), issues(noCountEntered))
+  }
+
+  @Test
+  fun anEmptyInspectionAsksForARoomRatherThanForConfirmation() {
+    val noRooms = complete(Kind.Entry, Role.Tenant).copy(rooms = emptyList())
+    assertTrue(FinalizationIssue.NoRooms in issues(noRooms))
+    assertTrue(FinalizationIssue.Rooms !in issues(noRooms))
+  }
+
+  @Test
+  fun aOneSidedRecordWithNoKnownSideFallsBackToBothSignatures() {
+    // With no side known the required list used to come back empty, and the gate then
+    // demanded an outcome for a row the Sign step never drew: unfinalizable forever.
+    val sideless = complete(Kind.Exit, Role.Tenant).copy(
+      oneSided = true,
+      unilateralReason = UnilateralReason.OtherPartyAbsent,
+      sessionRole = null,
+    )
+    assertEquals(
+      listOf(Role.Tenant, Role.Landlord),
+      requiredRecordRoles(sideless, null),
+    )
+    assertTrue(issues(sideless).isEmpty())
+  }
 }

@@ -64,32 +64,6 @@ class Str(val lang: Lang) {
 
   // The faces, as the pills and the case name them.
   val faceValue = pick("WEAR", "VÉTUSTÉ", "ZEITWERT", "VETUSTÀ", "VALUR")
-  val faceClocks = pick("DEADLINES", "DÉLAIS", "FRISTEN", "TERMINI", "TERMINS")
-
-  // What each case band offers.
-  val homeValue = pick(
-    "Who pays what, by lifespan",
-    "Qui paie quoi, selon la longévité",
-    "Wer was zahlt, nach Lebensdauer",
-    "Chi paga cosa, secondo la durata di vita",
-    "Tgi che paja tge, tenor la durada da vita",
-  )
-  val homeClocks = pick(
-    "Handover deadlines and practice",
-    "Délais et pratique de la remise",
-    "Fristen und Praxis der Übergabe",
-    "Termini e prassi della consegna",
-    "Termins e pratica da la surdada",
-  )
-
-  // The case (home).
-  val newProtocol = pick(
-    "NEW PROTOCOL",
-    "NOUVEL ÉTAT DES LIEUX",
-    "NEUES PROTOKOLL",
-    "NUOVO VERBALE",
-    "NOV PROTOCOL",
-  )
   val emptyCase = pick(
     "The threshold: where the flat changes hands. Protocols made here stay on this phone, are signed by both parties on the spot, and leave only as the PDF you export.",
     "Le seuil : là où le logement change de mains. Les états des lieux créés ici restent sur ce téléphone, se signent par les deux parties sur place, et n'en sortent que par le PDF que vous exportez.",
@@ -141,19 +115,21 @@ class Str(val lang: Lang) {
       "Oggetto fornito rimosso",
       "Object furnì stizzà",
     )
+    UndoKind.KeyCounts -> pick(
+      "Key counts cleared",
+      "Nombres de clés effacés",
+      "Schluesselzahlen geleert",
+      "Numero di chiavi azzerato",
+      "Dumbers da clavs stizzads",
+    )
   }
   val add = pick("ADD", "AJOUTER", "HINZUFÜGEN", "AGGIUNGI", "AGIUNTAR")
   val decrease = pick("Decrease", "Diminuer", "Verringern", "Diminuire", "Reducir")
   val increase = pick("Increase", "Augmenter", "Erhöhen", "Aumentare", "Augmentar")
   val themeMode = pick("Dark theme", "Thème sombre", "Dunkles Design", "Tema scuro", "Tema stgir")
-  val editDefect = pick("EDIT DEFECT", "MODIFIER LE DÉFAUT", "MANGEL BEARBEITEN", "MODIFICA DIFETTO", "MODIFITGAR LA MANCANZA")
-
-  // The flow's places. Not stations: nothing here is gated behind anything else.
-  val stepHub = pick("Handover", "Remise", "Übergabe", "Consegna", "Surdada")
   val stepInspection = pick("Inspection", "Inspection", "Begehung", "Sopralluogo", "Inspecziun")
   val stepObjects = pick("Objects", "Objets", "Gegenstände", "Oggetti", "Objects")
   val stepDossier = pick("Dossier", "Dossier", "Dossier", "Dossier", "Dossier")
-  val stepReview = pick("Review", "Relecture", "Durchsicht", "Riesame", "Controlla")
   val stepSign = pick("Signatures", "Signatures", "Unterschriften", "Firme", "Suttascripziuns")
   val stepExport = pick("Export", "Export", "Export", "Esporta", "Export")
 
@@ -510,7 +486,7 @@ class Str(val lang: Lang) {
     ItemKey.Radiator -> pick("Radiator/valve", "Radiateur/vanne", "Heizkörper/Ventil", "Radiatore/valvola", "Radiatur/ventil")
     ItemKey.SocketsSwitches -> pick("Sockets/switches", "Prises/interrupteurs", "Steckdosen/Schalter", "Prese/interruttori", "Stecs/interruptours")
     ItemKey.Lighting -> pick("Lighting", "Luminaires", "Beleuchtung", "Illuminazione", "Glischs")
-    ItemKey.Stove -> pick("Stove", "Cuisinière", "Kochherd", "Cucina economica", "Furnel")
+    ItemKey.Stove -> pick("Stove", "Cuisinière", "Kochherd", "Cucina", "Furnel")
     ItemKey.Oven -> pick("Oven", "Four", "Backofen", "Forno", "Furn")
     ItemKey.OvenAccessories -> pick("Oven accessories", "Accessoires du four", "Backofenzubehör", "Accessori del forno", "Accessoris dal furn")
     ItemKey.ExtractorHood -> pick("Extractor hood", "Hotte de ventilation", "Dampfabzug", "Cappa aspirante", "Chapa d'aspiraziun")
@@ -598,7 +574,6 @@ class Str(val lang: Lang) {
   }
 
   // The inspection.
-  val roomKeys = pick("Keys of this room", "Clés de cette pièce", "Schlüssel dieses Raums", "Chiavi di questo locale", "Clavs da quest local")
   val addRoom = pick("ADD ROOM", "AJOUTER UNE PIÈCE", "RAUM HINZUFÜGEN", "AGGIUNGI LOCALE", "AGIUNTAR IN LOCAL")
   val addDefect = pick("Note a defect", "Noter un défaut", "Mangel erfassen", "Annotare un difetto", "Registrar ina mancanza")
   val roomName = pick("Name of this room", "Nom de cette pièce", "Name dieses Raums", "Nome di questo locale", "Num da quest local")
@@ -672,15 +647,7 @@ class Str(val lang: Lang) {
   val categoryName = pick("Category name", "Nom de la catégorie", "Name der Kategorie", "Nome della categoria", "Num da la categoria")
   val objectNote = pick("Make, model, serial number", "Marque, modèle, numéro de série", "Marke, Modell, Seriennummer", "Marca, modello, numero di serie", "Marca, model, numer da seria")
   val objectInspected = pick("ITEM AND CONDITION CHECKED", "OBJET ET ÉTAT CONTRÔLÉS", "GEGENSTAND UND ZUSTAND GEPRÜFT", "OGGETTO E STATO CONTROLLATI", "OBJECT E STADI CONTROLLADS")
-  val objectRoom = pick("Where it stands", "Où il se trouve", "Wo er steht", "Dove si trova", "Nua ch'el sa chatta")
   val wholeFlat = pick("The flat", "Le logement", "Die Wohnung", "L'alloggio", "L'abitaziun")
-  val noObjects = pick(
-    "Nothing supplied with the flat yet",
-    "Rien de fourni avec le logement",
-    "Noch nichts zur Wohnung erfasst",
-    "Nulla fornito con l'alloggio",
-    "Anc nagut mess a disposiziun cun l'abitaziun",
-  )
   val atEntry = pick("At entry", "À l'entrée", "Bei Einzug", "All'entrata", "Tar l'entrada")
 
   // The dossier's components.
@@ -782,7 +749,7 @@ class Str(val lang: Lang) {
     TenantResponse.NormalWear -> pick("Normal wear", "Usure normale", "Normale Abnützung", "Usura normale", "Isanza normala")
     TenantResponse.ExistingAtEntry -> pick("Already at entry", "Déjà présent à l'entrée", "Bereits bei Einzug", "Già presente all'entrata", "Gia tar l'entrada")
   }
-  val tenantComment = pick("Tenant's comment", "Commentaire du locataire", "Kommentar der Mieterschaft", "Commento del conduttore", "cuntegn dal locatari")
+  val tenantComment = pick("Tenant's comment", "Commentaire du locataire", "Kommentar der Mieterschaft", "Commento del conduttore", "Commentari dal locatari")
   val normalWearNote = pick(
     "Normal wear is not a tenant charge. Record the tenant's view even where the agency disagrees.",
     "L'usure normale n'est pas à la charge du locataire. Consignez son point de vue même si la régie n'est pas d'accord.",
@@ -890,7 +857,7 @@ class Str(val lang: Lang) {
     "La finalisation fige cette version et ses preuves originales. Toute modification crée un avenant.",
     "Der Abschluss friert diese Version und ihre Originalbelege ein. Änderungen erzeugen einen Nachtrag.",
     "La finalizzazione blocca questa versione e le prove originali. Ogni modifica crea un'integrazione.",
-    "La finalisaziun fixescha questa versiun e sias novitads originalas. Midadas creeschan in supplement.",
+    "La finalisaziun fixescha questa versiun e sias cumprovas originalas. Midadas creeschan in supplement.",
   )
   val finalizing = pick("Finalizing…", "Finalisation…", "Wird abgeschlossen…", "Finalizzazione…", "Finalisaziun…")
   val finalizationNeeds = pick("Before finalizing", "Avant la finalisation", "Vor dem Abschluss", "Prima della finalizzazione", "Avant la finalisaziun")
@@ -916,6 +883,13 @@ class Str(val lang: Lang) {
     )
     FinalizationIssue.Parties -> pick("Name both tenant and landlord / agency", "Nommez le locataire et le bailleur / la régie", "Mieterschaft und Vermieterschaft / Verwaltung benennen", "Indicate conduttore e locatore / amministrazione", "Numnai locatari e locatur / administraziun")
     FinalizationIssue.Rooms -> pick("Confirm every listed room was inspected", "Confirmez le contrôle de chaque pièce", "Prüfung jedes aufgeführten Raums bestätigen", "Confermate ogni locale controllato", "Confermai mintga local controllà")
+    FinalizationIssue.NoRooms -> pick(
+      "Add at least one room to the inspection",
+      "Ajoutez au moins une pièce à l'inspection",
+      "Fügen Sie der Besichtigung mindestens einen Raum hinzu",
+      "Aggiungete almeno un locale all'ispezione",
+      "Agiuntai almain in local a l'inspecziun",
+    )
     FinalizationIssue.Objects -> pick("Confirm every supplied item was checked", "Confirmez chaque objet fourni", "Jeden mitübergebenen Gegenstand bestätigen", "Confermate ogni oggetto fornito", "Confermai mintga object surdà")
     FinalizationIssue.Dossier -> pick("Complete or remove every added dossier component", "Complétez ou retirez chaque rubrique ajoutée au dossier", "Jede hinzugefügte Dossierrubrik ausfüllen oder entfernen", "Completate o rimuovete ogni rubrica aggiunta al dossier", "Cumplettai u allontanai mintga rubrica agiuntada al dossier")
     FinalizationIssue.Keys -> pick("Record a consistent key-transfer outcome and missing-key details", "Consignez une remise des clés cohérente et le détail des clés manquantes", "Stimmige Schlüsselübergabe und fehlende Schlüssel erfassen", "Registrate una consegna coerente e i dettagli delle chiavi mancanti", "Registrai ina surdada coerenta e detagls da clavs mancantas")
@@ -994,7 +968,7 @@ class Str(val lang: Lang) {
       "Une preuve a changé ou manque. Ce constat ne peut pas être exporté.",
       "Belege wurden verändert oder fehlen. Dieses Protokoll kann nicht exportiert werden.",
       "Una prova è cambiata o manca. Questo verbale non può essere esportato.",
-      "Ina novitads è midada u manca. Quest protocol na po betg vegnir exportà.",
+      "Ina cumprova è midada u manca. Quest protocol na po betg vegnir exportà.",
     )
     ExportIssue.Failed -> pick("The PDF could not be created. Try again.", "Le PDF n'a pas pu être créé. Réessayez.", "Das PDF konnte nicht erstellt werden. Erneut versuchen.", "Il PDF non ha potuto essere creato. Riprovate.", "Il PDF n'ha betg pudì vegnir creà. Empruvai danovamain.")
   }
@@ -1008,7 +982,14 @@ class Str(val lang: Lang) {
     "Ina correctura creescha in nov sboz collià cun quest protocol final; l'original resta nunmidà.",
   )
   val amending = pick("Creating amendment…", "Création de l'avenant…", "Nachtrag wird erstellt…", "Creazione integrazione…", "Creaziun dal supplement…")
-  val fingerprint = pick("Evidence fingerprint", "Empreinte des preuves", "Fingerabdruck der Belege", "Impronta delle prove", "Impronta da las novitads")
+  val amendFailed = pick(
+    "The amendment could not be created. Check the free space on the phone and try again.",
+    "L'avenant n'a pas pu être créé. Vérifiez l'espace libre sur le téléphone et réessayez.",
+    "Der Nachtrag konnte nicht erstellt werden. Pruefen Sie den freien Speicher und versuchen Sie es erneut.",
+    "Non è stato possibile creare l'integrazione. Verificare lo spazio libero sul telefono e riprovare.",
+    "Il supplement n'ha betg pudì vegnir creà. Controllai il spazi liber sin il telefon ed empruvai anc ina giada.",
+  )
+  val fingerprint = pick("Evidence fingerprint", "Empreinte des preuves", "Fingerabdruck der Belege", "Impronta delle prove", "Impronta da las cumprovas")
   val pdfFinalized = pick("Finalized record", "Constat finalisé", "Abgeschlossenes Protokoll", "Verbale finalizzato", "Protocol finalisà")
   val pdfAmends = pick("Amends record", "Modifie le constat", "Ändert Protokoll", "Modifica verbale", "Mida protocol")
 
@@ -1050,20 +1031,6 @@ class Str(val lang: Lang) {
   val repairCost = pick("Repair cost CHF", "Coût de la réparation CHF", "Reparaturkosten CHF", "Costo della riparazione CHF", "Custs da reparatura CHF")
   val tenantShare = pick("Tenant's share", "Part du locataire", "Anteil Mieterschaft", "Quota del conduttore", "Part dal locatari")
   val remainingValue = pick("Remaining value", "Valeur résiduelle", "Restwert", "Valore residuo", "Valur restanta")
-  val ironRules = pick(
-    "Normal wear is not charged to the tenant. For damage beyond normal wear, the usual lifespan helps estimate residual value; repair, actual loss and the circumstances still matter. Count age from the last installation or renovation when known.",
-    "L'usure normale n'est pas imputée au locataire. Pour un dégât dépassant l'usure normale, la longévité usuelle aide à estimer la valeur résiduelle ; la réparation, le dommage réel et les circonstances restent déterminants. Comptez l'âge depuis la dernière pose ou rénovation connue.",
-    "Normale Abnützung wird der Mieterschaft nicht belastet. Bei darüber hinausgehendem Schaden hilft die übliche Lebensdauer, den Restwert zu schätzen; Reparatur, tatsächlicher Schaden und Umstände bleiben massgebend. Das Alter zählt ab bekanntem Einbau oder letzter Renovation.",
-    "L'usura normale non è addebitata al conduttore. Per danni che la superano, la durata usuale aiuta a stimare il valore residuo; riparazione, danno effettivo e circostanze restano determinanti. Calcolate l'età dall'ultima installazione o ristrutturazione nota.",
-    "L'isanza normala na vegn betg debitada al locatari. Per donns che van pli lunsch gida la durada usitada a stimar la valur restanta; reparatura, donn effectiv e circumstanzas restan decisivs. Quintai da l'installaziun u renovaziun enconuschenta.",
-  )
-  val tableDisclaimer = pick(
-    "Publicly cited values from the joint MV/HEV lifespan table. The table itself is not binding; the full current edition is sold by HEV and MV.",
-    "Valeurs publiques de la table paritaire MV/HEV. La table n'a pas de force contraignante ; l'édition complète est vendue par HEV et ASLOCA/MV.",
-    "Öffentlich zitierte Werte der paritätischen Lebensdauertabelle MV/HEV. Die Tabelle ist nicht verbindlich; die vollständige aktuelle Ausgabe verkaufen HEV und MV.",
-    "Valori pubblici della tabella paritetica MV/HEV. La tabella non è vincolante; l'edizione completa è venduta da HEV e ASI.",
-    "Valurs publicas da la tabella paritetica MV/HEV. La tabella n'è betg liianta.",
-  )
   val customLifespan = pick("Own value", "Valeur libre", "Eigener Wert", "Valore proprio", "Atgna valur")
 
   fun life(k: dev.verso.limen.sense.LifeKey) = when (k) {
@@ -1099,11 +1066,10 @@ class Str(val lang: Lang) {
     dev.verso.limen.sense.LifeKey.RollerShutterMetal -> pick("Roller shutter, metal", "Volet roulant métal", "Rollladen Metall", "Avvolgibile metallo", "Rullada da metal")
     dev.verso.limen.sense.LifeKey.BlindStraps -> pick("Blind straps", "Sangles de store", "Storen-Gurten", "Cinghie", "Rissas")
     dev.verso.limen.sense.LifeKey.SealantJoints -> pick("Sealant joints", "Joints silicone", "Kittfugen", "Giunti in silicone", "Giuntas da silicon")
-    dev.verso.limen.sense.LifeKey.Radiator -> pick("Radiator", "Radiateur", "Radiator", "Radiatore", "Radiatur")
+    dev.verso.limen.sense.LifeKey.Radiator -> pick("Radiator", "Radiateur", "Heizkörper", "Radiatore", "Radiatur")
   }
 
   // The deadlines face.
-  val keysReturnedOn = pick("Keys returned on", "Clés rendues le", "Schlüssel zurück am", "Chiavi riconsegnate il", "Clavs restituidas ils")
   val safeBy = pick("2-working-day target", "Objectif : 2 jours ouvrables", "Ziel: 2 Werktage", "Obiettivo: 2 giorni lavorativi", "Finamira: 2 dis da lavur")
   val listBy = pick("Contractual 10-day date", "Date contractuelle à 10 jours", "Vertragliches 10-Tage-Datum", "Data contrattuale a 10 giorni", "Data contractuala da 10 dis")
   val latestBy = pick("3-working-day practice reference", "Repère pratique : 3 jours ouvrables", "Praxiswert: 3 Werktage", "Riferimento pratico: 3 giorni lavorativi", "Valur da pratica: 3 dis da lavur")
@@ -1117,7 +1083,7 @@ class Str(val lang: Lang) {
   val clockExitBody = pick(
     "Art. 267a CO requires the landlord to inspect on return and notify the tenant immediately of each defect for which liability is claimed. BGer 4A_388/2013 reports usual guidance of 2 to 3 working days, another view up to one week, and confirms that circumstances decide. Send an itemized notice without delay and keep proof of delivery.",
     "L'art. 267a CO impose au bailleur de vérifier la chose à sa restitution et d'aviser immédiatement le locataire de chaque défaut dont il entend le rendre responsable. L'arrêt TF 4A_388/2013 mentionne une pratique de 2 à 3 jours ouvrables, une autre opinion allant jusqu'à une semaine, et rappelle que les circonstances décident. Envoyez sans délai un avis détaillé et conservez la preuve d'envoi.",
-    "Art. 267a OR verlangt, dass die Vermieterschaft bei der Rückgabe prüft und der Mieterschaft jeden Mangel, für den sie einstehen soll, sofort meldet. BGer 4A_388/2013 nennt als übliche Richtlinie 2 bis 3 Werktage, eine andere Auffassung bis zu einer Woche, und stellt auf die Umstände ab. Eine einzelne, nachweisbare Mitteilung ohne Verzug senden.",
+    "Art. 267a OR verlangt, dass die Vermieterschaft bei der Rückgabe prüft und der Mieterschaft jeden Mangel, für den sie einstehen soll, sofort meldet. BGer 4A_388/2013 nennt als übliche Richtlinie 2 bis 3 Werktage, eine andere Auffassung bis zu einer Woche, und stellt auf die Umstände ab. Senden Sie unverzüglich eine detaillierte Mitteilung und bewahren Sie den Zustellnachweis auf.",
     "L'art. 267a CO impone al locatore di esaminare la cosa alla riconsegna e di notificare immediatamente al conduttore ogni difetto di cui intende renderlo responsabile. La sentenza TF 4A_388/2013 menziona una prassi di 2 o 3 giorni lavorativi, un'altra opinione fino a una settimana, e conferma che contano le circostanze. Inviate senza ritardo una notifica dettagliata e conservate la prova.",
     "L'art. 267a DO pretenda che il locatur examineschia l'object tar la restituziun e notifitgeschia immediat mintga mancanza imputada al locatari. La sentenzia TF 4A_388/2013 menziunescha 2 fin 3 dis da lavur sco pratica usitada, in'autra opiniun fin ad in'emna, e resguarda las circumstanzas. Tramettai senza retard ina glista detagliada e conservai la cumprova.",
   )
@@ -1135,32 +1101,6 @@ class Str(val lang: Lang) {
     "Verificate il contratto e le regole cantonali applicabili. Se prevedono dieci giorni per completare il verbale d'entrata, rispettate tale termine; altrimenti segnalate rapidamente per iscritto gli ulteriori difetti e conservate la prova. Dieci giorni non sono un termine legale federale uniforme.",
     "Controllai il contract e las reglas chantunalas applitgablas. Sch'ellas fixeschan diesch dis per cumplettar il protocol d'entrada, observai quel termin; uschiglio annunziai svelt en scrit ulteriuras mancanzas e conservai la cumprova. Diesch dis n'èn betg in termin federal unitar.",
   )
-  val clockHiddenTitle = pick("Hidden defects", "Défauts cachés", "Verdeckte Mängel", "Difetti nascosti", "Mancanzas zuppadas")
-  val clockHiddenBody = pick(
-    "Under Art. 267a CO, a defect that could not be found during the customary inspection must be notified immediately after discovery; delay puts the related claim at risk.",
-    "Selon l'art. 267a CO, un défaut impossible à découvrir lors du contrôle usuel doit être signalé immédiatement après sa découverte ; un retard met en péril la prétention correspondante.",
-    "Nach Art. 267a OR muss ein bei üblicher Prüfung nicht erkennbarer Mangel sofort nach der Entdeckung gemeldet werden; eine Verzögerung gefährdet den entsprechenden Anspruch.",
-    "Secondo l'art. 267a CO, un difetto non riconoscibile con il controllo usuale va notificato immediatamente dopo la scoperta; un ritardo mette a rischio la relativa pretesa.",
-    "Tenor l'art. 267a DO sto ina mancanza betg visibla tar ina controlla usitada vegnir notifitgada immediat suenter la scuverta; in retard periclitescha la pretensiun.",
-  )
-  val clockDepositTitle = pick("The deposit's year", "L'année de la garantie", "Das Jahr des Depots", "L'anno del deposito", "L'onn dal deposit")
-  val clockDepositBody = pick(
-    "Under Art. 257e CO, the bank releases the blocked deposit with both parties' agreement, an unopposed payment order or an enforceable judgment. If the landlord starts no court, debt-enforcement or bankruptcy claim within one year after the tenancy ends, the tenant may request repayment from the bank.",
-    "Selon l'art. 257e CO, la banque libère la garantie avec l'accord des deux parties, un commandement de payer non frappé d'opposition ou un jugement exécutoire. Si le bailleur n'engage aucune procédure judiciaire, poursuite ou faillite dans l'année suivant la fin du bail, le locataire peut demander la restitution à la banque.",
-    "Nach Art. 257e OR gibt die Bank das Depot mit Zustimmung beider Parteien, aufgrund eines rechtskräftigen Zahlungsbefehls oder eines rechtskräftigen Urteils frei. Leitet die Vermieterschaft innert eines Jahres nach Mietende kein Gerichts-, Betreibungs- oder Konkursverfahren ein, kann die Mieterschaft die Rückzahlung verlangen.",
-    "Secondo l'art. 257e CO, la banca libera il deposito con l'accordo di entrambe le parti, un precetto esecutivo non opposto o una sentenza esecutiva. Se entro un anno dalla fine della locazione il locatore non avvia un'azione giudiziaria, esecutiva o fallimentare, il conduttore può chiedere la restituzione alla banca.",
-    "Tenor l'art. 257e DO liberescha la banca il deposit cun il consentiment da tuttas duas partidas, in cumond da pajament senza opposiziun u ina sentenzia executabla. Senza procedura giudiziala, d'execuziun u da concurs entaifer in onn po il locatari pretender la restituziun.",
-  )
-  val clockReturnTitle = pick("The return day", "Le jour de la restitution", "Der Rückgabetag", "Il giorno della riconsegna", "Il di da la restituziun")
-  val clockReturnBody = pick(
-    "Check the lease, the agreed appointment and local practice for the exact return time. Where a due date falls on a recognized Sunday or holiday, Art. 78 CO generally moves performance to the next working day unless the agreement provides otherwise. Inspect empty rooms in good light and record who attended.",
-    "Vérifiez le bail, le rendez-vous convenu et l'usage local pour l'heure exacte. Lorsqu'une échéance tombe un dimanche ou un jour férié reconnu, l'art. 78 CO reporte en principe l'exécution au prochain jour ouvrable, sauf convention contraire. Inspectez les locaux vides sous un bon éclairage et notez les présences.",
-    "Für die genaue Rückgabezeit Mietvertrag, vereinbarten Termin und Ortsgebrauch prüfen. Fällt ein Fälligkeitstag auf einen anerkannten Sonntag oder Feiertag, verschiebt Art. 78 OR die Leistung grundsätzlich auf den nächsten Werktag, sofern nichts anderes vereinbart ist. Leere Räume bei gutem Licht prüfen und Anwesende festhalten.",
-    "Per l'ora esatta verificate contratto, appuntamento concordato e uso locale. Se la scadenza cade di domenica o in un giorno festivo riconosciuto, l'art. 78 CO sposta di regola la prestazione al giorno lavorativo successivo, salvo accordo contrario. Ispezionate locali vuoti con buona luce e annotate i presenti.",
-    "Per l'ura exacta controllai il contract, il termin fixà e la pratica locala. Croda il termin sin ina dumengia u in firà renconuschì, sposta l'art. 78 DO per regla la prestaziun sin il proxim di da lavur, sche betg fixà auter. Inspectai locals vids cun buna glisch e registrai las persunas preschentas.",
-  )
-  // Structured tooltips: a lead line, then bullets. The screens never print small text;
-  // everything below lives behind an info mark.
   fun tipRecord() = Tip(
     pick(
       "This signature confirms one thing only: the defects are correctly recorded.",
@@ -1296,46 +1236,6 @@ class Str(val lang: Lang) {
   )
 
 
-  fun tipCounterSign() = Tip(
-    pick(
-      "Both phones hold the same document; each signs its digest.",
-      "Les deux téléphones tiennent le même document ; chacun en signe l'empreinte.",
-      "Beide Telefone halten dasselbe Dokument; jedes signiert dessen Hash.",
-      "Entrambi i telefoni tengono lo stesso documento; ognuno ne firma l'impronta.",
-      "Tuts dus telefons tegnan il medem document; mintgin suttascriva sia impronta.",
-    ),
-    listOf(
-      pick(
-        "First receive the exported PDF from the other phone",
-        "Recevez d'abord le PDF exporté de l'autre téléphone",
-        "Zuerst das exportierte PDF vom anderen Telefon empfangen",
-        "Ricevete prima il PDF esportato dall'altro telefono",
-        "L'emprim retschaiver il PDF exportà da l'auter telefon",
-      ),
-      pick(
-        "Read it, then pick it here: the fingerprint binds your signature to that exact file",
-        "Lisez-le, puis choisissez-le ici : l'empreinte lie votre signature à ce fichier précis",
-        "Lesen, dann hier wählen: der Fingerabdruck bindet Ihre Signatur an genau diese Datei",
-        "Leggetelo, poi sceglietelo qui: l'impronta lega la vostra firma a quel preciso file",
-        "Legiai el, lura tscherni el qua: l'impronta liia Vossa suttascripziun a quella datoteca precisa",
-      ),
-      pick(
-        "Send the small signature file back; the other phone attaches and verifies it",
-        "Renvoyez le petit fichier de signature ; l'autre téléphone le joint et le vérifie",
-        "Die kleine Signaturdatei zurücksenden; das andere Telefon hängt sie an und prüft sie",
-        "Rimandate il piccolo file di firma; l'altro telefono lo allega e lo verifica",
-        "Trametti enavos la pitschna datoteca da suttascripziun; l'auter telefon l'agiunta e la verifitgescha",
-      ),
-      pick(
-        "No account, no network: the files travel by direct share",
-        "Sans compte, sans réseau : les fichiers voyagent par partage direct",
-        "Ohne Konto, ohne Netz: die Dateien reisen per Direktfreigabe",
-        "Senza conto, senza rete: i file viaggiano per condivisione diretta",
-        "Senza conto, senza rait: las datotecas viagian cun cundivisiun directa",
-      ),
-    ),
-  )
-
   fun tipShareNow() = Tip(
     pick(
       "Send the PDF to both parties now, at the door.",
@@ -1459,7 +1359,6 @@ class Str(val lang: Lang) {
     "Nessuna app può aprire questo sito.",
     "Nagina app po avrir questa pagina web.",
   )
-  val perYear = pick("per year", "par an", "pro Jahr", "all'anno", "per onn")
   val currentTerms = pick("Current terms", "Conditions actuelles", "Aktuelle Bedingungen", "Condizioni attuali", "Cundiziuns actualas")
 
   fun tipCompare() = Tip(
@@ -1503,66 +1402,6 @@ class Str(val lang: Lang) {
   )
 
   // ── Role: which side of the threshold holds this phone ────────────────────────────────
-  val roleQuestion = pick(
-    "Who holds this phone?",
-    "Qui tient ce téléphone ?",
-    "Wer hält dieses Telefon?",
-    "Chi tiene questo telefono?",
-    "Tgi tegna quest telefon?",
-  )
-  val profileName = pick("Your name", "Votre nom", "Ihr Name", "Il vostro nome", "Voss num")
-
-  fun tipRole() = Tip(
-    pick(
-      "The instrument adapts to your side of the threshold.",
-      "L'instrument s'adapte à votre côté du seuil.",
-      "Das Instrument passt sich Ihrer Seite der Schwelle an.",
-      "Lo strumento si adatta al vostro lato della soglia.",
-      "L'instrument s'adattescha a Vossa vart da la sava.",
-    ),
-    listOf(
-      pick(
-        "Your deadlines come first on the clocks face",
-        "Vos délais passent en premier sur les échéances",
-        "Ihre Fristen stehen zuerst auf dem Fristenblatt",
-        "I vostri termini vengono per primi sulla faccia TERMINI",
-        "Voss termins vegnan l'emprim sin ils termins",
-      ),
-      pick(
-        "The one-phone handover walk stays the same for both",
-        "L'état des lieux à un seul téléphone reste identique pour les deux",
-        "Die Übergabe auf einem Telefon bleibt für beide gleich",
-        "La riconsegna su un solo telefono resta uguale per entrambi",
-        "La surdada sin in sulet telefon resta la medema per omadus",
-      ),
-      pick(
-        "Change side any time on the link face",
-        "Changez de côté à tout moment sur la face liaison",
-        "Die Seite lässt sich jederzeit auf der Verbindungsseite wechseln",
-        "Cambiate lato in ogni momento sulla faccia collegamento",
-        "Midai la vart da tut temp sin la fatschada da colliaziun",
-      ),
-    ),
-  )
-
-  // ── Profile, welcome and guidance ─────────────────────────────────────────────────────
-  val profileKey = pick("Profile", "Profil", "Profil", "Profilo", "Profil")
-  val resetProfile = pick(
-    "RESET PROFILE",
-    "RÉINITIALISER LE PROFIL",
-    "PROFIL ZURÜCKSETZEN",
-    "AZZERA PROFILO",
-    "REINIZIALISAR IL PROFIL",
-  )
-  val doneKey = pick("DONE", "TERMINÉ", "FERTIG", "FATTO", "FATG")
-  val toolsLabel = pick("Tools", "Outils", "Werkzeuge", "Strumenti", "Utensils")
-  val protocolsLabel = pick(
-    "Your protocols",
-    "Vos états des lieux",
-    "Ihre Protokolle",
-    "I vostri verbali",
-    "Voss protocols",
-  )
   val startNewSession = pick(
     "NEW SESSION",
     "NOUVELLE SESSION",
@@ -1718,10 +1557,10 @@ class Str(val lang: Lang) {
   )
   val street = pick("Street", "Rue", "Strasse", "Via", "Via")
   val flatNumber = pick("House / flat no.", "N° de maison / logement", "Haus- / Wohnungsnr.", "N. civico / appartamento", "Nr. da chasa / abitaziun")
-  val postalCode = pick("Postcode", "NPA", "PLZ", "NPA", "NPA")
+  val postalCode = pick("Postcode", "NPA", "PLZ", "NAP", "NAP")
   val city = pick("City", "Localité", "Ort", "Località", "Lieu")
   val phoneCountry = pick("Phone country / code", "Pays / indicatif téléphonique", "Telefonland / Vorwahl", "Paese / prefisso telefonico", "Pajais / code da telefon")
-  val countryNoMatches = pick("No matching country", "Aucun pays correspondant", "Kein passendes Land", "Nessun paese corrispondente", "Nagìn pajais adattà")
+  val countryNoMatches = pick("No matching country", "Aucun pays correspondant", "Kein passendes Land", "Nessun paese corrispondente", "Nagin pajais adattà")
   val phoneNumber = pick("Phone number", "Numéro de téléphone", "Telefonnummer", "Numero di telefono", "Numer da telefon")
   val addressLookupHint = pick(
     "Type an address, then choose its official suggestion.",
@@ -1757,43 +1596,6 @@ class Str(val lang: Lang) {
     "Limen registra la consegna dell'alloggio, dalla prima lettura al PDF finale ricevuto da entrambe le parti.",
     "Limen documentescha la surdada da l'abitaziun, da l'emprima letga fin al PDF final per omaduas partidas.",
   )
-  val howItWorks = pick(
-    "How it works",
-    "Comment ça marche",
-    "So funktioniert es",
-    "Come funziona",
-    "Co quai funcziuna",
-  )
-  val guideSteps = listOf(
-    pick(
-      "Prepare the protocol together",
-      "Préparez le protocole ensemble",
-      "Bereitet das Protokoll gemeinsam vor",
-      "Preparate il verbale insieme",
-      "Preparai il protocol ensemen",
-    ),
-    pick(
-      "Walk the rooms and note each item",
-      "Parcourez les pièces et notez chaque point",
-      "Geht die Räume durch und haltet jeden Punkt fest",
-      "Percorrete i locali e annotate ogni punto",
-      "Giai tras ils locals e notai mintga punct",
-    ),
-    pick(
-      "Sign on this phone, both of you",
-      "Signez sur ce téléphone, tous les deux",
-      "Unterschreibt beide auf diesem Telefon",
-      "Firmate entrambi su questo telefono",
-      "Suttascrivai tuts dus sin quest telefon",
-    ),
-    pick(
-      "Finalize the record, then export and share the PDF",
-      "Finalisez le constat, puis exportez et partagez le PDF",
-      "Protokoll abschliessen, dann PDF exportieren und teilen",
-      "Finalizzate il verbale, poi esportate e condividete il PDF",
-      "Finalisai il protocol, lura exportai e tramettai il PDF",
-    ),
-  )
   fun stepLead(step: FlowStep) = when (step) {
     FlowStep.Hub -> pick(
       "Two halves, in whatever order suits you: what you can see and touch, and what is on paper.",
@@ -1805,42 +1607,42 @@ class Str(val lang: Lang) {
     FlowStep.Inspection -> pick(
       "Go through the flat in your own order. Confirm every listed room after checking it, even when there is no defect.",
       "Parcourez le logement dans l'ordre qui vous convient. Confirmez chaque pièce après contrôle, même sans défaut.",
-      "Geht in eurer eigenen Reihenfolge durch. Bestätigt jeden aufgeführten Raum nach der Prüfung, auch ohne Mangel.",
+      "Gehen Sie in Ihrer eigenen Reihenfolge durch. Bestätigen Sie jeden aufgeführten Raum nach der Prüfung, auch ohne Mangel.",
       "Percorrete l'alloggio nell'ordine che preferite. Confermate ogni locale dopo il controllo, anche senza difetti.",
       "Giai tras l'abitaziun en voss agen urden. Confermai mintga local suenter la controlla, era senza mancanzas.",
     )
     FlowStep.Objects -> pick(
       "Use one row per supplied item, confirm its condition and add a clear photo when useful.",
       "Utilisez une ligne par objet fourni, confirmez son état et ajoutez une photo nette si utile.",
-      "Je mitgeliefertem Gegenstand eine Zeile verwenden, Zustand bestätigen und bei Bedarf ein klares Foto hinzufügen.",
+      "Verwenden Sie je mitgeliefertem Gegenstand eine Zeile, bestätigen Sie den Zustand und fügen Sie bei Bedarf ein klares Foto hinzu.",
       "Usate una riga per ogni oggetto fornito, confermatene lo stato e aggiungete una foto chiara se utile.",
       "Duvrai ina lingia per mintga object furnì, confermai ses stadi ed agiuntai ina foto clera sche util.",
     )
     FlowStep.Dossier -> pick(
       "The paperwork around the handover. Add a component only when this handover has it.",
       "Les documents autour de la remise. N'ajoutez une rubrique que si elle concerne cette remise.",
-      "Das Papier rund um die Übergabe. Fügt eine Rubrik nur hinzu, wenn sie diese Übergabe betrifft.",
+      "Das Papier rund um die Übergabe. Fügen Sie eine Rubrik nur hinzu, wenn sie diese Übergabe betrifft.",
       "I documenti attorno alla consegna. Aggiungete una rubrica solo se riguarda questa consegna.",
       "Ils documents enturn la surdada. Agiuntai ina rubrica mo sch'ella pertutga questa surdada.",
     )
     FlowStep.Review -> pick(
       "Read the findings aloud together and record each side's position. Signing does not decide liability or payment.",
       "Relisez les constats ensemble et consignez la position de chacun. La signature ne décide ni la responsabilité ni le paiement.",
-      "Geht die Befunde gemeinsam durch und haltet beide Positionen fest. Die Unterschrift entscheidet weder Haftung noch Zahlung.",
+      "Gehen Sie die Befunde gemeinsam durch und halten Sie beide Positionen fest. Die Unterschrift entscheidet weder Haftung noch Zahlung.",
       "Rileggete insieme i rilievi e registrate la posizione di ciascuno. La firma non decide responsabilità o pagamento.",
       "Legì ils resultats ensemen e registrai la posiziun da mintga vart. La suttascripziun na decida betg responsabladad u pajament.",
     )
     FlowStep.Sign -> pick(
       "Review who must sign or refuse the handover record and record any reservation first.",
       "Vérifiez qui doit signer ou refuser le constat et consignez d'abord toute réserve.",
-      "Prüft, wer das Übergabeprotokoll unterzeichnet oder verweigert, und erfasst Vorbehalte zuerst.",
+      "Prüfen Sie, wer das Übergabeprotokoll unterzeichnet oder verweigert, und erfassen Sie Vorbehalte zuerst.",
       "Verificate chi deve firmare o rifiutare il verbale e registrate prima ogni riserva.",
       "Controllai tgi che sto suttascriver u refusar il protocol e registrai l'emprim mintga resalva.",
     )
     FlowStep.Export -> pick(
       "Export the PDF and hand a copy to each side right now.",
       "Exportez le PDF et remettez un exemplaire à chaque partie immédiatement.",
-      "Exportiert das PDF und übergebt jeder Seite sofort ein Exemplar.",
+      "Exportieren Sie das PDF und übergeben Sie jeder Seite sofort ein Exemplar.",
       "Esportate il PDF e consegnate subito una copia a ciascuna parte.",
       "Exportai il PDF e surdatti immediat ina copia a mintga vart.",
     )

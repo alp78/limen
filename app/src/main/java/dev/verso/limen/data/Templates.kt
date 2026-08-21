@@ -51,7 +51,7 @@ object Templates {
 
   private val shell = listOf(
     ItemKey.Floor, ItemKey.Walls, ItemKey.Ceiling, ItemKey.Skirtings,
-    ItemKey.Door, ItemKey.Windows, ItemKey.WindowSills,
+    ItemKey.Door, ItemKey.DoorLock, ItemKey.Windows, ItemKey.WindowSills,
     ItemKey.Blinds, ItemKey.BlindStraps, ItemKey.CurtainRails,
     ItemKey.Radiator, ItemKey.SocketsSwitches, ItemKey.Lighting,
   )
@@ -97,7 +97,4 @@ object Templates {
       else -> shell
     }
 
-  /** A blank room always begins with its complete, editable canonical list. */
-  fun itemRowsFor(kind: RoomKind): List<RoomItem> =
-    itemsFor(kind).map { key -> RoomItem(key = key, itemId = key.name) }
 }

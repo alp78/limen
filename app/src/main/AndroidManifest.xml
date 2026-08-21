@@ -22,8 +22,13 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Limen">
+        <!-- Rotation is handled rather than survived. Compose keeps its state across a
+             configuration change declared here, and without it the activity is recreated: the
+             signature pad closed and discarded its ink, the backup password box emptied, and
+             every half-typed room, key and object name held in a plain remember was lost. -->
         <activity
             android:name=".MainActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden"
             android:exported="true"
             android:launchMode="singleTask">
             <intent-filter>

@@ -51,7 +51,7 @@ import dev.verso.limen.theme.Limen
  * The ink pad, Signet's proven capture brought over: quadratic-midpoint smoothing, a tap
  * detector so dots register (the crossing of a t never becomes a drag), a baseline guide,
  * and an alpha-bounding-box trim before the PNG leaves the pad. Always dark ink on white,
- * whatever the theme: the paper the signature lands on is white.
+ * whatever the theme: the paper the signature is drawn on is white.
  */
 private data class InkStroke(val points: List<Offset>, val width: Float)
 

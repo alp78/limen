@@ -6,7 +6,7 @@ import kotlinx.serialization.ExperimentalSerializationApi
 
 /**
  * The protocol on disk, one JSON file per handover, written by this app and read back
- * years later when the exit protocol is seeded from the entry one. Every enum lands in
+ * years later when the exit protocol is seeded from the entry one. Every enum is written to
  * the JSON by name and every field has a default, so a protocol written by version 1 must
  * open in version 20: [Protocol.schema] is bumped on breaking changes and the store
  * migrates, never rejects.
@@ -90,6 +90,24 @@ data class Protocol(
   @OptIn(ExperimentalSerializationApi::class)
   @EncodeDefault(EncodeDefault.Mode.NEVER)
   val dossier: List<DossierCard> = emptyList(),
+  /**
+   * True once the operator has picked components by hand, which is the only way to tell an
+   * empty [dossier] that means "every component removed" from one that means "written before
+   * the dossier existed". Without it, removing the last card fell straight back to deriving
+   * the list from content and the card reappeared on the next frame.
+   */
+  @OptIn(ExperimentalSerializationApi::class)
+  @EncodeDefault(EncodeDefault.Mode.NEVER)
+  val dossierChosen: Boolean = false,
+  /**
+   * The fingerprint of the record this one corrects, captured when the amendment is created.
+   * The store id it used to print identifies nothing to a reader: every exported document
+   * names itself by "LIMEN-" and the first sixteen characters of its fingerprint, and the id
+   * appears on no PDF anywhere. Blank on amendments made before this was carried.
+   */
+  @OptIn(ExperimentalSerializationApi::class)
+  @EncodeDefault(EncodeDefault.Mode.NEVER)
+  val amendedFromFingerprint: String = "",
   val defects: List<Defect> = emptyList(),
   /** Free remarks, including the reservation lines a party dictates. */
   val remarks: String = "",
@@ -460,6 +478,20 @@ data class Defect(
   val objectId: String = "",
 )
 
+/**
+ * True while a finding carries nothing but the place it hangs on. Written as a comparison
+ * against a fresh shell rather than a list of blank checks, so a field added to [Defect]
+ * later cannot quietly fall out of the test and take a recorded answer with it.
+ */
+fun Defect.isUntouched(): Boolean = this == Defect(
+  id = id,
+  roomId = roomId,
+  item = item,
+  itemId = itemId,
+  itemLabel = itemLabel,
+  objectId = objectId,
+)
+
 @Serializable
 enum class FixBy { Open, Tenant, Landlord }
 
@@ -522,7 +554,9 @@ fun Meters.isBlank(): Boolean =
  * finalized record would change its canonical JSON and void its fingerprint.
  */
 fun Protocol.dossierCards(): List<DossierCard> {
-  if (dossier.isNotEmpty()) return dossier
+  // dossier first, so a record whose components were chosen before the flag existed still
+  // answers from its own list rather than from its content.
+  if (dossierChosen || dossier.isNotEmpty()) return dossier
   return buildList {
     if (contract != Contract()) add(DossierCard.Contract)
     if (deposit.kind != DepositKind.None) add(DossierCard.Deposit)

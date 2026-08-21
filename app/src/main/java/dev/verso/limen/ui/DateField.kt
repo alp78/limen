@@ -51,8 +51,16 @@ fun DateField(
   // arrive through it, while a half-typed date leaves it alone and so survives typing.
   var text by remember(stored) { mutableStateOf(SwissDate.display(stored)) }
   var picking by remember { mutableStateOf(false) }
+  var focused by remember { mutableStateOf(false) }
   val digits = text.filter(Char::isDigit).length
-  val impossible = digits == 8 && SwissDate.toStored(text) == null
+  // A date is wrong when it is complete and impossible, and equally wrong when the field has
+  // been left half typed: "31/08/26" masks to a complete-looking Swiss date, stores nothing
+  // and used to carry no error mark at all, so a repair deadline silently never reached the
+  // record. Only flagged once the field is left, so it does not shout at the first digit.
+  val impossible = when {
+    digits == 8 -> SwissDate.toStored(text) == null
+    else -> digits in 1..7 && !focused
+  }
   val calendar: (@Composable () -> Unit)? = if (locked) null else {
     { IconKey(ButtonGlyph.Calendar, s.pickDate, Modifier.padding(end = 4.dp)) { picking = true } }
   }
@@ -65,6 +73,7 @@ fun DateField(
     keyboardType = KeyboardType.Number,
     isError = impossible,
     trailing = calendar,
+    onFocusChanged = { focused = it },
   ) { raw ->
     text = SwissDate.mask(raw)
     val iso = SwissDate.toStored(text)
@@ -122,8 +131,12 @@ fun TimeField(
   val locked = LocalRecordLocked.current
   var text by remember(stored) { mutableStateOf(stored) }
   var picking by remember { mutableStateOf(false) }
+  var focused by remember { mutableStateOf(false) }
   val digits = text.filter(Char::isDigit).length
-  val impossible = digits == 4 && SwissDate.toStoredTime(text) == null
+  val impossible = when {
+    digits == 4 -> SwissDate.toStoredTime(text) == null
+    else -> digits in 1..3 && !focused
+  }
   val dial: (@Composable () -> Unit)? = if (locked) null else {
     { IconKey(ButtonGlyph.Clock, s.pickTime, Modifier.padding(end = 4.dp)) { picking = true } }
   }
@@ -136,6 +149,7 @@ fun TimeField(
     keyboardType = KeyboardType.Number,
     isError = impossible,
     trailing = dial,
+    onFocusChanged = { focused = it },
   ) { raw ->
     text = SwissDate.maskTime(raw)
     val value = SwissDate.toStoredTime(text)
@@ -163,7 +177,9 @@ fun TimeField(
       },
       confirmButton = {
         SmallKey(s.done) {
-          onChange("%02d:%02d".format(state.hour, state.minute))
+          // Locale.ROOT: the stored time is data, and "%02d" under an Arabic or Bengali
+          // handset locale writes digits the parser then refuses to read back.
+          onChange(String.format(java.util.Locale.ROOT, "%02d:%02d", state.hour, state.minute))
           picking = false
         }
       },

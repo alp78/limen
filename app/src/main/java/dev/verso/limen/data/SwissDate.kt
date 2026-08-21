@@ -65,7 +65,7 @@ object SwissDate {
     val hour = digits.substring(0, 2).toInt()
     val minute = digits.substring(2, 4).toInt()
     if (hour > 23 || minute > 59) return null
-    return "%02d:%02d".format(hour, minute)
+    return String.format(java.util.Locale.ROOT, "%02d:%02d", hour, minute)
   }
 
   fun maskTime(raw: String): String {

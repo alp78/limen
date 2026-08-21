@@ -34,7 +34,7 @@ object ProtocolIntegrity {
         digest.update(label.toByteArray(Charsets.UTF_8))
         digest.update(fileHash(file).toByteArray(Charsets.UTF_8))
       }
-    return digest.digest().joinToString("") { "%02X".format(it) }
+    return digest.digest().hex()
   }
 
   fun matches(protocol: Protocol, photoDir: File, signatureDir: File): Boolean =
@@ -60,8 +60,16 @@ object ProtocolIntegrity {
         digest.update(buffer, 0, read)
       }
     }
-    return digest.digest().joinToString("") { "%02X".format(it) }
+    return digest.digest().hex()
   }
+
+  /**
+   * Locale.ROOT, not the handset's. "%02X" is a Formatter conversion and Formatter localizes
+   * digits: on a handset set to a locale with Arabic-Indic numerals the same bytes rendered as
+   * a different string, so the same record fingerprinted differently there than anywhere else.
+   */
+  private fun ByteArray.hex(): String =
+    joinToString("") { String.format(java.util.Locale.ROOT, "%02X", it) }
 
   private fun evidenceFiles(
     protocol: Protocol,

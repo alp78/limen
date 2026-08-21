@@ -113,6 +113,11 @@ class HandoffMatrixTest {
     compose.onNodeWithText("Room").assertExists()
     compose.onNodeWithText("OBJECTS").performClick()
     compose.onAllNodesWithText("Add something else").assertCountEquals(2)
+    // Back retraces the route rather than jumping to the hub. Objects is reached through a
+    // door at the foot of the inspection, so one back press belongs to that door and returns
+    // to the rooms; the hub is one press further out.
+    compose.onNodeWithContentDescription("BACK").performClick()
+    compose.onNodeWithText("Room").assertExists()
     compose.onNodeWithContentDescription("BACK").performClick()
     compose.onNodeWithText("DOSSIER").performClick()
     compose.onNodeWithText("Parties", substring = true).assertExists()

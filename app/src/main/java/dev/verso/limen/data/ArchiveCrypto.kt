@@ -5,7 +5,6 @@ import java.io.OutputStream
 import java.io.PushbackInputStream
 import java.security.SecureRandom
 import javax.crypto.Cipher
-import javax.crypto.CipherInputStream
 import javax.crypto.CipherOutputStream
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.GCMParameterSpec
@@ -20,6 +19,9 @@ internal object ArchiveCrypto {
   private const val IV_BYTES = 12
   private const val KEY_BITS = 256
   private const val ITERATIONS = 210_000
+
+  /** The same ceiling the unpacker applies, enforced before the unpacker ever sees the bytes. */
+  private const val MAX_PLAINTEXT_BYTES = 2L * 1024L * 1024L * 1024L
   private val random = SecureRandom()
 
   fun export(root: java.io.File, password: CharArray, output: OutputStream) {
@@ -62,8 +64,35 @@ internal object ArchiveCrypto {
       init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(128, iv))
       updateAAD(header)
     }
-    return CipherInputStream(probe, cipher).use { decrypted ->
-      ArchiveIO.import(root, decrypted)
+    // Decrypted whole, and authenticated, BEFORE a single record is installed.
+    //
+    // CipherInputStream is the trap here: its close() calls doFinal and then swallows the
+    // AEADBadTagException, so a tampered or truncated archive read that way reports success.
+    // The zip reader compounds it by stopping at the central directory, so the tag bytes were
+    // never even reached, and ArchiveIO.import installs as it reads. Calling doFinal here by
+    // hand is what makes the tag mean something.
+    val staged = java.io.File.createTempFile("archive-decrypt-", ".zip", root)
+    try {
+      staged.outputStream().buffered().use { out ->
+        val buffer = ByteArray(64 * 1024)
+        var written = 0L
+        while (true) {
+          val read = probe.read(buffer)
+          if (read < 0) break
+          if (read == 0) continue
+          cipher.update(buffer, 0, read)?.let { plain ->
+            written += plain.size
+            require(written <= MAX_PLAINTEXT_BYTES) { "Archive is too large" }
+            out.write(plain)
+          }
+        }
+        cipher.doFinal()?.let(out::write)
+      }
+      return staged.inputStream().buffered().use { verified ->
+        ArchiveIO.import(root, verified)
+      }
+    } finally {
+      staged.delete()
     }
   }
 

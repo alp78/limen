@@ -27,28 +27,39 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.verso.limen.data.Kind
 import dev.verso.limen.data.Protocol
+import dev.verso.limen.data.SwissDate
 import dev.verso.limen.theme.Limen
 
-private enum class HomePage { Landing, NewSession, Sessions, DataPrivacy }
+enum class HomePage { Landing, NewSession, Sessions, DataPrivacy }
 
-/** The landing offers choices, not an identity gate or a partially exposed case list. */
+/**
+ * The landing offers choices, not an identity gate or a partially exposed case list.
+ *
+ * The page is held by the caller. Held here, it was remembered inside a composable the
+ * activity swaps out whole whenever a record opens, so every return from a handover forgot
+ * the session list the handover was opened from.
+ */
 @Composable
-fun HomeScreen(modifier: Modifier = Modifier, vm: LimenViewModel = viewModel(), s: Str) {
-  var page by rememberSaveable { mutableStateOf(HomePage.Landing) }
-  var entryToSeedId by rememberSaveable { mutableStateOf<String?>(null) }
+fun HomeScreen(
+  modifier: Modifier = Modifier,
+  vm: LimenViewModel = viewModel(),
+  s: Str,
+  page: HomePage,
+  entryToSeedId: String?,
+  onPage: (HomePage) -> Unit,
+  onSeed: (String?) -> Unit,
+) {
   BackHandler(enabled = page != HomePage.Landing) {
-    page = HomePage.Landing
-    entryToSeedId = null
+    onSeed(null)
+    onPage(HomePage.Landing)
   }
 
   when (page) {
@@ -56,29 +67,35 @@ fun HomeScreen(modifier: Modifier = Modifier, vm: LimenViewModel = viewModel(), 
       modifier = modifier,
       vm = vm,
       s = s,
-      onNewSession = { entryToSeedId = null; page = HomePage.NewSession },
-      onSessions = { page = HomePage.Sessions },
-      onDataPrivacy = { page = HomePage.DataPrivacy },
+      onNewSession = { onSeed(null); onPage(HomePage.NewSession) },
+      onSessions = { onPage(HomePage.Sessions) },
+      onDataPrivacy = { onPage(HomePage.DataPrivacy) },
     )
     HomePage.NewSession -> NewSessionScreen(
       vm = vm,
       s = s,
       entryToSeed = entryToSeedId?.let { id -> vm.protocols.firstOrNull { it.id == id } },
-      onBack = { entryToSeedId = null; page = HomePage.Landing },
+      // Back to where the form was opened from: an exit seeded from the session list used
+      // to drop the operator on the landing, two taps away from the list it came from.
+      onBack = {
+        val fromSessions = entryToSeedId != null
+        onSeed(null)
+        onPage(if (fromSessions) HomePage.Sessions else HomePage.Landing)
+      },
     )
     HomePage.Sessions -> SessionsScreen(
       modifier = modifier,
       vm = vm,
       s = s,
-      onBack = { page = HomePage.Landing },
-      onEmpty = { page = HomePage.Landing },
-      onSeedExit = { entry -> entryToSeedId = entry.id; page = HomePage.NewSession },
+      onBack = { onPage(HomePage.Landing) },
+      onEmpty = { onPage(HomePage.Landing) },
+      onSeedExit = { entry -> onSeed(entry.id); onPage(HomePage.NewSession) },
     )
     HomePage.DataPrivacy -> DataPrivacyScreen(
       modifier = modifier,
       vm = vm,
       s = s,
-      onBack = { page = HomePage.Landing },
+      onBack = { onPage(HomePage.Landing) },
     )
   }
 }
@@ -190,25 +207,6 @@ private fun SessionsScreen(
   }
 }
 
-/** The four steps of the handover, numbered, at reading size. */
-@Composable
-fun GuideSteps(s: Str) {
-  Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-    s.guideSteps.forEachIndexed { i, step ->
-      Row(verticalAlignment = Alignment.Top) {
-        Text(
-          "${i + 1}",
-          fontFamily = FontFamily.Monospace,
-          style = MaterialTheme.typography.bodyLarge,
-          color = Limen.colors.inkDim,
-          modifier = Modifier.width(24.dp),
-        )
-        Text(step, style = MaterialTheme.typography.bodyLarge, color = Limen.colors.ink)
-      }
-    }
-  }
-}
-
 /** One dossier: what, where, when, and how far it got. Delete asks twice, quietly. */
 @Composable
 private fun ProtocolCard(
@@ -239,7 +237,7 @@ private fun ProtocolCard(
         Text(
           listOf(
             if (p.kind == Kind.Entry) s.entry else s.exit,
-            p.handoverDate,
+            SwissDate.display(p.handoverDate),
             p.place,
           ).filter { it.isNotBlank() }.joinToString(" · "),
           style = MaterialTheme.typography.labelSmall,

@@ -14,8 +14,11 @@ import dev.verso.limen.data.resolvedLegalOverlay
 import java.io.File
 
 internal fun requiredRecordRoles(record: Protocol, fallbackRole: Role?): List<Role> = buildList {
-  if (record.oneSided) {
-    (record.sessionRole ?: fallbackRole)?.let(::add)
+  val side = record.sessionRole ?: fallbackRole
+  // A one-sided record with no side known falls back to both, because the Sign step draws a
+  // row per required role: an empty list left the gate demanding a signature it never showed.
+  if (record.oneSided && side != null) {
+    add(side)
   } else {
     add(Role.Tenant)
     add(Role.Landlord)
@@ -23,6 +26,22 @@ internal fun requiredRecordRoles(record: Protocol, fallbackRole: Role?): List<Ro
   if (record.parties.any { it.role == Role.Witness }) add(Role.Witness)
   if (record.parties.any { it.role == Role.Expert }) add(Role.Expert)
 }.distinct()
+
+/**
+ * The key outcome a record needs before it can be frozen. Shared with the dossier's own
+ * section chip, which used to report the card complete on the pill alone and so sat ticked
+ * beside a blocked FINALIZE with nothing on screen naming the missing count.
+ */
+internal fun keyOutcomeRecorded(record: Protocol): Boolean {
+  if (record.keys.any { it.count < 0 } || record.rooms.any { it.keysCount < 0 }) return false
+  val physical = record.keys.sumOf { it.count } + record.rooms.sumOf { it.keysCount }
+  return when (record.keyTransfer) {
+    KeyTransferStatus.NotRecorded -> false
+    KeyTransferStatus.AllTransferred -> physical > 0
+    KeyTransferStatus.NoPhysicalKeys -> physical == 0 && !record.selfMadeKeys
+    KeyTransferStatus.Incomplete -> record.keyTransferNote.isNotBlank()
+  }
+}
 
 internal fun protocolCompletionIssues(
   record: Protocol,
@@ -41,7 +60,11 @@ internal fun protocolCompletionIssues(
   if (listOf(Role.Tenant, Role.Landlord).any { role ->
       record.parties.firstOrNull { it.role == role }?.name.isNullOrBlank()
     }) add(FinalizationIssue.Parties)
-  if (record.rooms.isEmpty() || record.rooms.any { !it.inspected }) add(FinalizationIssue.Rooms)
+  // Two different states with two different answers: an empty inspection needs a room added,
+  // and a populated one needs its rooms confirmed. One message covered both and told a record
+  // with no rooms at all to "confirm every listed room was inspected".
+  if (record.rooms.isEmpty()) add(FinalizationIssue.NoRooms)
+  else if (record.rooms.any { !it.inspected }) add(FinalizationIssue.Rooms)
   if (record.objects.any { !it.inspected }) add(FinalizationIssue.Objects)
 
   val cards = record.dossierCards()
@@ -59,24 +82,16 @@ internal fun protocolCompletionIssues(
       (DossierCard.Notes in cards && record.remarks.isBlank() && record.chargesStatementBy.isBlank())
   if (emptyAddedComponent) add(FinalizationIssue.Dossier)
 
-  val physicalKeyCount = record.keys.sumOf { it.count } + record.rooms.sumOf { it.keysCount }
-  val invalidKeyCount = record.keys.any { it.count < 0 } || record.rooms.any { it.keysCount < 0 }
-  val keyOutcomeComplete = !invalidKeyCount && when (record.keyTransfer) {
-    KeyTransferStatus.NotRecorded -> false
-    KeyTransferStatus.AllTransferred -> physicalKeyCount > 0
-    KeyTransferStatus.NoPhysicalKeys -> physicalKeyCount == 0 && !record.selfMadeKeys
-    KeyTransferStatus.Incomplete -> record.keyTransferNote.isNotBlank()
-  }
-  if (!keyOutcomeComplete) add(FinalizationIssue.Keys)
+  // Gated on the card like every other component above it: removing the Keys card takes the
+  // only control that can record an outcome off the screen, and an ungated rule then blocked
+  // finalization forever with nothing left anywhere to answer it.
+  if (DossierCard.Keys in cards && !keyOutcomeRecorded(record)) add(FinalizationIssue.Keys)
   if (record.oneSided && record.unilateralReason == null) add(FinalizationIssue.UnilateralReason)
   if (record.defects.any { it.text.isBlank() }) add(FinalizationIssue.DefectText)
   if (ProtocolIntegrity.missingEvidence(record, photoDir, signatureDir).isNotEmpty()) {
     add(FinalizationIssue.Evidence)
   }
-  val unilateralSideMissing = record.oneSided && requiredRoles.none {
-    it == Role.Tenant || it == Role.Landlord
-  }
-  if (unilateralSideMissing || requiredRoles.any { role ->
+  if (requiredRoles.any { role ->
       record.signatures.none { signature ->
         signature.role == role && signature.plane == Plane.Record && record.isCurrent(signature) &&
           (signature.refused || signature.file.isNotBlank())

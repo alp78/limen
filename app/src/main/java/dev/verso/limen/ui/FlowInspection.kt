@@ -1,6 +1,5 @@
 package dev.verso.limen.ui
 
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +19,8 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ArrowDropDown
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -224,7 +225,11 @@ private fun RoomDetail(vm: LimenViewModel, s: Str, p: Protocol, room: Room) {
     Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
     verticalArrangement = Arrangement.spacedBy(10.dp),
   ) {
+    // Back on the left, where the other five back keys in the app are, and where the
+    // masthead's own sits. On the right it was directly under that one and read as its twin.
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+      IconKey(ButtonGlyph.Back, s.back) { vm.closeRoom() }
+      Spacer(Modifier.width(8.dp))
       Column(Modifier.weight(1f)) {
         Text(
           room.name.ifBlank { s.room(room.kind) }.uppercase(),
@@ -239,7 +244,6 @@ private fun RoomDetail(vm: LimenViewModel, s: Str, p: Protocol, room: Room) {
           )
         }
       }
-      IconKey(ButtonGlyph.Back, s.back) { vm.closeRoom() }
     }
 
     // Only a room the canon has no word for needs naming; the rest are named already.
@@ -390,7 +394,7 @@ private fun ItemPicker(s: Str, kind: RoomKind, onPick: (ItemKey, String) -> Unit
             color = Limen.colors.warningOutline,
             modifier = Modifier.weight(1f),
           )
-          Text("▾", style = MaterialTheme.typography.bodyMedium, color = Limen.colors.warningOutline)
+          Icon(Icons.Outlined.ArrowDropDown, contentDescription = null, tint = Limen.colors.warningOutline)
         }
       }
       DropdownMenu(

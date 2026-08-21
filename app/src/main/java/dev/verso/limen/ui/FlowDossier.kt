@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.width
@@ -22,6 +21,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material.icons.Icons
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.outlined.ArrowDropDown
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -70,6 +74,12 @@ import java.time.LocalDate
  * look at a deposit field, and its PDF never shows an empty one.
  */
 @OptIn(ExperimentalFoundationApi::class)
+/**
+ * How far above the target a section chip has to stop. The header is opaque and sticky, so
+ * scrolling the panel to the exact top put its first lines behind the header.
+ */
+private const val HEADER_OVERLAP_PX = 160
+
 @Composable
 internal fun DossierStep(vm: LimenViewModel, s: Str, p: Protocol) {
   val cards = p.dossierCards()
@@ -106,7 +116,7 @@ internal fun DossierStep(vm: LimenViewModel, s: Str, p: Protocol) {
             active = index == activeSection,
             selectionState = index == activeSection,
           ) {
-            scope.launch { listState.animateScrollToItem(index + 1) }
+            scope.launch { listState.animateScrollToItem(index + 1, scrollOffset = -HEADER_OVERLAP_PX) }
           }
         }
       }
@@ -199,7 +209,9 @@ private fun dossierSectionComplete(p: Protocol, card: DossierCard): Boolean = wh
     ).all { it.isNotBlank() }
   }
   DossierCard.Meters -> !p.meters.isBlank()
-  DossierCard.Keys -> p.keyTransfer != KeyTransferStatus.NotRecorded
+  // The same rule the finalization gate applies, so a ticked chip cannot sit beside a
+  // blocked FINALIZE with nothing on screen naming what is missing.
+  DossierCard.Keys -> keyOutcomeRecorded(p)
   DossierCard.Notes -> p.remarks.isNotBlank() || p.chargesStatementBy.isNotBlank()
 }
 
@@ -245,17 +257,16 @@ private fun ObjectCard(vm: LimenViewModel, s: Str, p: Protocol) {
     focused = if (isFocused) focused + field else focused - field
   }
 
+  // Typing a street name does NOT clear the canton or the cantonal answers. It used to, and
+  // one keystroke in Place then wiped every overlay answer with no undo and no panel left on
+  // screen to show what had gone. The canton changes where the canton is chosen: the picker
+  // below and the candidate list above, both of which reset the answers only when the canton
+  // itself actually moves.
   fun editAddress(transform: (Protocol) -> Protocol) {
     verified = false
     matches = emptyList()
     searching = false
-    vm.edit { current ->
-      transform(current).copy(
-        objectCanton = null,
-        romandFrameworkInLease = false,
-        legalOverlay = LegalOverlayRecord(),
-      )
-    }
+    vm.edit(transform)
   }
 
   Panel(label = s.objectLabel, info = s.tipAddress()) {
@@ -267,14 +278,16 @@ private fun ObjectCard(vm: LimenViewModel, s: Str, p: Protocol) {
       if (anyFocus && !verified) {
         AddressMatchList(matches) { candidate ->
           vm.edit {
+            val moved = it.objectCanton != candidate.canton
             it.copy(
               address = listOf(candidate.street, candidate.flatNumber)
                 .filter { part -> part.isNotBlank() }.joinToString(" "),
               place = listOf(candidate.postalCode, candidate.city)
                 .filter { part -> part.isNotBlank() }.joinToString(" "),
               objectCanton = candidate.canton,
-              romandFrameworkInLease = false,
-              legalOverlay = LegalOverlayRecord(),
+              // Re-picking the same address must not discard answers already given for it.
+              romandFrameworkInLease = if (moved) false else it.romandFrameworkInLease,
+              legalOverlay = if (moved) LegalOverlayRecord() else it.legalOverlay,
             )
           }
           matches = emptyList()
@@ -449,10 +462,10 @@ private fun ContractCard(vm: LimenViewModel, s: Str, p: Protocol, onRemove: () -
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
       CardHeader(s, onRemove)
       Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Field(s.monthlyRent, p.contract.monthlyRentChf, Modifier.weight(1f)) { v ->
+        Field(s.monthlyRent, p.contract.monthlyRentChf, Modifier.weight(1f), keyboardType = KeyboardType.Decimal) { v ->
           vm.edit { it.copy(contract = it.contract.copy(monthlyRentChf = v)) }
         }
-        Field(s.serviceCharges, p.contract.serviceChargesChf, Modifier.weight(1f)) { v ->
+        Field(s.serviceCharges, p.contract.serviceChargesChf, Modifier.weight(1f), keyboardType = KeyboardType.Decimal) { v ->
           vm.edit { it.copy(contract = it.contract.copy(serviceChargesChf = v)) }
         }
       }
@@ -516,7 +529,7 @@ private fun DepositCard(vm: LimenViewModel, s: Str, p: Protocol, onRemove: () ->
                 Field(s.depositPolicy, p.deposit.policyNo, Modifier.weight(1.3f)) { v ->
                   vm.edit { it.copy(deposit = it.deposit.copy(policyNo = v)) }
                 }
-                Field(s.depositAmount, p.deposit.amountChf, Modifier.weight(1f)) { v ->
+                Field(s.depositAmount, p.deposit.amountChf, Modifier.weight(1f), keyboardType = KeyboardType.Decimal) { v ->
                   vm.edit { it.copy(deposit = it.deposit.copy(amountChf = v)) }
                 }
               }
@@ -528,7 +541,7 @@ private fun DepositCard(vm: LimenViewModel, s: Str, p: Protocol, onRemove: () ->
                 Field(s.depositAccount, p.deposit.account, Modifier.weight(1.3f)) { v ->
                   vm.edit { it.copy(deposit = it.deposit.copy(account = v)) }
                 }
-                Field(s.depositAmount, p.deposit.amountChf, Modifier.weight(1f)) { v ->
+                Field(s.depositAmount, p.deposit.amountChf, Modifier.weight(1f), keyboardType = KeyboardType.Decimal) { v ->
                   vm.edit { it.copy(deposit = it.deposit.copy(amountChf = v)) }
                 }
               }
@@ -558,26 +571,26 @@ private fun MetersCard(vm: LimenViewModel, s: Str, p: Protocol, onRemove: () -> 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
       CardHeader(s, onRemove)
       Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Field(s.meterElec1, p.meters.electricity1, Modifier.weight(1f)) { v ->
+        Field(s.meterElec1, p.meters.electricity1, Modifier.weight(1f), keyboardType = KeyboardType.Decimal) { v ->
           vm.edit { it.copy(meters = it.meters.copy(electricity1 = v)) }
         }
-        Field(s.meterElec2, p.meters.electricity2, Modifier.weight(1f)) { v ->
+        Field(s.meterElec2, p.meters.electricity2, Modifier.weight(1f), keyboardType = KeyboardType.Decimal) { v ->
           vm.edit { it.copy(meters = it.meters.copy(electricity2 = v)) }
         }
       }
       Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Field(s.meterGas, p.meters.gas, Modifier.weight(1f)) { v ->
+        Field(s.meterGas, p.meters.gas, Modifier.weight(1f), keyboardType = KeyboardType.Decimal) { v ->
           vm.edit { it.copy(meters = it.meters.copy(gas = v)) }
         }
-        Field(s.meterWater, p.meters.water, Modifier.weight(1f)) { v ->
+        Field(s.meterWater, p.meters.water, Modifier.weight(1f), keyboardType = KeyboardType.Decimal) { v ->
           vm.edit { it.copy(meters = it.meters.copy(water = v)) }
         }
       }
       Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Field(s.meterHotWater, p.meters.hotWater, Modifier.weight(1f)) { v ->
+        Field(s.meterHotWater, p.meters.hotWater, Modifier.weight(1f), keyboardType = KeyboardType.Decimal) { v ->
           vm.edit { it.copy(meters = it.meters.copy(hotWater = v)) }
         }
-        Field(s.meterOil, p.meters.heatingOil, Modifier.weight(1f)) { v ->
+        Field(s.meterOil, p.meters.heatingOil, Modifier.weight(1f), keyboardType = KeyboardType.Decimal) { v ->
           vm.edit { it.copy(meters = it.meters.copy(heatingOil = v)) }
         }
       }
@@ -600,7 +613,11 @@ private fun KeysCard(vm: LimenViewModel, s: Str, p: Protocol, onRemove: () -> Un
         p.keyTransfer,
         enabled = !locked,
       ) { status ->
-        vm.edit { record ->
+        // "No physical keys" zeroes every count the operator already entered, so it is the
+        // one pill that goes through the undo bar rather than a plain edit.
+        val write: ((Protocol) -> Protocol) -> Unit =
+          if (status == KeyTransferStatus.NoPhysicalKeys) vm::editUndoably else vm::edit
+        write { record ->
           if (status == KeyTransferStatus.NoPhysicalKeys) {
             record.copy(
               keyTransfer = status,
@@ -757,7 +774,7 @@ private fun CautionProviderPicker(s: Str, storedName: String, onSelect: (Caution
           Text(s.depositProvider, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
           Text(s.cautionProvider(selected), style = MaterialTheme.typography.bodyMedium, color = Limen.colors.ink)
         }
-        Text("▾", style = MaterialTheme.typography.bodyMedium, color = Limen.colors.inkDim)
+        Icon(Icons.Outlined.ArrowDropDown, contentDescription = null, tint = Limen.colors.inkDim)
       }
     }
     DropdownMenu(
@@ -770,7 +787,7 @@ private fun CautionProviderPicker(s: Str, storedName: String, onSelect: (Caution
           text = { Text(s.cautionProvider(provider), color = Limen.colors.ink) },
           enabled = provider != selected,
           trailingIcon = if (provider == selected) {
-            { Text("✓", color = Limen.colors.inkDim) }
+            { Icon(Icons.Outlined.Check, contentDescription = null, tint = Limen.colors.inkDim, modifier = Modifier.size(16.dp)) }
           } else null,
           onClick = {
             onSelect(provider)

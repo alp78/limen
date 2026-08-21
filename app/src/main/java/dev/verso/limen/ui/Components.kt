@@ -4,7 +4,6 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -72,8 +71,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.verso.limen.theme.Limen
 import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Check
@@ -109,7 +108,7 @@ val LocalRecordLocked = staticCompositionLocalOf { false }
 
 /**
  * The house info affordance: anything that needs explaining lives behind this, never in
- * small print. The glyph is drawn rather than imported, as everywhere in the portfolio.
+ * small print. The mark comes from the icon set, like every other control in the app.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -155,19 +154,12 @@ fun InfoTip(tip: Tip, target: androidx.compose.ui.unit.Dp = 40.dp) {
         .semantics { contentDescription = text },
       contentAlignment = Alignment.Center,
     ) {
-      Canvas(Modifier.size(16.dp)) {
-        val r = size.minDimension / 2f
-        val hair = 1.4f * density
-        drawCircle(tint, radius = r - hair / 2, style = Stroke(width = hair))
-        drawCircle(tint, radius = r * 0.12f, center = Offset(center.x, center.y - r * 0.44f))
-        drawLine(
-          tint,
-          Offset(center.x, center.y - r * 0.08f),
-          Offset(center.x, center.y + r * 0.46f),
-          strokeWidth = hair * 1.5f,
-          cap = StrokeCap.Round,
-        )
-      }
+      Icon(
+        Icons.Outlined.Info,
+        contentDescription = null,
+        tint = tint,
+        modifier = Modifier.size(18.dp),
+      )
     }
   }
 }
@@ -581,7 +573,7 @@ fun LangMenu(current: Lang, onSelect: (Lang) -> Unit) {
             )
           },
           trailingIcon = if (l == current) {
-            { Text("✓", fontSize = 14.sp, color = Limen.colors.ink) }
+            { Icon(Icons.Outlined.Check, contentDescription = null, tint = Limen.colors.ink, modifier = Modifier.size(16.dp)) }
           } else null,
           onClick = {
             onSelect(l)

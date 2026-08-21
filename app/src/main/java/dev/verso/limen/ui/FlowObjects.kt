@@ -21,6 +21,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,8 +48,13 @@ import dev.verso.limen.theme.Limen
 internal fun ObjectsStep(vm: LimenViewModel, s: Str, p: Protocol) {
   val locked = LocalRecordLocked.current
   var addingCategory by remember { mutableStateOf(false) }
-  var categoryDraft by remember { mutableStateOf("") }
-  val customGroups = vm.customGroups(p)
+  var categoryDraft by rememberSaveable { mutableStateOf("") }
+  // A category the operator has named but not yet filled. Held here rather than written to the
+  // record: creating it used to add an object row labelled after the category itself, so the
+  // paper listed a supplied item that was never supplied, under a heading of the same name.
+  var pendingGroups by rememberSaveable { mutableStateOf(listOf<String>()) }
+  val recorded = vm.customGroups(p)
+  val customGroups = (recorded + pendingGroups.filterNot { it in recorded }).distinct()
 
   Column(
     Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
@@ -110,8 +116,9 @@ internal fun ObjectsStep(vm: LimenViewModel, s: Str, p: Protocol) {
             enabled = categoryDraft.trim().isNotEmpty(),
           ) {
             val name = categoryDraft.trim()
-            // The category exists once it holds something. An empty heading is not a fact.
-            vm.addObject(ObjectGroup.Other, label = name, groupLabel = name)
+            // The heading appears; nothing is written to the record until a row is added under
+            // it. An empty category is not a fact about the flat.
+            if (name.isNotBlank() && name !in customGroups) pendingGroups = pendingGroups + name
             categoryDraft = ""
             addingCategory = false
           }
