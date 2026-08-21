@@ -118,6 +118,7 @@ private fun LegalRequirementRow(
         Chip(
           label = s.legalCheckStatus(status),
           active = selected == status,
+          selectionState = selected == status,
           enabled = !locked,
           destructive = status == LegalCheckStatus.MissingOrDisputed,
           tick = if (status == LegalCheckStatus.Confirmed) Tick.Confirm else Tick.Key,

@@ -1,6 +1,9 @@
 package dev.verso.limen.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -10,23 +13,28 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.verso.limen.data.CautionProvider
@@ -44,9 +52,12 @@ import dev.verso.limen.data.SwissAddressCandidate
 import dev.verso.limen.data.SwissAddressLookup
 import dev.verso.limen.data.SwissDate
 import dev.verso.limen.data.dossierCards
+import dev.verso.limen.data.isBlank
+import dev.verso.limen.data.resolvedLegalOverlay
 import dev.verso.limen.sense.Clocks
 import dev.verso.limen.theme.Limen
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 
 /**
@@ -58,23 +69,60 @@ import java.time.LocalDate
  * when added, so a furnished sublet with no deposit and no meter of its own never has to
  * look at a deposit field, and its PDF never shows an empty one.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun DossierStep(vm: LimenViewModel, s: Str, p: Protocol) {
   val cards = p.dossierCards()
   val locked = LocalRecordLocked.current
   var removing by remember { mutableStateOf<DossierCard?>(null) }
+  val listState = rememberLazyListState()
+  val scope = rememberCoroutineScope()
+  val sections = listOf(
+    DossierSection(s.objectLabel, objectSectionComplete(p)),
+    DossierSection(s.parties, partiesSectionComplete(p)),
+  ) + cards.map { card -> DossierSection(s.dossierCard(card), dossierSectionComplete(p, card)) }
+  val activeSection by remember(listState, sections.size) {
+    derivedStateOf { (listState.firstVisibleItemIndex - 1).coerceIn(0, sections.lastIndex) }
+  }
 
-  Column(
-    Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+  LazyColumn(
+    Modifier.fillMaxSize(),
+    state = listState,
     verticalArrangement = Arrangement.spacedBy(10.dp),
+    contentPadding = PaddingValues(bottom = 12.dp),
   ) {
-    ObjectCard(vm, s, p)
-    LegalOverlayPanel(vm, s, p)
-    HandoverDeadline(p, s)
-    PartiesCard(vm, s, p)
+    stickyHeader {
+      Row(
+        Modifier
+          .fillMaxWidth()
+          .background(Limen.colors.plate)
+          .horizontalScroll(rememberScrollState())
+          .padding(vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+      ) {
+        sections.forEachIndexed { index, section ->
+          Chip(
+            label = "${if (section.complete) "✓" else "○"} ${section.label}",
+            active = index == activeSection,
+            selectionState = index == activeSection,
+          ) {
+            scope.launch { listState.animateScrollToItem(index + 1) }
+          }
+        }
+      }
+    }
+
+    item(key = "object") {
+      Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        ObjectCard(vm, s, p)
+        LegalOverlayPanel(vm, s, p)
+        HandoverDeadline(p, s)
+      }
+    }
+    item(key = "parties") { PartiesCard(vm, s, p) }
 
     cards.forEach { card ->
-      Box {
+      item(key = "card-${card.name}") {
         when (card) {
           DossierCard.Contract -> ContractCard(vm, s, p) { removing = card }
           DossierCard.Deposit -> DepositCard(vm, s, p) { removing = card }
@@ -87,24 +135,27 @@ internal fun DossierStep(vm: LimenViewModel, s: Str, p: Protocol) {
 
     val absent = DossierCard.entries.filterNot { it in cards }
     if (absent.isNotEmpty() && !locked) {
-      Panel(label = s.addComponent) {
-        FlowRow(
-          horizontalArrangement = Arrangement.spacedBy(6.dp),
-          verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-          absent.forEach { card ->
-            Chip("+ ${s.dossierCard(card)}", dim = false) { vm.addDossierCard(card) }
+      item(key = "add-component") {
+        Panel(label = s.addComponent) {
+          FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+          ) {
+            absent.forEach { card ->
+              Chip("+ ${s.dossierCard(card)}", dim = false) { vm.addDossierCard(card) }
+            }
           }
         }
       }
     }
 
-    BigKey(
-      if (locked) s.stepExport.uppercase() else s.hubClose,
-      active = true,
-      Modifier.fillMaxWidth(),
-    ) { vm.goTo(if (locked) FlowStep.Export else FlowStep.Review) }
-    Spacer(Modifier.height(12.dp))
+    item(key = "close") {
+      BigKey(
+        if (locked) s.stepExport.uppercase() else s.hubClose,
+        active = true,
+        Modifier.fillMaxWidth(),
+      ) { vm.goTo(if (locked) FlowStep.Export else FlowStep.Review) }
+    }
   }
 
   removing?.let { card ->
@@ -118,6 +169,38 @@ internal fun DossierStep(vm: LimenViewModel, s: Str, p: Protocol) {
       onDismiss = { removing = null },
     )
   }
+}
+
+private data class DossierSection(val label: String, val complete: Boolean)
+
+private fun objectSectionComplete(p: Protocol): Boolean =
+  p.address.isNotBlank() && p.place.isNotBlank() && p.objectCanton != null &&
+    p.handoverDate.isNotBlank() && p.handoverTime.isNotBlank() &&
+    (p.resolvedLegalOverlay()?.isComplete(p.legalOverlay) == true)
+
+private fun partiesSectionComplete(p: Protocol): Boolean =
+  listOf(Role.Tenant, Role.Landlord).all { role ->
+    p.parties.firstOrNull { it.role == role }?.name?.isNotBlank() == true
+  }
+
+private fun dossierSectionComplete(p: Protocol, card: DossierCard): Boolean = when (card) {
+  DossierCard.Contract -> p.contract != dev.verso.limen.data.Contract()
+  DossierCard.Deposit -> when (p.deposit.kind) {
+    DepositKind.None -> false
+    DepositKind.BankAccount -> listOf(
+      p.deposit.amountChf,
+      p.deposit.bank,
+      p.deposit.account,
+    ).all { it.isNotBlank() }
+    DepositKind.Insurance -> listOf(
+      p.deposit.amountChf,
+      p.deposit.provider,
+      p.deposit.policyNo,
+    ).all { it.isNotBlank() }
+  }
+  DossierCard.Meters -> !p.meters.isBlank()
+  DossierCard.Keys -> p.keyTransfer != KeyTransferStatus.NotRecorded
+  DossierCard.Notes -> p.remarks.isNotBlank() || p.chargesStatementBy.isNotBlank()
 }
 
 /**
@@ -327,7 +410,7 @@ private fun PartyBlock(vm: LimenViewModel, s: Str, p: Protocol, index: Int, part
     Field(s.role(party.role), party.name) { v ->
       vm.edit { it.copy(parties = it.parties.mapIndexed { j, q -> if (j == index) q.copy(name = v) else q }) }
     }
-    if (party.role == Role.Landlord) {
+    if (party.role == Role.Landlord || party.role == Role.Tenant) {
       Field(s.representedBy, party.representedBy) { v ->
         vm.edit { it.copy(parties = it.parties.mapIndexed { j, q -> if (j == index) q.copy(representedBy = v) else q }) }
       }
@@ -335,6 +418,24 @@ private fun PartyBlock(vm: LimenViewModel, s: Str, p: Protocol, index: Int, part
     if (party.role == Role.Tenant && p.kind == Kind.Exit) {
       Field(s.newAddress, party.address) { v ->
         vm.edit { it.copy(parties = it.parties.mapIndexed { j, q -> if (j == index) q.copy(address = v) else q }) }
+      }
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+      Field(
+        s.phoneNumber,
+        party.phone,
+        Modifier.weight(1f),
+        keyboardType = KeyboardType.Phone,
+      ) { v ->
+        vm.edit { it.copy(parties = it.parties.mapIndexed { j, q -> if (j == index) q.copy(phone = v) else q }) }
+      }
+      Field(
+        s.email,
+        party.email,
+        Modifier.weight(1f),
+        keyboardType = KeyboardType.Email,
+      ) { v ->
+        vm.edit { it.copy(parties = it.parties.mapIndexed { j, q -> if (j == index) q.copy(email = v) else q }) }
       }
     }
   }
@@ -353,6 +454,18 @@ private fun ContractCard(vm: LimenViewModel, s: Str, p: Protocol, onRemove: () -
         }
         Field(s.serviceCharges, p.contract.serviceChargesChf, Modifier.weight(1f)) { v ->
           vm.edit { it.copy(contract = it.contract.copy(serviceChargesChf = v)) }
+        }
+      }
+      DateField(s.leaseConcludedOn, p.contract.conclusionDate, s) { v ->
+        vm.edit { record ->
+          record.copy(
+            contract = record.contract.copy(conclusionDate = v),
+            legalOverlay = if (record.contract.conclusionDate == v) {
+              record.legalOverlay
+            } else {
+              LegalOverlayRecord()
+            },
+          )
         }
       }
       Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

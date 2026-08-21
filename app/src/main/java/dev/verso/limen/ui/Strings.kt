@@ -116,6 +116,32 @@ class Str(val lang: Lang) {
   val cancel = pick("CANCEL", "ANNULER", "ABBRECHEN", "ANNULLA", "INTERRUMPER")
   val done = pick("DONE", "TERMINÉ", "FERTIG", "FATTO", "FINÌ")
   val delete = pick("DELETE", "SUPPRIMER", "LÖSCHEN", "ELIMINA", "STIZZAR")
+  val clear = pick("CLEAR", "EFFACER", "LEEREN", "SVUOTA", "STIZZAR")
+  val selectAll = pick("SELECT ALL", "TOUT SÉLECTIONNER", "ALLE AUSWÄHLEN", "SELEZIONA TUTTO", "TSCHERNER TUT")
+  val undo = pick("UNDO", "ANNULER", "RÜCKGÄNGIG", "ANNULLA", "REVOCAR")
+  fun removedForUndo(kind: UndoKind) = when (kind) {
+    UndoKind.Defect -> pick(
+      "Defect removed",
+      "Défaut supprimé",
+      "Mangel entfernt",
+      "Difetto rimosso",
+      "Don stizzà",
+    )
+    UndoKind.Photo -> pick(
+      "Photo removed",
+      "Photo supprimée",
+      "Foto entfernt",
+      "Foto rimossa",
+      "Foto stizzada",
+    )
+    UndoKind.Object -> pick(
+      "Supplied item removed",
+      "Objet fourni supprimé",
+      "Mitgelieferter Gegenstand entfernt",
+      "Oggetto fornito rimosso",
+      "Object furnì stizzà",
+    )
+  }
   val add = pick("ADD", "AJOUTER", "HINZUFÜGEN", "AGGIUNGI", "AGIUNTAR")
   val decrease = pick("Decrease", "Diminuer", "Verringern", "Diminuire", "Reducir")
   val increase = pick("Increase", "Augmenter", "Erhöhen", "Aumentare", "Augmentar")
@@ -147,6 +173,27 @@ class Str(val lang: Lang) {
     "Contract, cauziun, dumbraders, clavs e las persunas",
   )
   val hubClose = pick("CLOSE THE RECORD", "CLORE LE CONSTAT", "PROTOKOLL ABSCHLIESSEN", "CHIUDI IL VERBALE", "SERRAR IL PROTOCOL")
+  val objectPreflight = pick(
+    "Object and canton first",
+    "Objet et canton d'abord",
+    "Objekt und Kanton zuerst",
+    "Prima oggetto e cantone",
+    "Emprim object e chantun",
+  )
+  val objectPreflightBody = pick(
+    "Confirm the handed-over object's address, canton, date and legal overlay before the walk.",
+    "Confirmez l'adresse de l'objet remis, son canton, la date et la couche juridique avant la visite.",
+    "Bestätigen Sie vor dem Rundgang Adresse, Kanton, Datum und Rechtszusatz des Übergabeobjekts.",
+    "Prima del giro confermate indirizzo, cantone, data e livello giuridico dell'oggetto consegnato.",
+    "Confermai avant il gir adressa, chantun, data e cumplement giuridic da l'object surdà.",
+  )
+  val completeObjectAndCanton = pick(
+    "COMPLETE OBJECT AND CANTON",
+    "COMPLÉTER OBJET ET CANTON",
+    "OBJEKT UND KANTON ERGÄNZEN",
+    "COMPLETA OGGETTO E CANTONE",
+    "CUMPLETTAR OBJECT E CHANTUN",
+  )
   // Readouts name the thing and then count it, the way an instrument's dial is labelled.
   // That also sidesteps five languages' plural rules, which "1 rooms" was getting wrong.
   private val countRooms = pick("ROOMS", "PIÈCES", "RÄUME", "LOCALI", "LOCALS")
@@ -230,11 +277,11 @@ class Str(val lang: Lang) {
       "Nagins obligaziun chantunala generala en la survista uffiziala 2026",
     )
     InitialRentFormRule.VerifyCurrent -> pick(
-      "The selected date is outside the 2026 snapshot; verify the rule in force for that date",
-      "La date choisie est hors du relevé 2026; vérifier la règle en vigueur à cette date",
-      "Das gewählte Datum liegt ausserhalb der Übersicht 2026; damals geltende Regel prüfen",
-      "La data scelta è fuori dal rilevamento 2026; verificare la regola in vigore a quella data",
-      "La data tschernida è ordaifer la survista 2026; controllar la regla valaivla per quella data",
+      "Add the lease conclusion date or verify the rule in force on that date",
+      "Ajoutez la date de conclusion du bail ou vérifiez la règle en vigueur à cette date",
+      "Datum des Vertragsabschlusses ergänzen oder die damals geltende Regel prüfen",
+      "Aggiungete la data di conclusione del contratto o verificate la regola allora in vigore",
+      "Agiuntai la data da conclusiun dal contract u controllai la regla valaivla quella data",
     )
   }
   fun legalRequirement(requirement: LegalRequirement) = when (requirement) {
@@ -393,6 +440,14 @@ class Str(val lang: Lang) {
   val actorLandlordPrivate = pick("Landlord", "Bailleur", "Vermieter/in", "Locatore/trice", "Locatur/a")
   val actorAgency = pick("Agency", "Régie", "Verwaltung", "Amministrazione", "Administraziun")
   val companyName = pick("Agency name", "Nom de la régie", "Name der Verwaltung", "Nome dell'amministrazione", "Num da l'administraziun")
+  val agencyRoleExplanation = pick(
+    "The agency acts on the landlord side. The firm is printed as the party and the person present as its representative.",
+    "La régie agit du côté bailleur. La société figure comme partie et la personne présente comme sa représentante.",
+    "Die Verwaltung handelt auf Vermieterseite. Die Firma erscheint als Partei und die anwesende Person als Vertretung.",
+    "L'amministrazione agisce per il locatore. La società figura come parte e la persona presente come rappresentante.",
+    "L'administraziun agescha sin la vart dal locatur. La firma vegn stampada sco partida e la persuna preschenta sco represchentanza.",
+  )
+  val email = pick("Email", "E-mail", "E-Mail", "E-mail", "E-mail")
   val tenantExitAddressHint = pick(
     "Your new address: the deposit letter and the final service-charge statement will be sent there.",
     "Votre nouvelle adresse : la lettre de garantie et le décompte final des charges y seront envoyés.",
@@ -563,6 +618,27 @@ class Str(val lang: Lang) {
   val inspectedNoDefects = pick("Inspected, no defect recorded", "Contrôlé, aucun défaut consigné", "Geprüft, kein Mangel erfasst", "Controllato, nessun difetto registrato", "Controllà, nagina mancanza registrada")
   val clearRoom = pick("CLEAR ROOM", "VIDER LA PIÈCE", "RAUM LEEREN", "SVUOTA IL LOCALE", "SVIDAR IL LOCAL")
   val removeRoom = pick("REMOVE ROOM", "RETIRER LA PIÈCE", "RAUM ENTFERNEN", "RIMUOVI IL LOCALE", "ALLONTANAR IL LOCAL")
+  val chooseRoomsPresent = pick(
+    "Rooms present",
+    "Pièces présentes",
+    "Vorhandene Räume",
+    "Locali presenti",
+    "Locals avant maun",
+  )
+  val chooseRoomsPresentBody = pick(
+    "Select only the spaces that are part of this handover. You can add, rename or remove rooms afterwards.",
+    "Sélectionnez uniquement les espaces concernés par cette remise. Vous pourrez ensuite ajouter, renommer ou retirer des pièces.",
+    "Wählen Sie nur die Räume dieser Übergabe. Danach können Sie Räume ergänzen, umbenennen oder entfernen.",
+    "Selezionate solo gli spazi inclusi nella consegna. In seguito potrete aggiungere, rinominare o rimuovere locali.",
+    "Tschernai mo ils locals da questa surdada. Suenter pudais Vus agiuntar, renumnar u allontanar locals.",
+  )
+  val useSelectedRooms = pick(
+    "USE SELECTED ROOMS",
+    "UTILISER CES PIÈCES",
+    "AUSGEWÄHLTE RÄUME ÜBERNEHMEN",
+    "USA I LOCALI SELEZIONATI",
+    "DUVRAR ILS LOCALS TSCHERNIDS",
+  )
   val areYouSure = pick("ARE YOU SURE?", "ÊTES-VOUS SÛR·E ?", "SIND SIE SICHER?", "SIETE SICURI?", "ESSAS VUS SEGIR?")
   val clearRoomBody = pick(
     "This deletes every defect and photo recorded in this room. The room itself stays.",
@@ -620,6 +696,13 @@ class Str(val lang: Lang) {
   val contract = pick("Contract", "Contrat", "Mietvertrag", "Contratto", "Contract")
   val monthlyRent = pick("Monthly rent CHF", "Loyer mensuel CHF", "Nettomietzins CHF", "Pigione mensile CHF", "Fittanza mensila CHF")
   val serviceCharges = pick("Service charges CHF", "Charges CHF", "Nebenkosten CHF", "Spese accessorie CHF", "Custs accessoris CHF")
+  val leaseConcludedOn = pick(
+    "Lease concluded / signed on",
+    "Bail conclu / signé le",
+    "Mietvertrag abgeschlossen / unterzeichnet am",
+    "Contratto concluso / firmato il",
+    "Contract concludì / suttascrit ils",
+  )
   val tenancyStart = pick("Tenancy from", "Bail depuis le", "Mietbeginn", "Locazione dal", "Locaziun dapi ils")
   val tenancyEnd = pick("Tenancy until", "Bail jusqu'au", "Mietende", "Locazione fino al", "Locaziun enfin ils")
   val noticeDate = pick("Notice given on", "Résiliation notifiée le", "Kündigung erfolgt am", "Disdetta notificata il", "Disditga dada ils")
@@ -776,6 +859,27 @@ class Str(val lang: Lang) {
   val refusedKey = pick("REFUSED", "REFUSÉE", "VERWEIGERT", "RIFIUTATA", "REFUSADA")
   val clearInk = pick("CLEAR", "EFFACER", "LÖSCHEN", "CANCELLA", "STIZZAR")
   val saveInk = pick("KEEP", "CONSERVER", "ÜBERNEHMEN", "CONSERVA", "TEGNAIR")
+  val signaturePad = pick(
+    "Signature drawing area",
+    "Zone de dessin de la signature",
+    "Zeichenfeld für die Unterschrift",
+    "Area per disegnare la firma",
+    "Zona per dissegnar la suttascripziun",
+  )
+  val signaturePadEmpty = pick(
+    "No signature drawn",
+    "Aucune signature dessinée",
+    "Noch keine Unterschrift gezeichnet",
+    "Nessuna firma disegnata",
+    "Naginas suttascripziun dissegnada",
+  )
+  val signaturePadHasInk = pick(
+    "Signature drawn",
+    "Signature dessinée",
+    "Unterschrift gezeichnet",
+    "Firma disegnata",
+    "Suttascripziun dissegnada",
+  )
   val notSigned = pick("Not signed", "Non signé", "Nicht unterzeichnet", "Non firmato", "Betg suttascrit")
   val resignRequired = pick(
     "Sign again after the change", "Signer à nouveau après la modification", "Nach der Änderung erneut unterschreiben", "Firmare di nuovo dopo la modifica", "Suttascriver danovamain suenter la midada",
@@ -823,6 +927,13 @@ class Str(val lang: Lang) {
 
   // Export.
   val exportPdf = pick("EXPORT PDF", "EXPORTER LE PDF", "PDF EXPORTIEREN", "ESPORTA PDF", "EXPORTAR PDF")
+  val exportUpdatedFinalCopy = pick(
+    "EXPORT UPDATED FINAL COPY",
+    "EXPORTER LA COPIE FINALE ACTUALISÉE",
+    "AKTUALISIERTE ENDKOPIE EXPORTIEREN",
+    "ESPORTA COPIA FINALE AGGIORNATA",
+    "EXPORTAR COPIA FINALA ACTUALISADA",
+  )
   val saveAsDraft = pick("SAVE AS DRAFT", "ENREGISTRER LE BROUILLON", "ALS ENTWURF SPEICHERN", "SALVA COME BOZZA", "MEMORISAR SCO SBOZ")
   val pdfLanguage = pick("Language of the PDF", "Langue du PDF", "Sprache des PDF", "Lingua del PDF", "Lingua dal PDF")
   val open = pick("OPEN", "OUVRIR", "ÖFFNEN", "APRI", "AVRIR")
@@ -833,6 +944,20 @@ class Str(val lang: Lang) {
   val recordCopyFor = pick("Record copy for", "Consigner la copie pour", "Kopie erfassen für", "Registra copia per", "Registrar copia per")
   val deliveryDetail = pick("Recipient, address or delivery reference", "Destinataire, adresse ou référence d'envoi", "Empfänger, Adresse oder Zustellreferenz", "Destinatario, indirizzo o riferimento di consegna", "Destinatari, adressa u referenza da consegna")
   val clearDelivery = pick("Clear delivery record", "Effacer la remise", "Zustellnachweis löschen", "Cancella consegna", "Stizzar la consegna")
+  val deliveryChanged = pick(
+    "Final copy needs updating",
+    "La copie finale doit être actualisée",
+    "Endkopie muss aktualisiert werden",
+    "La copia finale va aggiornata",
+    "La copia finala sto vegnir actualisada",
+  )
+  val deliveryChangedBody = pick(
+    "The delivery record changed after the last PDF export. Export and send the updated final copy.",
+    "Le suivi de remise a changé après le dernier export PDF. Exportez et envoyez la copie finale actualisée.",
+    "Der Zustellnachweis wurde nach dem letzten PDF-Export geändert. Aktualisierte Endkopie exportieren und senden.",
+    "La consegna è cambiata dopo l'ultimo PDF. Esportate e inviate la copia finale aggiornata.",
+    "Il register da consegna è sa midà suenter l'ultim PDF. Exportai e tramettai la copia finala actualisada.",
+  )
   fun deliveryMethod(method: DeliveryMethod) = when (method) {
     DeliveryMethod.InPerson -> pick("In person", "En main propre", "Persönlich", "Di persona", "Persunalmain")
     DeliveryMethod.Electronic -> pick("Electronic share", "Envoi électronique", "Elektronisch", "Invio elettronico", "Tramess electronic")
@@ -1489,11 +1614,11 @@ class Str(val lang: Lang) {
       "Tar ina dumonda d'ina adressa svizra uffiziala vegnan il text endatà e metadatas da rait usitadas tramess al servetsch federal swisstopo. Per links da purschiders valan lur atgnas cundiziuns.",
     ),
     pick(
-      "A PDF or backup leaves private storage only when you export, share or restore it. You choose the receiving app or person. A backup contains the record, original photos and signature ink; protect it like the signed paper original.",
-      "Un PDF ou une sauvegarde ne quitte l'espace privé que lorsque vous l'exportez, le partagez ou le restaurez. Vous choisissez l'app ou la personne destinataire. La sauvegarde contient le constat, les photos originales et les tracés de signature ; protégez-la comme l'original papier signé.",
-      "PDF oder Sicherung verlassen den privaten Speicher nur beim Exportieren, Teilen oder Wiederherstellen. Sie wählen App oder Empfänger. Die Sicherung enthält Protokoll, Originalfotos und Unterschriftsbilder; schützen Sie sie wie das unterzeichnete Papieroriginal.",
-      "Un PDF o backup lascia lo spazio privato solo quando lo esportate, condividete o ripristinate. Scegliete voi l'app o la persona destinataria. Il backup contiene verbale, foto originali e tratti di firma; proteggetelo come l'originale cartaceo firmato.",
-      "In PDF u backup banduna la memoria privata mo sche Vus exportais, cundividais u restaurais el. Vus tschernis l'app u la persuna destinataria. Il backup cuntegna protocol, fotos originalas e suttascripziuns; protegì el sco l'original sin palpiri.",
+      "A PDF or backup leaves private storage only when you export, share or restore it. New backups encrypt the record, original photos and signature ink with your password.",
+      "Un PDF ou une sauvegarde ne quitte l'espace privé que lors de l'export, du partage ou de la restauration. Les nouvelles sauvegardes chiffrent le constat, les photos et les signatures avec votre mot de passe.",
+      "PDF oder Sicherung verlassen den privaten Speicher nur beim Exportieren, Teilen oder Wiederherstellen. Neue Sicherungen verschlüsseln Protokoll, Originalfotos und Unterschriften mit Ihrem Passwort.",
+      "Un PDF o backup lascia lo spazio privato solo durante esportazione, condivisione o ripristino. I nuovi backup cifrano verbale, foto e firme con la vostra password.",
+      "In PDF u backup banduna la memoria privata mo tar export, cundivisiun u restauraziun. Novas segirezzas criptan protocol, fotos e suttascripziuns cun Voss pled-clav.",
     ),
     pick(
       "Records remain until you delete them or remove app data. Use the device lock, keep copies only as long as needed, and direct access, correction or deletion requests to the person or organisation operating this installation.",
@@ -1502,6 +1627,28 @@ class Str(val lang: Lang) {
       "I verbali restano finché li eliminate o cancellate i dati dell'app. Usate il blocco del dispositivo, conservate le copie solo quanto necessario e rivolgete le richieste di accesso, rettifica o cancellazione a chi gestisce questa installazione.",
       "Protocols restan fin che Vus stizzais els u las datas da l'app. Duvrai la bloccada dal telefon, conservai copias mo uschè ditg sco necessari e drizzai dumondas d'access, rectificaziun u stizzada al gestiunari da questa installaziun.",
     ),
+  )
+  val controllerTitle = pick(
+    "Responsible data controller",
+    "Responsable du traitement",
+    "Verantwortliche Stelle",
+    "Titolare del trattamento",
+    "Post responsabel",
+  )
+  val controllerBody = pick(
+    "Configure the professional operator shown on new handover records. Changes apply to new sessions; existing records keep their original controller.",
+    "Configurez l'opérateur professionnel indiqué sur les nouveaux constats. Les modifications valent pour les nouvelles sessions; les constats existants gardent leur responsable initial.",
+    "Konfigurieren Sie die professionelle Stelle für neue Protokolle. Änderungen gelten für neue Sitzungen; bestehende Protokolle behalten ihre ursprüngliche Stelle.",
+    "Configurate l'operatore professionale indicato nei nuovi verbali. Le modifiche valgono per le nuove sessioni; i verbali esistenti mantengono il titolare originale.",
+    "Configurai il gestiunari professiunal per novs protocols. Midadas valan per novas sesiuns; protocols existents mantegnan il post original.",
+  )
+  val organisation = pick("Organisation", "Organisation", "Organisation", "Organizzazione", "Organisaziun")
+  val controllerContact = pick(
+    "Privacy contact",
+    "Contact protection des données",
+    "Datenschutzkontakt",
+    "Contatto privacy",
+    "Contact da protecziun da datas",
   )
   val backupTitle = pick("Backup and restore", "Sauvegarde et restauration", "Sichern und wiederherstellen", "Backup e ripristino", "Segirezza e restauraziun")
   val backupBody = pick(
@@ -1513,6 +1660,24 @@ class Str(val lang: Lang) {
   )
   val createBackup = pick("CREATE BACKUP", "CRÉER LA SAUVEGARDE", "SICHERUNG ERSTELLEN", "CREA BACKUP", "CREAR SEGIREZZA")
   val restoreBackup = pick("RESTORE", "RESTAURER", "WIEDERHERSTELLEN", "RIPRISTINA", "RESTAURAR")
+  val protectBackup = pick("Protect backup", "Protéger la sauvegarde", "Sicherung schützen", "Proteggi backup", "Proteger la segirezza")
+  val unlockBackup = pick("Unlock backup", "Déverrouiller la sauvegarde", "Sicherung entsperren", "Sblocca backup", "Debloccar la segirezza")
+  val backupPassword = pick("Backup password", "Mot de passe", "Sicherungspasswort", "Password del backup", "Pled-clav da segirezza")
+  val confirmBackupPassword = pick("Confirm password", "Confirmer le mot de passe", "Passwort bestätigen", "Conferma password", "Confermar il pled-clav")
+  val backupPasswordBody = pick(
+    "Use at least 12 characters. Limen cannot recover this password; keep it separately from the backup.",
+    "Utilisez au moins 12 caractères. Limen ne peut pas récupérer ce mot de passe; conservez-le séparément de la sauvegarde.",
+    "Mindestens 12 Zeichen verwenden. Limen kann dieses Passwort nicht wiederherstellen; getrennt von der Sicherung aufbewahren.",
+    "Usate almeno 12 caratteri. Limen non può recuperare questa password; conservatela separatamente dal backup.",
+    "Duvrai almain 12 segns. Limen na po betg restabilir quest pled-clav; al tegnair separà da la segirezza.",
+  )
+  val restorePasswordBody = pick(
+    "Enter the password used when this backup was created. Legacy ZIP backups are still accepted with any non-empty entry.",
+    "Saisissez le mot de passe utilisé lors de la création. Les anciennes sauvegardes ZIP restent acceptées avec toute saisie non vide.",
+    "Das beim Erstellen verwendete Passwort eingeben. Ältere ZIP-Sicherungen werden weiterhin mit einer beliebigen nicht leeren Eingabe akzeptiert.",
+    "Inserite la password usata alla creazione. I vecchi backup ZIP restano accettati con qualsiasi testo non vuoto.",
+    "Endatai il pled-clav duvrà tar la creaziun. Segirezzas ZIP veglias vegnan anc acceptadas cun mintga endataziun betg vida.",
+  )
   val working = pick("Working...", "Traitement...", "Wird verarbeitet...", "Elaborazione...", "Elavurar...")
   val archiveFailed = pick(
     "Backup operation failed. No existing record was changed.",

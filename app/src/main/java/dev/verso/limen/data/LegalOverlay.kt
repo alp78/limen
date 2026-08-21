@@ -48,6 +48,7 @@ enum class InitialRentFormRule { Required, ConditionalLocal, NotRequired, Verify
 data class ResolvedLegalOverlay(
   val canton: SwissCanton,
   val handoverDate: LocalDate,
+  val initialRentReferenceDate: LocalDate?,
   val profile: LegalProfile,
   val initialRentFormRule: InitialRentFormRule,
   val requirements: List<LegalRequirement>,
@@ -77,18 +78,20 @@ private val conditionalInitialRentFormCantons2026 = setOf(
 )
 
 /**
- * Resolves the small canton layer from the object's canton and the actual handover date.
+ * Resolves the small canton layer from the object's canton and the relevant legal dates.
  *
  * The initial-rent-form table is deliberately limited to its official 2026 snapshot. A
- * different year asks the operator to verify the then-current rule instead of silently using
- * stale vacancy data. Vaud RULV periods are resolved by [legalProfile].
+ * initial-rent-form rule follows the lease conclusion date, not the later key handover. A
+ * missing or different-year date asks the operator to verify the then-current rule instead
+ * of silently using stale vacancy data. Vaud RULV periods still follow the handover date.
  */
 fun Protocol.resolvedLegalOverlay(): ResolvedLegalOverlay? {
   val canton = objectCanton ?: return null
   val date = runCatching { LocalDate.parse(handoverDate) }.getOrNull() ?: return null
+  val initialRentReferenceDate = runCatching { LocalDate.parse(contract.conclusionDate) }.getOrNull()
   val profile = legalProfile()
   val initialRentFormRule = when {
-    date.year != 2026 -> InitialRentFormRule.VerifyCurrent
+    initialRentReferenceDate?.year != 2026 -> InitialRentFormRule.VerifyCurrent
     canton in fullInitialRentFormCantons2026 -> InitialRentFormRule.Required
     canton in conditionalInitialRentFormCantons2026 -> InitialRentFormRule.ConditionalLocal
     else -> InitialRentFormRule.NotRequired
@@ -117,6 +120,7 @@ fun Protocol.resolvedLegalOverlay(): ResolvedLegalOverlay? {
   return ResolvedLegalOverlay(
     canton = canton,
     handoverDate = date,
+    initialRentReferenceDate = initialRentReferenceDate,
     profile = profile,
     initialRentFormRule = initialRentFormRule,
     requirements = requirements,

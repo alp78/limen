@@ -16,12 +16,24 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import dev.verso.limen.theme.Limen
+
+private enum class ArchiveAction { Export, Import }
 
 @Composable
 fun DataPrivacyScreen(
@@ -30,8 +42,13 @@ fun DataPrivacyScreen(
   s: Str,
   onBack: () -> Unit,
 ) {
+  var archiveAction by rememberSaveable { mutableStateOf<ArchiveAction?>(null) }
+  var pendingRestore by remember { mutableStateOf<android.net.Uri?>(null) }
   val restore = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-    if (uri != null) vm.importArchive(uri)
+    if (uri != null) {
+      pendingRestore = uri
+      archiveAction = ArchiveAction.Import
+    }
   }
   Column(
     modifier
@@ -57,12 +74,47 @@ fun DataPrivacyScreen(
           }
         }
       }
+      Panel(label = s.controllerTitle) {
+        val controller = vm.controllerIdentity
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+          Text(s.controllerBody, style = MaterialTheme.typography.bodyMedium, color = Limen.colors.ink)
+          Field(s.organisation, controller.organisation) {
+            vm.updateController(controller.copy(organisation = it))
+          }
+          Field(s.controllerContact, controller.contactName) {
+            vm.updateController(controller.copy(contactName = it))
+          }
+          Field(s.street, controller.street) { vm.updateController(controller.copy(street = it)) }
+          Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Field(s.postalCode, controller.postalCode, Modifier.weight(0.38f)) {
+              vm.updateController(controller.copy(postalCode = it))
+            }
+            Field(s.city, controller.city, Modifier.weight(0.62f)) {
+              vm.updateController(controller.copy(city = it))
+            }
+          }
+          Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Field(
+              s.email,
+              controller.email,
+              Modifier.weight(1f),
+              keyboardType = KeyboardType.Email,
+            ) { vm.updateController(controller.copy(email = it)) }
+            Field(
+              s.phoneNumber,
+              controller.phone,
+              Modifier.weight(1f),
+              keyboardType = KeyboardType.Phone,
+            ) { vm.updateController(controller.copy(phone = it)) }
+          }
+        }
+      }
       Panel(label = s.backupTitle) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
           Text(s.backupBody, style = MaterialTheme.typography.bodyMedium, color = Limen.colors.ink)
           Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             SmallKey(s.createBackup, Modifier.weight(1f), enabled = !vm.archiveBusy) {
-              vm.exportArchive()
+              archiveAction = ArchiveAction.Export
             }
             SmallKey(s.restoreBackup, Modifier.weight(1f), enabled = !vm.archiveBusy) {
               restore.launch(arrayOf("application/zip", "application/octet-stream"))
@@ -87,4 +139,77 @@ fun DataPrivacyScreen(
     }
     Spacer(Modifier.height(16.dp))
   }
+
+  archiveAction?.let { action ->
+    ArchivePasswordDialog(
+      action = action,
+      s = s,
+      onDismiss = {
+        archiveAction = null
+        if (action == ArchiveAction.Import) pendingRestore = null
+      },
+      onConfirm = { password ->
+        when (action) {
+          ArchiveAction.Export -> vm.exportArchive(password)
+          ArchiveAction.Import -> pendingRestore?.let { vm.importArchive(it, password) }
+        }
+        archiveAction = null
+        pendingRestore = null
+      },
+    )
+  }
+}
+
+@Composable
+private fun ArchivePasswordDialog(
+  action: ArchiveAction,
+  s: Str,
+  onDismiss: () -> Unit,
+  onConfirm: (String) -> Unit,
+) {
+  var password by rememberSaveable(action) { mutableStateOf("") }
+  var confirmation by rememberSaveable(action) { mutableStateOf("") }
+  val isExport = action == ArchiveAction.Export
+  val valid = password.isNotBlank() && (!isExport || password.length >= 12 && password == confirmation)
+
+  AlertDialog(
+    onDismissRequest = onDismiss,
+    containerColor = Limen.colors.plateRaised,
+    title = { Text(if (isExport) s.protectBackup else s.unlockBackup) },
+    text = {
+      Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(
+          if (isExport) s.backupPasswordBody else s.restorePasswordBody,
+          style = MaterialTheme.typography.bodyMedium,
+          color = Limen.colors.ink,
+        )
+        OutlinedTextField(
+          value = password,
+          onValueChange = { password = it },
+          label = { Text(s.backupPassword) },
+          singleLine = true,
+          keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+          visualTransformation = PasswordVisualTransformation(),
+        )
+        if (isExport) {
+          OutlinedTextField(
+            value = confirmation,
+            onValueChange = { confirmation = it },
+            label = { Text(s.confirmBackupPassword) },
+            singleLine = true,
+            isError = confirmation.isNotEmpty() && confirmation != password,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            visualTransformation = PasswordVisualTransformation(),
+          )
+        }
+      }
+    },
+    confirmButton = {
+      SmallKey(
+        if (isExport) s.createBackup else s.restoreBackup,
+        enabled = valid,
+      ) { onConfirm(password) }
+    },
+    dismissButton = { SmallKey(s.cancel, onPress = onDismiss) },
+  )
 }

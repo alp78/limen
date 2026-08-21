@@ -32,6 +32,10 @@ data class Protocol(
   @OptIn(ExperimentalSerializationApi::class)
   @EncodeDefault(EncodeDefault.Mode.NEVER)
   val sessionIdentity: SessionIdentity = SessionIdentity(),
+  /** The responsible organisation printed on this handover's privacy and filing record. */
+  @OptIn(ExperimentalSerializationApi::class)
+  @EncodeDefault(EncodeDefault.Mode.NEVER)
+  val controllerIdentity: ControllerIdentity = ControllerIdentity(),
   /** Retained to export historic drafts; new Limen protocols use a simple condition check. */
   val style: GradeStyle = GradeStyle.Binary,
   /** Street and number. */
@@ -66,6 +70,10 @@ data class Protocol(
   /** Whether the tenant declared having had copies made, the question everyone forgets. */
   val selfMadeKeys: Boolean = false,
   val rooms: List<Room> = emptyList(),
+  /** A deliberate room selection, including the valid outcome that no room is present. */
+  @OptIn(ExperimentalSerializationApi::class)
+  @EncodeDefault(EncodeDefault.Mode.NEVER)
+  val roomSetupComplete: Boolean = false,
   /** Legacy set-of-toggles inventory, superseded by [objects]; read only to export old records. */
   @OptIn(ExperimentalSerializationApi::class)
   @EncodeDefault(EncodeDefault.Mode.NEVER)
@@ -120,6 +128,10 @@ data class Protocol(
   val evidenceFingerprint: String = "",
   /** A self-declared record that an identical copy was handed to a party. */
   val deliveryReceipts: List<DeliveryReceipt> = emptyList(),
+  /** Last delivery-record change, so an updated final copy cannot be forgotten. */
+  @OptIn(ExperimentalSerializationApi::class)
+  @EncodeDefault(EncodeDefault.Mode.NEVER)
+  val deliveryMetadataEpochMs: Long = 0,
   val exportedEpochMs: Long = 0,
 ) {
   /** The record plane has current ink from at least one person. */
@@ -210,6 +222,28 @@ data class SessionIdentity(
       city,
       CountryDirectory.name(addressCountry).takeIf { !usesSwissAddress },
     ).filterNotNull().filter { it.isNotBlank() }.joinToString(" ")
+}
+
+/** Responsible controller details configured on this device and frozen into a new record. */
+@Serializable
+data class ControllerIdentity(
+  val organisation: String = "",
+  val contactName: String = "",
+  val street: String = "",
+  val postalCode: String = "",
+  val city: String = "",
+  val email: String = "",
+  val phone: String = "",
+) {
+  fun isBlank(): Boolean = listOf(
+    organisation,
+    contactName,
+    street,
+    postalCode,
+    city,
+    email,
+    phone,
+  ).all { it.isBlank() }
 }
 
 /**
@@ -339,6 +373,10 @@ enum class ObjectGroup { Appliance, Furniture, Other }
 data class Contract(
   val monthlyRentChf: String = "",
   val serviceChargesChf: String = "",
+  /** ISO date on which the lease was concluded or signed, when known. */
+  @OptIn(ExperimentalSerializationApi::class)
+  @EncodeDefault(EncodeDefault.Mode.NEVER)
+  val conclusionDate: String = "",
   val startDate: String = "",
   val endDate: String = "",
   /** When notice was given, the date every deposit argument eventually turns on. */

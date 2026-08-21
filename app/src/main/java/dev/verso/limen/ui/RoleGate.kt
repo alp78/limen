@@ -213,7 +213,11 @@ fun NewSessionScreen(
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
           if (actor == Actor.Agency) {
             Field(s.companyName, company) { company = it }
-            Text(s.representedBy, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
+            Text(
+              s.agencyRoleExplanation,
+              style = MaterialTheme.typography.bodySmall,
+              color = Limen.colors.inkDim,
+            )
           }
           Field(s.firstName, firstName) { firstName = it }
           Field(s.lastName, lastName) { lastName = it }
@@ -442,6 +446,7 @@ private fun <T> EqualChoiceRow(
         active = value == current,
         modifier = Modifier.weight(1f),
         enabled = !locked && value != current,
+        selectionState = value == current,
         onPress = { onSelect(value) },
       )
     }

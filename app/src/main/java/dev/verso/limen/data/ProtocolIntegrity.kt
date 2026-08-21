@@ -22,6 +22,7 @@ object ProtocolIntegrity {
     val canonical = protocol.copy(
       evidenceFingerprint = "",
       deliveryReceipts = emptyList(),
+      deliveryMetadataEpochMs = 0,
       exportedEpochMs = 0,
     )
     digest.update(json.encodeToString(Protocol.serializer(), canonical).toByteArray(Charsets.UTF_8))

@@ -45,6 +45,35 @@ internal fun HubStep(vm: LimenViewModel, s: Str, p: Protocol) {
     Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
     verticalArrangement = Arrangement.spacedBy(10.dp),
   ) {
+    val objectIssues = issues.filter { it in setOf(
+      FinalizationIssue.Address,
+      FinalizationIssue.Place,
+      FinalizationIssue.Canton,
+      FinalizationIssue.HandoverDate,
+      FinalizationIssue.HandoverTime,
+      FinalizationIssue.LegalOverlay,
+    ) }
+    if (objectIssues.isNotEmpty() && !p.isFinalized()) {
+      Panel(label = s.objectPreflight, warning = true) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+          Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+          ) {
+            p.objectCanton?.let { CantonFlag(it, contentDescription = s.canton(it), size = 30.dp) }
+            Text(
+              s.objectPreflightBody,
+              style = MaterialTheme.typography.bodyMedium,
+              color = Limen.colors.ink,
+              modifier = Modifier.weight(1f),
+            )
+          }
+          SmallKey(s.completeObjectAndCanton, Modifier.fillMaxWidth()) { vm.goTo(FlowStep.Dossier) }
+        }
+      }
+    }
+
     HubDoor(
       title = s.stepInspection,
       lead = s.hubInspectionLead,

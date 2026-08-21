@@ -10,6 +10,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -57,7 +58,11 @@ import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.text.KeyboardOptions
@@ -260,6 +265,7 @@ fun KeySurface(
   fillColor: Color? = null,
   outlineColor: Color? = null,
   tick: Tick = Tick.Key,
+  role: Role = Role.Button,
   onPress: () -> Unit,
   content: @Composable () -> Unit,
 ) {
@@ -309,7 +315,7 @@ fun KeySurface(
   Layout(
     content = content,
     modifier = modifier
-      .defaultMinSize(minWidth = 44.dp, minHeight = 40.dp)
+      .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
       .clip(shape)
       .background(edge, shape)
       .drawBehind {
@@ -333,8 +339,9 @@ fun KeySurface(
       }
       .clickable(
         interactionSource = interactionSource,
-        indication = null,
+        indication = LocalIndication.current,
         enabled = enabled,
+        role = role,
       ) {
         play(tick)
         onPress()
@@ -405,7 +412,7 @@ fun IconKey(
   val resolvedOutline = if (destructive) Limen.colors.dangerOutline else outlineColor
   val resolvedTint = if (destructive) Limen.colors.dangerOutline else tint
   KeySurface(
-    modifier = Modifier.defaultMinSize(minWidth = 44.dp, minHeight = 44.dp).then(modifier),
+    modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp).then(modifier),
     enabled = enabled,
     shape = RoundedCornerShape(12.dp),
     fillColor = resolvedFill,
@@ -492,13 +499,14 @@ fun Chip(
   tick: Tick = Tick.Key,
   enabled: Boolean = true,
   destructive: Boolean = false,
+  selectionState: Boolean? = null,
   onPress: () -> Unit,
 ) {
   val destructiveFill = if (destructive) {
     if (active) Limen.colors.dangerOutline else Limen.colors.danger
   } else null
   KeySurface(
-    modifier,
+    if (selectionState == null) modifier else modifier.semantics { selected = selectionState },
     active = active && !destructive,
     enabled = enabled,
     shape = RoundedCornerShape(10.dp),
@@ -599,7 +607,12 @@ fun <T> PillRow(
     verticalArrangement = Arrangement.spacedBy(if (dense) 5.dp else 6.dp),
   ) {
     options.forEach { (value, label) ->
-      Chip(label, active = value == current, enabled = enabled && value != current) { onSelect(value) }
+      Chip(
+        label,
+        active = value == current,
+        enabled = enabled && value != current,
+        selectionState = value == current,
+      ) { onSelect(value) }
     }
   }
 }
@@ -679,7 +692,13 @@ fun Toggle(
   enabled: Boolean = true,
   onPress: () -> Unit,
 ) {
-  KeySurface(modifier, enabled = enabled, shape = RoundedCornerShape(10.dp), onPress = onPress) {
+  KeySurface(
+    modifier.semantics { toggleableState = ToggleableState(on) },
+    enabled = enabled,
+    shape = RoundedCornerShape(10.dp),
+    role = Role.Switch,
+    onPress = onPress,
+  ) {
     Row(
       Modifier.fillMaxWidth().padding(horizontal = if (dense) 10.dp else 13.dp, vertical = if (dense) 7.dp else 9.dp),
       verticalAlignment = Alignment.CenterVertically,

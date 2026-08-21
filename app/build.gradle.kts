@@ -1,5 +1,6 @@
 import java.text.SimpleDateFormat
 import java.util.Date
+import java.util.Properties
 
 plugins {
   alias(libs.plugins.android.application)
@@ -31,6 +32,16 @@ val buildStamp: String = providers.of(SourceStamp::class.java) {
   parameters.dir.set(layout.projectDirectory.dir("src"))
 }.get()
 
+val limenSigningFile = providers.gradleProperty("limenSigningProperties")
+  .map(::file)
+  .orElse(file(System.getProperty("user.home")).resolve(".gradle/limen-signing.properties"))
+  .get()
+val limenSigning = Properties().apply {
+  if (limenSigningFile.isFile) limenSigningFile.inputStream().use(::load)
+}
+val hasLimenSigning = listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
+  .all { !limenSigning.getProperty(it).isNullOrBlank() }
+
 android {
     namespace = "dev.verso.limen"
     compileSdk = 36
@@ -40,12 +51,23 @@ android {
         // with scoped storage; everything else here would run on 26.
         minSdk = 29
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1.0"
         // Without this the androidTest sources compile and never run: AGP falls back to
         // the deprecated platform runner, which cannot execute an @RunWith(AndroidJUnit4)
         // class, and the suite reports green having done nothing.
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        if (hasLimenSigning) {
+            create("limenRelease") {
+                storeFile = file(limenSigning.getProperty("storeFile"))
+                storePassword = limenSigning.getProperty("storePassword")
+                keyAlias = limenSigning.getProperty("keyAlias")
+                keyPassword = limenSigning.getProperty("keyPassword")
+            }
+        }
     }
 
     buildTypes {
@@ -63,6 +85,7 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (hasLimenSigning) signingConfig = signingConfigs.getByName("limenRelease")
         }
     }
     compileOptions {

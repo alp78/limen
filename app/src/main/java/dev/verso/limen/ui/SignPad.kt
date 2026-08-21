@@ -38,6 +38,9 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -110,6 +113,14 @@ fun SignPadOverlay(
         Box(
           Modifier
             .aspectRatio(2.1f)
+            .semantics {
+              contentDescription = s.signaturePad
+              stateDescription = if (strokes.isEmpty() && live.isEmpty()) {
+                s.signaturePadEmpty
+              } else {
+                s.signaturePadHasInk
+              }
+            }
             .clip(RoundedCornerShape(12.dp))
             .background(Color.White)
             .border(1.5.dp, Limen.colors.actionOutline, RoundedCornerShape(12.dp))

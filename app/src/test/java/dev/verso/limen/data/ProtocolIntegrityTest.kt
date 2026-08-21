@@ -45,7 +45,10 @@ class ProtocolIntegrityTest {
     assertTrue(ProtocolIntegrity.matches(frozen.copy(exportedEpochMs = 13L), photos, ink))
     assertTrue(
       ProtocolIntegrity.matches(
-        frozen.copy(deliveryReceipts = listOf(DeliveryReceipt(Role.Tenant, 14L))),
+        frozen.copy(
+          deliveryReceipts = listOf(DeliveryReceipt(Role.Tenant, 14L)),
+          deliveryMetadataEpochMs = 14L,
+        ),
         photos,
         ink,
       )

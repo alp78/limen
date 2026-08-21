@@ -84,6 +84,7 @@ object PdfExport {
     integrity(sheet, p, s)
     legalOverlay(sheet, p, s)
     parties(sheet, p, s)
+    dataController(sheet, p, s)
     if (DossierCard.Contract in cards) contract(sheet, p, s)
     if (DossierCard.Deposit in cards) deposit(sheet, p, s)
     if (DossierCard.Meters in cards) meters(sheet, p, s)
@@ -166,21 +167,29 @@ object PdfExport {
       gap(10f)
     }
 
-    fun labeled(labelText: String, valueText: String, x: Float, width: Float) {
-      canvas.drawText(ellipsize(labelText, label, width), x, y + label.textSize, label)
-      canvas.drawText(
-        ellipsize(valueText.ifBlank { "–" }, value, width),
-        x,
-        y + label.textSize + value.textSize + 6f,
-        value,
-      )
-    }
-
     fun labeledRow(pairs: List<Pair<String, String>>) {
-      ensure(64f)
       val width = (W - 2 * MARGIN) / pairs.size
-      pairs.forEachIndexed { i, (l, v) -> labeled(l, v, MARGIN + i * width, width - 18f) }
-      y += label.textSize + value.textSize + 22f
+      val columns = pairs.map { (heading, entry) ->
+        wrapLines(heading, label, width - 18f) to
+          wrapLines(entry.ifBlank { "–" }, value, width - 18f)
+      }
+      val labelLines = columns.maxOf { it.first.size }
+      val valueLines = columns.maxOf { it.second.size }
+      val labelStep = label.textSize + 5f
+      val valueStep = value.textSize + 6f
+      val need = labelLines * labelStep + valueLines * valueStep + 14f
+      ensure(need)
+      columns.forEachIndexed { index, (headings, values) ->
+        val x = MARGIN + index * width
+        headings.forEachIndexed { line, text ->
+          canvas.drawText(text, x, y + label.textSize + line * labelStep, label)
+        }
+        val valueTop = y + labelLines * labelStep
+        values.forEachIndexed { line, text ->
+          canvas.drawText(text, x, valueTop + value.textSize + line * valueStep, value)
+        }
+      }
+      y += need
     }
 
     fun wrapped(text: String, paint: Paint, x: Float = MARGIN, width: Float = W - 2 * MARGIN) {
@@ -203,6 +212,27 @@ object PdfExport {
       text.split('\n').forEach { paragraph ->
         var line = ""
         paragraph.split(' ').forEach { word ->
+          if (paint.measureText(word) > width) {
+            if (line.isNotEmpty()) {
+              out.add(line)
+              line = ""
+            }
+            val chunks = mutableListOf<String>()
+            var chunk = ""
+            word.forEach { character ->
+              val probe = chunk + character
+              if (chunk.isNotEmpty() && paint.measureText(probe) > width) {
+                chunks.add(chunk)
+                chunk = character.toString()
+              } else {
+                chunk = probe
+              }
+            }
+            if (chunk.isNotEmpty()) chunks.add(chunk)
+            out.addAll(chunks.dropLast(1))
+            line = chunks.lastOrNull().orEmpty()
+            return@forEach
+          }
           val probe = if (line.isEmpty()) word else "$line $word"
           if (paint.measureText(probe) <= width) line = probe
           else {
@@ -317,20 +347,12 @@ object PdfExport {
       val detail = buildList {
         if (party.representedBy.isNotBlank()) add("${s.representedBy}: ${party.representedBy}")
         if (party.phone.isNotBlank()) add(party.phone)
+        if (party.email.isNotBlank()) add(party.email)
         if (party.address.isNotBlank()) add("${s.newAddress}: ${party.address}")
       }.joinToString(" · ")
-      sheet.ensure(52f)
-      sheet.canvas.drawText(s.role(party.role), MARGIN, sheet.y + sheet.label.textSize, sheet.label)
-      sheet.canvas.drawText(
-        sheet.ellipsize(party.name.ifBlank { "–" }, sheet.value, 640f),
-        MARGIN + 330f,
-        sheet.y + sheet.label.textSize + 2f,
-        sheet.value,
-      )
-      sheet.y += sheet.label.textSize + 10f
+      sheet.labeledRow(listOf(s.role(party.role) to party.name))
       if (detail.isNotBlank()) {
-        sheet.canvas.drawText(sheet.ellipsize(detail, sheet.small, W - 2 * MARGIN - 330f), MARGIN + 330f, sheet.y + sheet.small.textSize, sheet.small)
-        sheet.y += sheet.small.textSize + 10f
+        sheet.wrapped(detail, sheet.small, MARGIN + 30f, W - 2 * MARGIN - 30f)
       }
     }
 
@@ -355,6 +377,23 @@ object PdfExport {
       val side = p.sessionRole?.let { " (${s.role(it)})" } ?: ""
       sheet.wrapped("${s.compiledBy}$side: ${contact.joinToString(" · ")}", sheet.small)
     }
+  }
+
+  private fun dataController(sheet: Sheet, p: Protocol, s: Str) {
+    val controller = p.controllerIdentity
+    if (controller.isBlank()) return
+    sheet.sectionTitle(s.controllerTitle)
+    if (controller.organisation.isNotBlank()) sheet.wrapped(controller.organisation, sheet.value)
+    val contact = buildList {
+      controller.contactName.takeIf { it.isNotBlank() }?.let(::add)
+      controller.email.takeIf { it.isNotBlank() }?.let(::add)
+      controller.phone.takeIf { it.isNotBlank() }?.let(::add)
+      listOf(
+        controller.street,
+        listOf(controller.postalCode, controller.city).filter { it.isNotBlank() }.joinToString(" "),
+      ).filter { it.isNotBlank() }.takeIf { it.isNotEmpty() }?.let { add(it.joinToString(", ")) }
+    }
+    if (contact.isNotEmpty()) sheet.wrapped(contact.joinToString(" · "), sheet.body)
   }
 
   private fun deposit(sheet: Sheet, p: Protocol, s: Str) {
@@ -390,6 +429,7 @@ object PdfExport {
     )
     sheet.labeledRow(
       listOf(
+        s.leaseConcludedOn to SwissDate.display(p.contract.conclusionDate),
         s.tenancyStart to SwissDate.display(p.contract.startDate),
         s.tenancyEnd to SwissDate.display(p.contract.endDate),
       )
@@ -753,11 +793,25 @@ object PdfExport {
 
   private fun release(sheet: Sheet, p: Protocol, s: Str) {
     if (p.kind != Kind.Exit || p.deposit.kind == DepositKind.None) return
+    val releaseText = when (p.deposit.kind) {
+      DepositKind.BankAccount -> s.releaseBank
+      DepositKind.Insurance -> s.releaseInsurance
+      DepositKind.None -> ""
+    }
+    var need = 70f + sheet.wrapLines(releaseText, sheet.body, W - 2 * MARGIN)
+      .size * (sheet.body.textSize + 7f)
+    if (p.deposit.kind == DepositKind.Insurance && p.deposit.provider.isNotBlank()) {
+      val provider = "${s.depositProvider}: ${p.deposit.provider}" +
+        (if (p.deposit.policyNo.isNotBlank()) " · ${s.depositPolicy}: ${p.deposit.policyNo}" else "")
+      need += 12f + sheet.wrapLines(provider, sheet.value, W - 2 * MARGIN)
+        .size * (sheet.value.textSize + 7f)
+    }
+    sheet.ensure(need)
     sheet.sectionTitle(s.releaseTitle)
     when (p.deposit.kind) {
-      DepositKind.BankAccount -> sheet.wrapped(s.releaseBank, sheet.body)
+      DepositKind.BankAccount -> sheet.wrapped(releaseText, sheet.body)
       DepositKind.Insurance -> {
-        sheet.wrapped(s.releaseInsurance, sheet.body)
+        sheet.wrapped(releaseText, sheet.body)
         if (p.deposit.provider.isNotBlank()) {
           sheet.gap(6f)
           sheet.wrapped(
@@ -785,12 +839,14 @@ object PdfExport {
   private fun annex(sheet: Sheet, p: Protocol, s: Str, photoDir: File, measuring: Boolean) {
     val plates = Report.plates(p)
     if (plates.isEmpty()) return
-    sheet.newPage()
-    sheet.sectionTitle(s.pdfDefectAnnex)
     val cellW = (W - 2 * MARGIN - 40f) / 2f
     val cellH = 420f
+    val readablePlates = plates.filter { plate -> readable(File(photoDir, plate.file)) }
+    if (readablePlates.isEmpty()) return
+    sheet.ensure(cellH + 120f)
+    sheet.sectionTitle(s.pdfDefectAnnex)
     var col = 0
-    plates.forEach { plate ->
+    readablePlates.forEach { plate ->
       val file = File(photoDir, plate.file)
       // The counting pass reads the dimensions only: same page breaks, no decoding.
       val bmp = if (measuring) null else decodeDown(file, cellW.toInt())

@@ -14,6 +14,8 @@ import java.util.zip.ZipOutputStream
 
 class ArchiveTest {
 
+  private val password = "correct horse battery staple".toCharArray()
+
   @get:Rule
   val tmp = TemporaryFolder()
 
@@ -28,11 +30,11 @@ class ArchiveTest {
     )
     source.save(record)
     File(source.photoDir("p1"), "wall.jpg").writeText("original evidence")
-    val bytes = ByteArrayOutputStream().also(source::exportArchive).toByteArray()
+    val bytes = ByteArrayOutputStream().also { source.exportArchive(password, it) }.toByteArray()
 
     val restored = Store(tmp.newFolder("restored"))
-    val first = restored.importArchive(ByteArrayInputStream(bytes))
-    val second = restored.importArchive(ByteArrayInputStream(bytes))
+    val first = restored.importArchive(password, ByteArrayInputStream(bytes))
+    val second = restored.importArchive(password, ByteArrayInputStream(bytes))
 
     assertEquals(ArchiveImportResult(imported = 1, skippedExisting = 0, rejected = 0), first)
     assertEquals(ArchiveImportResult(imported = 0, skippedExisting = 1, rejected = 0), second)
@@ -51,10 +53,10 @@ class ArchiveTest {
         defects = listOf(Defect(id = "d2", photos = listOf("missing.jpg"))),
       )
     )
-    val bytes = ByteArrayOutputStream().also(source::exportArchive).toByteArray()
+    val bytes = ByteArrayOutputStream().also { source.exportArchive(password, it) }.toByteArray()
     val restored = Store(tmp.newFolder("restored-missing"))
 
-    assertEquals(1, restored.importArchive(ByteArrayInputStream(bytes)).rejected)
+    assertEquals(1, restored.importArchive(password, ByteArrayInputStream(bytes)).rejected)
     assertTrue(restored.list().isEmpty())
   }
 
@@ -70,7 +72,7 @@ class ArchiveTest {
     val restored = Store(tmp.newFolder("restored-malicious"))
 
     assertThrows(IllegalArgumentException::class.java) {
-      restored.importArchive(ByteArrayInputStream(bytes))
+      restored.importArchive(password, ByteArrayInputStream(bytes))
     }
   }
 
@@ -83,10 +85,56 @@ class ArchiveTest {
     File(root, "photos/not an id").apply { mkdirs() }
       .resolve("unexpected file.jpg").writeText("orphan")
 
-    val bytes = ByteArrayOutputStream().also(source::exportArchive).toByteArray()
+    val bytes = ByteArrayOutputStream().also { source.exportArchive(password, it) }.toByteArray()
     val restored = Store(tmp.newFolder("restored-stray"))
 
-    assertEquals(1, restored.importArchive(ByteArrayInputStream(bytes)).imported)
+    assertEquals(1, restored.importArchive(password, ByteArrayInputStream(bytes)).imported)
     assertEquals("p3", restored.list().single().id)
+  }
+
+  @Test
+  fun encryptedBackupDoesNotExposeProtocolOrEvidenceText() {
+    val source = Store(tmp.newFolder("source-private"))
+    source.save(
+      Protocol(
+        id = "private-record",
+        kind = Kind.Entry,
+        createdEpochMs = 4L,
+        remarks = "private reservation phrase",
+      )
+    )
+    val bytes = ByteArrayOutputStream().also { source.exportArchive(password, it) }.toByteArray()
+    val encoded = bytes.toString(Charsets.ISO_8859_1)
+
+    assertTrue(bytes.copyOfRange(0, 9).contentEquals("LIMENSAFE".toByteArray()))
+    assertTrue(!encoded.contains("private-record"))
+    assertTrue(!encoded.contains("private reservation phrase"))
+  }
+
+  @Test
+  fun wrongPasswordCannotRestoreEncryptedBackup() {
+    val source = Store(tmp.newFolder("source-wrong-password"))
+    source.save(Protocol(id = "p4", kind = Kind.Entry, createdEpochMs = 5L))
+    val bytes = ByteArrayOutputStream().also { source.exportArchive(password, it) }.toByteArray()
+    val restored = Store(tmp.newFolder("restored-wrong-password"))
+
+    assertThrows(Exception::class.java) {
+      restored.importArchive("wrong password".toCharArray(), ByteArrayInputStream(bytes))
+    }
+    assertTrue(restored.list().isEmpty())
+  }
+
+  @Test
+  fun legacyPlainZipRemainsImportable() {
+    val root = tmp.newFolder("source-legacy")
+    val source = Store(root)
+    source.save(Protocol(id = "legacy", kind = Kind.Exit, createdEpochMs = 6L))
+    val bytes = ByteArrayOutputStream().also { ArchiveIO.export(root, it) }.toByteArray()
+    val restored = Store(tmp.newFolder("restored-legacy"))
+
+    assertEquals(
+      1,
+      restored.importArchive("unused".toCharArray(), ByteArrayInputStream(bytes)).imported,
+    )
   }
 }

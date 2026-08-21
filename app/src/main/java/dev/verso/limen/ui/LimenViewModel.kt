@@ -9,6 +9,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import dev.verso.limen.data.Contract
+import dev.verso.limen.data.ControllerIdentity
 import dev.verso.limen.data.ArchiveImportResult
 import dev.verso.limen.data.Defect
 import dev.verso.limen.data.Deposit
@@ -49,6 +50,13 @@ private const val KEY_OPEN = "openProtocol"
 private const val KEY_ROLE = "myRole"
 private const val KEY_NAME = "profileName"
 private const val KEY_COMPANY = "profileCompany"
+private const val KEY_CONTROLLER_ORGANISATION = "controllerOrganisation"
+private const val KEY_CONTROLLER_CONTACT = "controllerContact"
+private const val KEY_CONTROLLER_STREET = "controllerStreet"
+private const val KEY_CONTROLLER_POSTAL = "controllerPostalCode"
+private const val KEY_CONTROLLER_CITY = "controllerCity"
+private const val KEY_CONTROLLER_EMAIL = "controllerEmail"
+private const val KEY_CONTROLLER_PHONE = "controllerPhone"
 
 /**
  * How long the draft waits before it reaches the disk. Long enough that a burst of typing
@@ -106,6 +114,17 @@ enum class FinalizationIssue {
 /** Why an export is withheld, rather than silently producing a misleading document. */
 enum class ExportIssue { NotFinalized, IntegrityMismatch, Failed }
 
+enum class UndoKind { Defect, Photo, Object }
+
+data class UndoNotice(val token: Long, val kind: UndoKind)
+
+private data class PendingUndo(
+  val token: Long,
+  val before: Protocol,
+  val afterRevision: Long,
+  val files: List<File>,
+)
+
 /**
  * Marked stable because every piece of state it publishes is Compose state: a reader is
  * always notified of a change, so a composable that captures this may be skipped when
@@ -131,6 +150,32 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
   /** The agency's firm name when this phone belongs to a Verwaltung; blank for private actors. */
   var profileCompany by mutableStateOf(prefs.getString(KEY_COMPANY, "") ?: "")
     private set
+
+  var controllerIdentity by mutableStateOf(
+    ControllerIdentity(
+      organisation = prefs.getString(KEY_CONTROLLER_ORGANISATION, "") ?: "",
+      contactName = prefs.getString(KEY_CONTROLLER_CONTACT, "") ?: "",
+      street = prefs.getString(KEY_CONTROLLER_STREET, "") ?: "",
+      postalCode = prefs.getString(KEY_CONTROLLER_POSTAL, "") ?: "",
+      city = prefs.getString(KEY_CONTROLLER_CITY, "") ?: "",
+      email = prefs.getString(KEY_CONTROLLER_EMAIL, "") ?: "",
+      phone = prefs.getString(KEY_CONTROLLER_PHONE, "") ?: "",
+    )
+  )
+    private set
+
+  fun updateController(identity: ControllerIdentity) {
+    controllerIdentity = identity
+    prefs.edit()
+      .putString(KEY_CONTROLLER_ORGANISATION, identity.organisation)
+      .putString(KEY_CONTROLLER_CONTACT, identity.contactName)
+      .putString(KEY_CONTROLLER_STREET, identity.street)
+      .putString(KEY_CONTROLLER_POSTAL, identity.postalCode)
+      .putString(KEY_CONTROLLER_CITY, identity.city)
+      .putString(KEY_CONTROLLER_EMAIL, identity.email)
+      .putString(KEY_CONTROLLER_PHONE, identity.phone)
+      .apply()
+  }
 
   fun chooseRole(role: Role, name: String, company: String = "") {
     myRole = role
@@ -178,8 +223,9 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
   var archiveFailed by mutableStateOf(false)
     private set
 
-  fun exportArchive() {
+  fun exportArchive(password: String) {
     if (archiveBusy) return
+    if (password.length < 12) return
     flush()
     archiveBusy = true
     archiveExported = null
@@ -188,12 +234,16 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     viewModelScope.launch {
       val result = withContext(Dispatchers.IO) {
         runCatching {
-          writeToDownloads(
-            getApplication(),
-            "Limen-backup-${exportStamp()}.zip",
-            "application/zip",
-            store::exportArchive,
-          )
+          val secret = password.toCharArray()
+          try {
+            writeToDownloads(
+              getApplication(),
+              "Limen-backup-${exportStamp()}.limen",
+              "application/octet-stream",
+            ) { output -> store.exportArchive(secret, output) }
+          } finally {
+            secret.fill('\u0000')
+          }
         }
       }
       archiveBusy = false
@@ -201,7 +251,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     }
   }
 
-  fun importArchive(uri: Uri) {
+  fun importArchive(uri: Uri, password: String) {
     if (archiveBusy) return
     flush()
     archiveBusy = true
@@ -211,8 +261,14 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     viewModelScope.launch {
       val result = withContext(Dispatchers.IO) {
         runCatching {
-          getApplication<Application>().contentResolver.openInputStream(uri)?.use(store::importArchive)
-            ?: error("No archive input stream")
+          val secret = password.toCharArray()
+          try {
+            getApplication<Application>().contentResolver.openInputStream(uri)?.use { input ->
+              store.importArchive(secret, input)
+            } ?: error("No archive input stream")
+          } finally {
+            secret.fill('\u0000')
+          }
         }
       }
       archiveBusy = false
@@ -259,6 +315,12 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
   var finalizationError by mutableStateOf(false)
     private set
 
+  var undoNotice by mutableStateOf<UndoNotice?>(null)
+    private set
+
+  private var pendingUndo: PendingUndo? = null
+  private var undoJob: kotlinx.coroutines.Job? = null
+
   init {
     val openId = prefs.getString(KEY_OPEN, null)
     if (!openId.isNullOrBlank()) {
@@ -276,6 +338,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
   fun signatureDir(): File? = working?.let { store.signatureDir(it.id) }
 
   private fun setActiveProtocol(protocol: Protocol?) {
+    commitUndo()
     working = protocol
     entryBaseline = protocol
       ?.takeIf { it.kind == Kind.Exit && it.seedId.isNotBlank() }
@@ -291,6 +354,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
    * that can end the process or read the file back.
    */
   fun edit(transform: (Protocol) -> Protocol) {
+    commitUndo()
     val p = working ?: return
     if (p.isFinalized() || finalizing) return
     val edited = transform(p)
@@ -301,10 +365,68 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     scheduleSave()
   }
 
+  private fun reversibleEdit(
+    kind: UndoKind,
+    evidenceNames: List<String> = emptyList(),
+    transform: (Protocol) -> Protocol,
+  ) {
+    if (contentLocked()) return
+    commitUndo()
+    val before = working ?: return
+    val edited = transform(before)
+    if (edited == before) return
+    val after = edited.copy(contentRevision = before.contentRevision + 1, exportedEpochMs = 0)
+    val token = System.nanoTime()
+    val dir = store.photoDir(before.id)
+    val files = evidenceNames.distinct().filter(::safeEvidenceName).map { File(dir, it) }
+    working = after
+    pendingUndo = PendingUndo(token, before, after.contentRevision, files)
+    undoNotice = UndoNotice(token, kind)
+    finalizationIssues = emptyList()
+    finalizationError = false
+    scheduleSave()
+    undoJob = viewModelScope.launch {
+      kotlinx.coroutines.delay(6_000L)
+      commitUndo(token)
+    }
+  }
+
+  fun undo(token: Long) {
+    val pending = pendingUndo?.takeIf { it.token == token } ?: return
+    val current = working
+    if (current?.id == pending.before.id && current.contentRevision == pending.afterRevision) {
+      working = pending.before.copy(
+        contentRevision = current.contentRevision + 1,
+        exportedEpochMs = 0,
+      )
+      undoJob?.cancel()
+      pendingUndo = null
+      undoNotice = null
+      scheduleSave()
+    } else {
+      commitUndo(token)
+    }
+  }
+
+  fun dismissUndo(token: Long) {
+    commitUndo(token)
+  }
+
+  private fun commitUndo(token: Long? = null) {
+    val pending = pendingUndo ?: return
+    if (token != null && pending.token != token) return
+    pending.files.forEach { file -> runCatching { file.delete() } }
+    undoJob?.cancel()
+    undoJob = null
+    pendingUndo = null
+    undoNotice = null
+  }
+
   private fun contentLocked(): Boolean = working?.isFinalized() == true || finalizing
 
   /** Ink records agreement with the current draft; it does not itself rewrite the draft. */
   private fun editSignatures(transform: (Protocol) -> Protocol) {
+    commitUndo()
     val p = working ?: return
     if (p.isFinalized() || finalizing) return
     val edited = transform(p)
@@ -317,6 +439,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
 
   /** Metadata captured after finalization, such as handing over an identical copy. */
   private fun editMetadata(transform: (Protocol) -> Protocol) {
+    commitUndo()
     val p = working ?: return
     working = transform(p)
     scheduleSave()
@@ -330,15 +453,17 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     val p = working ?: return
     if (!p.isFinalized() || !p.isExported() || role !in listOf(Role.Tenant, Role.Landlord)) return
     if (method == dev.verso.limen.data.DeliveryMethod.Other && note.isBlank()) return
+    val changedAt = System.currentTimeMillis()
     editMetadata { record ->
       record.copy(
         deliveryReceipts = record.deliveryReceipts.filterNot { it.role == role } +
           dev.verso.limen.data.DeliveryReceipt(
             role = role,
-            epochMs = System.currentTimeMillis(),
+            epochMs = changedAt,
             method = method,
             note = note.trim(),
-          )
+          ),
+        deliveryMetadataEpochMs = changedAt,
       )
     }
   }
@@ -346,7 +471,10 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
   fun clearDelivery(role: Role) {
     if (working?.isFinalized() != true) return
     editMetadata { record ->
-      record.copy(deliveryReceipts = record.deliveryReceipts.filterNot { it.role == role })
+      record.copy(
+        deliveryReceipts = record.deliveryReceipts.filterNot { it.role == role },
+        deliveryMetadataEpochMs = System.currentTimeMillis(),
+      )
     }
   }
 
@@ -368,6 +496,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
    * lifecycle edges, not typing.
    */
   fun flush() {
+    commitUndo()
     saveJob?.cancel()
     saveJob = null
     val p = working ?: return
@@ -393,6 +522,18 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     createProtocol(kind, role, name, identity)
   }
 
+  private fun controllerFor(identity: SessionIdentity): ControllerIdentity {
+    if (!controllerIdentity.isBlank()) return controllerIdentity
+    return ControllerIdentity(
+      organisation = identity.company,
+      contactName = identity.fullName,
+      street = identity.addressLine,
+      postalCode = identity.postalCode,
+      city = identity.city,
+      phone = identity.phone,
+    )
+  }
+
   fun createProtocol(
     kind: Kind,
     sessionRole: Role? = myRole,
@@ -408,15 +549,13 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
         sessionIdentity.phoneRegion,
       ),
     )
-    // Rooms start empty. A room's record is its defects, and the walking order is only a
-    // suggestion: every one of these is removable and any other kind can be added.
-    val rooms = Templates.defaultRooms.mapIndexed { i, rk -> Room(id = "r$i", kind = rk) }
     val p = Protocol(
       id = "p$now",
       kind = kind,
       sessionRole = sessionRole,
       sessionName = resolvedName,
       sessionIdentity = resolvedIdentity,
+      controllerIdentity = controllerFor(resolvedIdentity),
       // The object is the flat being handed over, not the starter's contact address.
       // It is entered independently from the official swisstopo lookup in Setup.
       address = "",
@@ -457,7 +596,8 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
         KeyCount(KeyKind.Cellar),
       ),
       dossier = listOf(DossierCard.Keys),
-      rooms = rooms,
+      rooms = emptyList(),
+      roomSetupComplete = false,
     )
     store.save(p)
     setActiveProtocol(p)
@@ -485,11 +625,17 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
       kind = Kind.Exit,
       sessionRole = sessionRole,
       sessionName = sessionName.trim(),
+      controllerIdentity = if (controllerIdentity.isBlank()) {
+        ControllerIdentity(contactName = sessionName.trim())
+      } else {
+        controllerIdentity
+      },
       createdEpochMs = now,
       handoverDate = LocalDate.now().toString(),
       handoverTime = "",
       lastProtocolDate = entry.handoverDate,
       rooms = entry.rooms.map(::freshRoom),
+      roomSetupComplete = true,
       objects = entry.objects.map(::freshObject),
       defects = emptyList(),
       remarks = "",
@@ -508,6 +654,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
       finalizedEpochMs = 0,
       evidenceFingerprint = "",
       deliveryReceipts = emptyList(),
+      deliveryMetadataEpochMs = 0,
       exportedEpochMs = 0,
       meters = Meters(),
     )
@@ -547,6 +694,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
       sessionRole = sessionRole,
       sessionName = name,
       sessionIdentity = resolvedIdentity,
+      controllerIdentity = controllerFor(resolvedIdentity),
       createdEpochMs = now,
       handoverDate = LocalDate.now().toString(),
       handoverTime = "",
@@ -572,6 +720,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
         }
       },
       rooms = entry.rooms.map(::freshRoom),
+      roomSetupComplete = true,
       objects = entry.objects.map(::freshObject),
       defects = emptyList(),
       remarks = "",
@@ -590,6 +739,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
       finalizedEpochMs = 0,
       evidenceFingerprint = "",
       deliveryReceipts = emptyList(),
+      deliveryMetadataEpochMs = 0,
       exportedEpochMs = 0,
       meters = Meters(),
     )
@@ -717,6 +867,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
             finalizedEpochMs = 0,
             evidenceFingerprint = "",
             deliveryReceipts = emptyList(),
+            deliveryMetadataEpochMs = 0,
             signatures = emptyList(),
             exportedEpochMs = 0,
           )
@@ -764,6 +915,17 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
 
   fun closeRoom() {
     openRoomId = null
+  }
+
+  fun setInitialRooms(kinds: List<RoomKind>) {
+    if (contentLocked() || kinds.isEmpty() || working?.rooms?.isNotEmpty() == true) return
+    val unique = kinds.distinct()
+    edit { p ->
+      p.copy(
+        rooms = unique.mapIndexed { index, kind -> Room(id = "r${p.createdEpochMs}-$index", kind = kind) },
+        roomSetupComplete = true,
+      )
+    }
   }
 
   fun addRoom(kind: RoomKind, name: String = "") {
@@ -846,8 +1008,10 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     if (contentLocked()) return
     val entry = working?.objects?.firstOrNull { it.id == id }
     val gone = working?.defects?.filter { it.objectId == id }.orEmpty()
-    deletePhotosOf(entry?.photoFiles().orEmpty() + gone.flatMap(Defect::photoFiles))
-    edit { p ->
+    reversibleEdit(
+      kind = UndoKind.Object,
+      evidenceNames = entry?.photoFiles().orEmpty() + gone.flatMap(Defect::photoFiles),
+    ) { p ->
       p.copy(
         objects = p.objects.filterNot { it.id == id },
         defects = p.defects.filterNot { it.objectId == id },
@@ -938,15 +1102,21 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
   fun closeDefect() {
     val id = editingDefectId ?: return
     val d = working?.defects?.firstOrNull { it.id == id }
-    if (d != null && d.text.isBlank() && d.photos.isEmpty()) removeDefect(id)
+    if (d != null && d.text.isBlank() && d.photos.isEmpty()) removeDefect(id, allowUndo = false)
     editingDefectId = null
   }
 
-  fun removeDefect(id: String) {
+  fun removeDefect(id: String, allowUndo: Boolean = true) {
     if (contentLocked()) return
     val gone = working?.defects?.firstOrNull { it.id == id }
-    deletePhotosOf(gone?.photoFiles().orEmpty())
-    edit { p -> p.copy(defects = p.defects.filterNot { it.id == id }) }
+    if (allowUndo) {
+      reversibleEdit(UndoKind.Defect, gone?.photoFiles().orEmpty()) { p ->
+        p.copy(defects = p.defects.filterNot { it.id == id })
+      }
+    } else {
+      deletePhotosOf(gone?.photoFiles().orEmpty())
+      edit { p -> p.copy(defects = p.defects.filterNot { it.id == id }) }
+    }
     if (editingDefectId == id) editingDefectId = null
   }
 
@@ -997,12 +1167,13 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
 
   fun removePhoto(defectId: String, name: String) {
     if (contentLocked()) return
-    deletePhotosOf(listOf(name))
-    updateDefect(defectId) {
-      it.copy(
-        photos = it.photos - name,
-        photoEvidence = it.photoEvidence.filterNot { photo -> photo.file == name },
-      )
+    reversibleEdit(UndoKind.Photo, listOf(name)) { p ->
+      p.copy(defects = p.defects.map { defect ->
+        if (defect.id != defectId) defect else defect.copy(
+          photos = defect.photos - name,
+          photoEvidence = defect.photoEvidence.filterNot { photo -> photo.file == name },
+        )
+      })
     }
   }
 
@@ -1020,12 +1191,13 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
 
   fun removeObjectPhoto(objectId: String, name: String) {
     if (contentLocked()) return
-    deletePhotosOf(listOf(name))
-    updateObject(objectId) {
-      it.copy(
-        photos = it.photos - name,
-        photoEvidence = it.photoEvidence.filterNot { photo -> photo.file == name },
-      )
+    reversibleEdit(UndoKind.Photo, listOf(name)) { p ->
+      p.copy(objects = p.objects.map { entry ->
+        if (entry.id != objectId) entry else entry.copy(
+          photos = entry.photos - name,
+          photoEvidence = entry.photoEvidence.filterNot { photo -> photo.file == name },
+        )
+      })
     }
   }
 

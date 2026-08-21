@@ -67,9 +67,11 @@ class Store(private val root: File) {
     signatureDir(id).deleteRecursively()
   }
 
-  /** Writes every protocol and its original evidence into a versioned local archive. */
-  fun exportArchive(output: OutputStream) = ArchiveIO.export(root, output)
+  /** Writes every protocol and its original evidence into an authenticated encrypted archive. */
+  fun exportArchive(password: CharArray, output: OutputStream) =
+    ArchiveCrypto.export(root, password, output)
 
-  /** Restores only complete, valid records and never replaces an id already on this device. */
-  fun importArchive(input: InputStream): ArchiveImportResult = ArchiveIO.import(root, input)
+  /** Restores encrypted or legacy archives, validates evidence, and never replaces an id. */
+  fun importArchive(password: CharArray, input: InputStream): ArchiveImportResult =
+    ArchiveCrypto.import(root, password, input)
 }

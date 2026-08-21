@@ -65,6 +65,12 @@ private fun RoomGrid(vm: LimenViewModel, s: Str, p: Protocol) {
     Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
     verticalArrangement = Arrangement.spacedBy(10.dp),
   ) {
+    if (!locked && p.rooms.isEmpty() && !p.roomSetupComplete) {
+      InitialRoomSetup(vm, s, p)
+      Spacer(Modifier.height(12.dp))
+      return@Column
+    }
+
     FlowRow(
       Modifier.fillMaxWidth(),
       horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -123,6 +129,43 @@ private fun RoomGrid(vm: LimenViewModel, s: Str, p: Protocol) {
 
     SmallKey(s.stepObjects.uppercase(), Modifier.fillMaxWidth()) { vm.goTo(FlowStep.Objects) }
     Spacer(Modifier.height(12.dp))
+  }
+}
+
+@Composable
+private fun InitialRoomSetup(vm: LimenViewModel, s: Str, p: Protocol) {
+  var selected by remember(p.id) { mutableStateOf(emptySet<RoomKind>()) }
+  Panel(label = s.chooseRoomsPresent) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+      Text(s.chooseRoomsPresentBody, style = MaterialTheme.typography.bodyMedium, color = Limen.colors.ink)
+      FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+      ) {
+        Templates.defaultRooms.forEach { kind ->
+          val active = kind in selected
+          Chip(
+            label = s.room(kind),
+            active = active,
+            selectionState = active,
+          ) {
+            selected = if (active) selected - kind else selected + kind
+          }
+        }
+      }
+      Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        SmallKey(s.selectAll, Modifier.weight(1f)) { selected = Templates.defaultRooms.toSet() }
+        SmallKey(s.clear, Modifier.weight(1f), enabled = selected.isNotEmpty()) { selected = emptySet() }
+      }
+      BigKey(
+        s.useSelectedRooms,
+        active = selected.isNotEmpty(),
+        modifier = Modifier.fillMaxWidth(),
+        enabled = selected.isNotEmpty(),
+      ) {
+        vm.setInitialRooms(Templates.defaultRooms.filter { it in selected })
+      }
+    }
   }
 }
 

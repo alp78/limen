@@ -1,9 +1,10 @@
 package dev.verso.limen
 
 import android.os.Bundle
+import androidx.activity.BackEventCompat
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
-import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,6 +15,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -26,6 +30,8 @@ import dev.verso.limen.ui.HomeScreen
 import dev.verso.limen.ui.LimenViewModel
 import dev.verso.limen.ui.Str
 import dev.verso.limen.theme.Limen
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.collect
 
 class MainActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -70,9 +76,28 @@ class MainActivity : ComponentActivity() {
           val screenModifier = Modifier.safeDrawingPadding().padding(vertical = 8.dp)
           val s = remember(vm.lang) { Str(vm.lang) }
           if (vm.working != null) {
-            // The flow owns the screen until it is closed; back walks its stations.
-            BackHandler { vm.flowBack() }
-            FlowScreen(modifier = screenModifier, vm = vm, s = s)
+            var backProgress by remember { mutableFloatStateOf(0f) }
+            PredictiveBackHandler { progress ->
+              try {
+                progress.collect { event ->
+                  backProgress = if (event.swipeEdge == BackEventCompat.EDGE_RIGHT) {
+                    -event.progress
+                  } else {
+                    event.progress
+                  }
+                }
+                backProgress = 0f
+                vm.flowBack()
+              } catch (_: CancellationException) {
+                backProgress = 0f
+              }
+            }
+            FlowScreen(
+              modifier = screenModifier,
+              vm = vm,
+              s = s,
+              predictiveBackProgress = backProgress,
+            )
           } else {
             HomeScreen(modifier = Modifier.fillMaxSize(), vm = vm, s = s)
           }

@@ -1,5 +1,12 @@
 package dev.verso.limen.ui
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -25,6 +32,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -53,11 +61,26 @@ import dev.verso.limen.theme.Limen
  * app kills this process whenever it pleases.
  */
 @Composable
-fun FlowScreen(modifier: Modifier = Modifier, vm: LimenViewModel, s: Str) {
+fun FlowScreen(
+  modifier: Modifier = Modifier,
+  vm: LimenViewModel,
+  s: Str,
+  predictiveBackProgress: Float = 0f,
+) {
   val p = vm.working ?: return
   val locked = p.isFinalized()
+  val backAmount = kotlin.math.abs(predictiveBackProgress)
   CompositionLocalProvider(LocalRecordLocked provides locked) {
-    Box(modifier.fillMaxSize()) {
+    Box(
+      modifier
+        .fillMaxSize()
+        .graphicsLayer {
+          translationX = size.width * 0.07f * predictiveBackProgress
+          scaleX = 1f - backAmount * 0.018f
+          scaleY = 1f - backAmount * 0.018f
+          alpha = 1f - backAmount * 0.08f
+        }
+    ) {
       Column(Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
         FlowMast(vm, s, p)
         Spacer(Modifier.height(8.dp))
@@ -66,14 +89,27 @@ fun FlowScreen(modifier: Modifier = Modifier, vm: LimenViewModel, s: Str) {
           SealBar(vm, s)
           Spacer(Modifier.height(8.dp))
         }
-        when (vm.flowStep) {
-          FlowStep.Hub -> HubStep(vm, s, p)
-          FlowStep.Inspection -> InspectionStep(vm, s, p)
-          FlowStep.Objects -> ObjectsStep(vm, s, p)
-          FlowStep.Dossier -> DossierStep(vm, s, p)
-          FlowStep.Review -> ReviewStep(vm, s, p)
-          FlowStep.Sign -> SignStep(vm, s, p)
-          FlowStep.Export -> ExportStep(vm, s, p)
+        AnimatedContent(
+          targetState = vm.flowStep,
+          modifier = Modifier.weight(1f),
+          transitionSpec = {
+            val direction = if (targetState.ordinal >= initialState.ordinal) 1 else -1
+            (fadeIn(tween(160)) + slideInHorizontally(tween(180)) { direction * it / 10 })
+              .togetherWith(
+                fadeOut(tween(120)) + slideOutHorizontally(tween(160)) { -direction * it / 12 }
+              )
+          },
+          label = "handoverRoute",
+        ) { step ->
+          when (step) {
+            FlowStep.Hub -> HubStep(vm, s, p)
+            FlowStep.Inspection -> InspectionStep(vm, s, p)
+            FlowStep.Objects -> ObjectsStep(vm, s, p)
+            FlowStep.Dossier -> DossierStep(vm, s, p)
+            FlowStep.Review -> ReviewStep(vm, s, p)
+            FlowStep.Sign -> SignStep(vm, s, p)
+            FlowStep.Export -> ExportStep(vm, s, p)
+          }
         }
       }
       if (vm.editingDefectId != null) {
@@ -81,6 +117,26 @@ fun FlowScreen(modifier: Modifier = Modifier, vm: LimenViewModel, s: Str) {
       }
       if (vm.showDepositCompare) {
         DepositCompareOverlay(vm, s)
+      }
+      vm.undoNotice?.let { notice ->
+        Row(
+          Modifier
+            .align(Alignment.BottomCenter)
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 10.dp)
+            .background(Limen.colors.plateRaised, RoundedCornerShape(12.dp))
+            .padding(start = 16.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+          Text(
+            s.removedForUndo(notice.kind),
+            style = MaterialTheme.typography.bodyMedium,
+            color = Limen.colors.ink,
+            modifier = Modifier.weight(1f),
+          )
+          SmallKey(s.undo, tick = Tick.Confirm) { vm.undo(notice.token) }
+        }
       }
     }
   }
@@ -343,6 +399,27 @@ private fun ReviewIdentity(s: Str, p: Protocol) {
       }
     }
   }
+  if (!p.controllerIdentity.isBlank()) {
+    Panel(label = s.controllerTitle) {
+      Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        ReviewLine(s.organisation, p.controllerIdentity.organisation)
+        ReviewLine(s.controllerContact, p.controllerIdentity.contactName)
+        ReviewLine(
+          s.identityAddress,
+          listOf(
+            p.controllerIdentity.street,
+            listOf(p.controllerIdentity.postalCode, p.controllerIdentity.city)
+              .filter { it.isNotBlank() }.joinToString(" "),
+          ).filter { it.isNotBlank() }.joinToString(", "),
+        )
+        ReviewLine(
+          s.email,
+          listOf(p.controllerIdentity.email, p.controllerIdentity.phone)
+            .filter { it.isNotBlank() }.joinToString(" · "),
+        )
+      }
+    }
+  }
 }
 
 @Composable
@@ -413,6 +490,7 @@ private fun ReviewDossier(s: Str, p: Protocol) {
           listOf(
             contract.monthlyRentChf.takeIf { it.isNotBlank() }?.let { "${s.monthlyRent}: $it" },
             contract.serviceChargesChf.takeIf { it.isNotBlank() }?.let { "${s.serviceCharges}: $it" },
+            contract.conclusionDate.takeIf { it.isNotBlank() }?.let { "${s.leaseConcludedOn}: $it" },
             contract.startDate.takeIf { it.isNotBlank() }?.let { "${s.tenancyStart}: $it" },
             contract.endDate.takeIf { it.isNotBlank() }?.let { "${s.tenancyEnd}: $it" },
             contract.noticeDate.takeIf { it.isNotBlank() }?.let { "${s.noticeDate}: $it" },

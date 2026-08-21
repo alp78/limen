@@ -269,8 +269,19 @@ internal fun ExportStep(vm: LimenViewModel, s: Str, p: Protocol) {
       )
     }
 
+    val deliveryNeedsExport = p.deliveryMetadataEpochMs > p.exportedEpochMs
+    if (deliveryNeedsExport) {
+      Panel(label = s.deliveryChanged, warning = true) {
+        Text(
+          s.deliveryChangedBody,
+          style = MaterialTheme.typography.bodyMedium,
+          color = Limen.colors.ink,
+        )
+      }
+    }
+
     BigKey(
-      if (vm.exporting) "…" else s.exportPdf,
+      if (vm.exporting) "…" else if (deliveryNeedsExport) s.exportUpdatedFinalCopy else s.exportPdf,
       active = !vm.exporting,
       Modifier.fillMaxWidth(),
       enabled = !vm.exporting,

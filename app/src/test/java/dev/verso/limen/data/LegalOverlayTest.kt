@@ -18,6 +18,7 @@ class LegalOverlayTest {
     createdEpochMs = 1L,
     objectCanton = canton,
     handoverDate = date,
+    contract = Contract(conclusionDate = date),
     deposit = Deposit(kind = depositKind),
   )
 
@@ -44,6 +45,23 @@ class LegalOverlayTest {
     assertEquals(
       InitialRentFormRule.VerifyCurrent,
       protocol(SwissCanton.ZH, date = "2027-01-01").resolvedLegalOverlay()?.initialRentFormRule,
+    )
+  }
+
+  @Test
+  fun initialRentFormUsesLeaseConclusionDateNotTheLaterHandover() {
+    val handoverIn2027 = protocol(SwissCanton.ZH, date = "2027-01-08").copy(
+      contract = Contract(conclusionDate = "2026-12-14"),
+    )
+    assertEquals(
+      InitialRentFormRule.Required,
+      handoverIn2027.resolvedLegalOverlay()?.initialRentFormRule,
+    )
+
+    val unknownConclusion = handoverIn2027.copy(contract = Contract())
+    assertEquals(
+      InitialRentFormRule.VerifyCurrent,
+      unknownConclusion.resolvedLegalOverlay()?.initialRentFormRule,
     )
   }
 
