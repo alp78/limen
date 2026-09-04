@@ -43,10 +43,10 @@ val hasLimenSigning = listOf("storeFile", "storePassword", "keyAlias", "keyPassw
   .all { !limenSigning.getProperty(it).isNullOrBlank() }
 
 android {
-    namespace = "dev.verso.limen"
+    namespace = "dev.peringer.limen"
     compileSdk = 36
     defaultConfig {
-        applicationId = "dev.verso.limen"
+        applicationId = "dev.peringer.limen"
         // 29 because the finished protocol is written to MediaStore.Downloads, which arrived
         // with scoped storage; everything else here would run on 26.
         minSdk = 29

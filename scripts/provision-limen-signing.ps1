@@ -27,7 +27,7 @@ try {
     -keysize 4096 `
     -sigalg SHA256withRSA `
     -validity 10000 `
-    -dname 'CN=Limen Upload Key, OU=Android, O=Verso, C=CH' `
+    -dname 'CN=Alexis Peringer, O=PERINGER, L=Lausanne, C=CH' `
     '-storepass:env' LIMEN_PROVISIONING_SECRET `
     '-keypass:env' LIMEN_PROVISIONING_SECRET
   if ($LASTEXITCODE -ne 0) { throw "keytool failed with exit code $LASTEXITCODE" }
