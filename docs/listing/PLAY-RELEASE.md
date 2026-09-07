@@ -17,9 +17,26 @@ Everything checked below was checked against the repository and the built artefa
 | Permissions | `INTERNET` only, plus the `DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` AndroidX defines for itself and does not surface to the user |
 | Backup and transfer | `allowBackup="false"` plus `data_extraction_rules.xml` excluding cloud backup and device transfer |
 | Unit tests | 89 green |
-| Instrumented tests | 4 green on a Pixel 10a |
+| Instrumented tests | 4 green on a Pixel 10, Android 17 |
 | Privacy policy | `https://alp78.github.io/legal/limen/privacy/`, committed and pushed in the `alp78/legal` repository |
 | Third-party notices | `NOTICE` copied into the APK at build time and shown in the app under Data, backup and privacy |
+
+## Devices this was checked on
+
+| Device | Android | Result |
+|---|---|---|
+| Pixel 10 | 17, API 37 | release installs, launches, 4 instrumented tests green |
+| Galaxy Tab Active 3, SM-T575 | 13, API 33 | release installs, launches, 4 instrumented tests green |
+
+The tablet matters more than a second phone would. It is the oldest Android in reach and the only
+large screen, so it is where `minSdk 29` stops being a number in a build file, and where a layout
+written on a 1080 x 2424 phone has to prove itself. A handover on a rugged tablet is also a real
+way to use this app rather than a hypothetical one.
+
+The suite fails on the tablet with "No compose hierarchies found in the app" unless the screen is
+awake and the animation scales are zero. That is the harness, not the app: the release build
+launches and stays up on Android 13 with an empty crash buffer. `_scratch/DEPLOY.md` carries the
+two commands.
 
 ## The account gate, which is the long pole
 
