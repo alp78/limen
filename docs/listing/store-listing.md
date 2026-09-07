@@ -338,6 +338,6 @@ The eight screenshots, in upload order:
 
 The feature graphic is a plain composition of assets that already exist, not an identity round. Replace it if the visual identity is ever revisited.
 
-**On the aspect ratio.** These are 1080 x 2424, which is the Pixel 10's own shape and taller than the 9:16 the Play documentation names. Play accepts modern tall screenshots in practice, since every recent handset produces them. If the Console ever refuses one, pad rather than crop, so nothing is lost from the frame.
+**On the aspect ratio.** These are 1080 x 2424, which is the Pixel 10's own shape and taller than the 9:16 the Play documentation names. Settled on 7 September 2026: all eight uploaded through the Play Developer API without complaint, so the documented ratio is a guide rather than a limit. If a future upload is ever refused, pad rather than crop, so nothing is lost from the frame.
 
 **The one shot not taken.** A defect carrying a photograph. The app takes photographs through the system camera, and an honest store screenshot needs a real one of a real mark on a real wall, which is thirty seconds with the phone and cannot be manufactured here. `phone-04` shows the defect editor with its camera and gallery controls instead.
