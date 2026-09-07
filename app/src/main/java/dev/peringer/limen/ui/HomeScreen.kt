@@ -217,13 +217,17 @@ private fun ProtocolCard(
 ) {
   val shape = RoundedCornerShape(14.dp)
   var armed by remember(p.id) { mutableStateOf(false) }
+  val play = rememberTick()
   Column(
     Modifier
       .fillMaxWidth()
       .clip(shape)
       .background(Limen.colors.plateRaised)
       .border(1.5.dp, Limen.colors.actionOutline, shape)
-      .clickable { vm.openProtocol(p.id) }
+      .clickable {
+        play(Tick.Key)
+        vm.openProtocol(p.id)
+      }
       .padding(horizontal = 16.dp, vertical = 12.dp),
   ) {
     Row(verticalAlignment = Alignment.CenterVertically) {

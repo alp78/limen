@@ -695,6 +695,8 @@ fun Toggle(
     enabled = enabled,
     shape = RoundedCornerShape(10.dp),
     role = Role.Switch,
+    // Pressing a switch that is on turns it off, so the weight names the state it lands in.
+    tick = if (on) Tick.ToggleOff else Tick.ToggleOn,
     onPress = onPress,
   ) {
     Row(

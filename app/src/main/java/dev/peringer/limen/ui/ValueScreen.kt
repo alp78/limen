@@ -80,6 +80,7 @@ fun WearAssessment(s: Str, modifier: Modifier = Modifier) {
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(6.dp))
                     .clickable {
+                      play(Tick.Key)
                       picked = row.key.name
                       lifespan = row.years.toInt().toString()
                       showTable = false

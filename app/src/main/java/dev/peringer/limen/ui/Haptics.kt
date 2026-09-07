@@ -11,9 +11,13 @@ import androidx.compose.ui.platform.LocalView
  * The instrument's touch. Keys in this app visibly sink under the thumb, and a key that
  * looks mechanical should feel mechanical.
  *
- * Three weights only. [Key] is every control. [Confirm] marks the two moments that end
- * something: a signature kept, a document written. [Reject] marks a refusal or a
- * deletion, so a destructive tap never feels the same as an ordinary one.
+ * Five weights. [Key] is every control. [ToggleOn] and [ToggleOff] are a switch changing
+ * state, the pair Android added in API 34 for exactly that control, and on a Pixel they
+ * are lighter than a key (a half-strength tick and a low tick against a strong click),
+ * which is the platform's own rule that changing a toggle should feel less than
+ * submitting something. [Confirm] marks the two moments that end something: a signature
+ * kept, a document written. [Reject] marks a refusal or a deletion, so a destructive tap
+ * never feels the same as an ordinary one.
  *
  * This asks the window to play a feedback rather than driving the vibrator, and that is
  * not merely the polite choice, it is the only one that buys anything. Measured against
@@ -24,7 +28,7 @@ import androidx.compose.ui.platform.LocalView
  * VIBRATE permission would cost the manifest's promise and return nothing. When the keys
  * feel dead, that setting is off, and it is the phone's answer to give.
  */
-enum class Tick { Key, Confirm, Reject }
+enum class Tick { Key, ToggleOn, ToggleOff, Confirm, Reject }
 
 /** The tick this composition can play, bound to the window that owns it. */
 @Composable
@@ -34,10 +38,19 @@ fun rememberTick(): (Tick) -> Unit {
 }
 
 fun View.tick(weight: Tick) {
-  // CONFIRM and REJECT arrived in API 30; on 29 the nearest honest stand-ins are the
-  // ordinary key press and the long press, which are the same two feelings coarsened.
+  // CONFIRM and REJECT arrived in API 30 and the TOGGLE pair in API 34. Below those the
+  // nearest honest stand-ins are the ordinary key press and the long press, the same
+  // feelings coarsened, so a phone on 29 to 33 ticks for a switch exactly as it did
+  // before the pair existed instead of going silent on a constant it does not know.
+  val hasTogglePair = Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
   val constant = when (weight) {
     Tick.Key -> HapticFeedbackConstants.VIRTUAL_KEY
+    Tick.ToggleOn ->
+      if (hasTogglePair) HapticFeedbackConstants.TOGGLE_ON
+      else HapticFeedbackConstants.VIRTUAL_KEY
+    Tick.ToggleOff ->
+      if (hasTogglePair) HapticFeedbackConstants.TOGGLE_OFF
+      else HapticFeedbackConstants.VIRTUAL_KEY
     Tick.Confirm ->
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) HapticFeedbackConstants.CONFIRM
       else HapticFeedbackConstants.VIRTUAL_KEY

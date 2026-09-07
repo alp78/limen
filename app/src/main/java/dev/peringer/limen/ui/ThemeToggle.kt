@@ -26,8 +26,8 @@ fun ThemeToggle(dark: Boolean, description: String, onToggle: () -> Unit) {
   val play = rememberTick()
   Switch(
     checked = dark,
-    onCheckedChange = {
-      play(Tick.Key)
+    onCheckedChange = { checked ->
+      play(if (checked) Tick.ToggleOn else Tick.ToggleOff)
       onToggle()
     },
     modifier = Modifier.width(52.dp).semantics { contentDescription = description },

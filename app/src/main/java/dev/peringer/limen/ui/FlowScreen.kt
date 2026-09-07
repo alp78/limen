@@ -331,11 +331,16 @@ internal fun DismissibleItemRow(s: Str, onRemove: () -> Unit, content: @Composab
 /** One finding, one line: what it says, what hangs on it, and the way into the editor. */
 @Composable
 internal fun DefectLine(vm: LimenViewModel, s: Str, p: Protocol, d: Defect, showPlace: Boolean = false) {
+  val play = rememberTick()
   Row(
     Modifier
       .fillMaxWidth()
       .clip(RoundedCornerShape(8.dp))
-      .clickable { vm.editDefect(d.id) }
+      // The row is the only way into the editor, so it is a key and presses like one.
+      .clickable {
+        play(Tick.Key)
+        vm.editDefect(d.id)
+      }
       .padding(vertical = 4.dp),
     verticalAlignment = Alignment.CenterVertically,
   ) {
