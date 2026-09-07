@@ -46,7 +46,7 @@ Each of these is recorded by the app and stays on the device, which is not colle
 - **Handwritten signatures.** Drawn in the app, written to private storage as PNG, covered by the record's evidence fingerprint. Never transmitted.
 - **Defect descriptions, comments and reservations.** Private app storage.
 - **Files and documents.** The exported PDF is written to the device and can be passed to the system share sheet by the user. Play excludes user-initiated share-sheet actions from both collection and sharing.
-- **The password-protected archive.** Written where the user chooses. The password is never transmitted and cannot be recovered by the app.
+- **The backup archive.** Written to Downloads/Limen, encrypted when the user sets a password and plain when they do not, which the screen states. A password is never transmitted and cannot be recovered by the app.
 - **Location.** No location permission, and none is requested. The address is typed, not sensed.
 - **Device or other IDs.** None read and none sent.
 - **App activity, diagnostics, crash logs.** No analytics library, no crash reporter, no telemetry of any kind.

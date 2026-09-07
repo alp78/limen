@@ -1526,18 +1526,18 @@ class Str(val lang: Lang) {
   val backupPassword = pick("Backup password", "Mot de passe", "Sicherungspasswort", "Password del backup", "Pled-clav da segirezza")
   val confirmBackupPassword = pick("Confirm password", "Confirmer le mot de passe", "Passwort bestätigen", "Conferma password", "Confermar il pled-clav")
   val backupPasswordBody = pick(
-    "Use at least 12 characters. Limen cannot recover this password; keep it separately from the backup.",
-    "Utilisez au moins 12 caractères. Limen ne peut pas récupérer ce mot de passe; conservez-le séparément de la sauvegarde.",
-    "Mindestens 12 Zeichen verwenden. Limen kann dieses Passwort nicht wiederherstellen; getrennt von der Sicherung aufbewahren.",
-    "Usate almeno 12 caratteri. Limen non può recuperare questa password; conservatela separatamente dal backup.",
-    "Duvrai almain 12 segns. Limen na po betg restabilir quest pled-clav; al tegnair separà da la segirezza.",
+    "A password is optional. Without one, anyone who has the file can read every record in it. With one, Limen cannot recover it; keep it separately from the backup.",
+    "Le mot de passe est facultatif. Sans lui, quiconque détient le fichier peut lire tous les constats qu'il contient. Avec, Limen ne peut pas le récupérer; conservez-le séparément de la sauvegarde.",
+    "Ein Passwort ist freiwillig. Ohne Passwort kann jeder, der die Datei hat, jedes Protokoll darin lesen. Mit Passwort kann Limen es nicht wiederherstellen; getrennt von der Sicherung aufbewahren.",
+    "La password è facoltativa. Senza, chiunque abbia il file può leggere ogni verbale che contiene. Con la password, Limen non può recuperarla; conservatela separatamente dal backup.",
+    "Il pled-clav è facultativ. Senza pled-clav po mintgin che ha la datoteca leger tut ils protocols en ella. Cun pled-clav na po Limen betg al restabilir; al tegnair separà da la segirezza.",
   )
   val restorePasswordBody = pick(
-    "Enter the password used when this backup was created. Legacy ZIP backups are still accepted with any non-empty entry.",
-    "Saisissez le mot de passe utilisé lors de la création. Les anciennes sauvegardes ZIP restent acceptées avec toute saisie non vide.",
-    "Das beim Erstellen verwendete Passwort eingeben. Ältere ZIP-Sicherungen werden weiterhin mit einer beliebigen nicht leeren Eingabe akzeptiert.",
-    "Inserite la password usata alla creazione. I vecchi backup ZIP restano accettati con qualsiasi testo non vuoto.",
-    "Endatai il pled-clav duvrà tar la creaziun. Segirezzas ZIP veglias vegnan anc acceptadas cun mintga endataziun betg vida.",
+    "Enter the password this backup was made with, or leave the field empty if it was made without one.",
+    "Saisissez le mot de passe utilisé pour cette sauvegarde, ou laissez le champ vide si elle a été créée sans.",
+    "Das Passwort dieser Sicherung eingeben oder das Feld leer lassen, wenn sie ohne Passwort erstellt wurde.",
+    "Inserite la password di questo backup, oppure lasciate il campo vuoto se è stato creato senza.",
+    "Endatai il pled-clav da questa segirezza u laschai vid il champ, sch'ella è vegnida creada senza.",
   )
   val working = pick("Working...", "Traitement...", "Wird verarbeitet...", "Elaborazione...", "Elavurar...")
   val archiveFailed = pick(
@@ -1553,6 +1553,13 @@ class Str(val lang: Lang) {
     "Unter Downloads/Limen als $name gespeichert",
     "Salvato in Download/Limen come $name",
     "Memorisà en Downloads/Limen sco $name",
+  )
+  fun archiveSavedOpen(name: String) = pick(
+    "Saved to Downloads/Limen as $name, without a password: anyone who has this file can read every record in it.",
+    "Enregistré dans Téléchargements/Limen sous $name, sans mot de passe: quiconque détient ce fichier peut lire tous les constats qu'il contient.",
+    "Unter Downloads/Limen als $name gespeichert, ohne Passwort: Wer diese Datei hat, kann jedes Protokoll darin lesen.",
+    "Salvato in Download/Limen come $name, senza password: chiunque abbia questo file può leggere ogni verbale che contiene.",
+    "Memorisà en Downloads/Limen sco $name, senza pled-clav: mintgin che ha questa datoteca po leger tut ils protocols en ella.",
   )
   fun archiveRestored(result: dev.peringer.limen.data.ArchiveImportResult) = pick(
     "Restored ${result.imported}; kept ${result.skippedExisting} existing; rejected ${result.rejected} invalid.",

@@ -426,11 +426,11 @@ private fun ReviewIdentity(s: Str, p: Protocol) {
               .filter { it.isNotBlank() }.joinToString(" "),
           ).filter { it.isNotBlank() }.joinToString(", "),
         )
-        ReviewLine(
-          s.email,
-          listOf(p.controllerIdentity.email, p.controllerIdentity.phone)
-            .filter { it.isNotBlank() }.joinToString(" · "),
-        )
+        // Two rows, not one joined row under the email label: a controller who gave only a
+        // phone number was reading "Email: +41 79 ..." on the screen they check before
+        // finalizing. ReviewLine already hides a blank value, so each row shows only if set.
+        ReviewLine(s.email, p.controllerIdentity.email)
+        ReviewLine(s.phoneNumber, p.controllerIdentity.phone)
       }
     }
   }

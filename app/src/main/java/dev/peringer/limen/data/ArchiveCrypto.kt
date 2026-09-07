@@ -25,7 +25,13 @@ internal object ArchiveCrypto {
   private val random = SecureRandom()
 
   fun export(root: java.io.File, password: CharArray, output: OutputStream) {
-    require(password.isNotEmpty()) { "Backup password is empty" }
+    // No password writes the plain archive, byte for byte the form the legacy branch of
+    // [import] has always read, so an unprotected backup needs no new reader and no new
+    // version. Whether to protect is the person's call; the screen says which they made.
+    if (password.isEmpty()) {
+      ArchiveIO.export(root, output)
+      return
+    }
     val salt = ByteArray(SALT_BYTES).also(random::nextBytes)
     val iv = ByteArray(IV_BYTES).also(random::nextBytes)
     val header = magic + byteArrayOf(VERSION) + salt + iv

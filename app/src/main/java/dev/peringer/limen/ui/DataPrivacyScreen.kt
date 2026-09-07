@@ -143,9 +143,10 @@ fun DataPrivacyScreen(
             vm.archiveBusy -> Text(s.working, style = MaterialTheme.typography.bodySmall, color = Limen.colors.inkDim)
             vm.archiveFailed -> Text(s.archiveFailed, style = MaterialTheme.typography.bodySmall, color = Limen.colors.dangerOutline)
             vm.archiveExported != null -> Text(
-              s.archiveSaved(vm.archiveExported!!.displayName),
+              if (vm.archiveProtected) s.archiveSaved(vm.archiveExported!!.displayName)
+              else s.archiveSavedOpen(vm.archiveExported!!.displayName),
               style = MaterialTheme.typography.bodySmall,
-              color = Limen.colors.seal,
+              color = if (vm.archiveProtected) Limen.colors.seal else Limen.colors.warningOutline,
             )
             vm.archiveImported != null -> Text(
               s.archiveRestored(vm.archiveImported!!),
@@ -192,7 +193,10 @@ private fun ArchivePasswordDialog(
   var password by remember(action) { mutableStateOf("") }
   var confirmation by remember(action) { mutableStateOf("") }
   val isExport = action == ArchiveAction.Export
-  val valid = password.isNotBlank() && (!isExport || password.length >= 12 && password == confirmation)
+  // A password is optional both ways: an export without one writes a plain archive, and a
+  // restore without one reads exactly that. The only thing that can be wrong here is a
+  // confirmation that does not match.
+  val valid = !isExport || password == confirmation
 
   AlertDialog(
     onDismissRequest = onDismiss,

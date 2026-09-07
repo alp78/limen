@@ -55,7 +55,7 @@ Limen uses the internet for one thing: when you type a Swiss address, the typed 
 
 Photographs come from the system camera or the system picker, so the app asks for no camera and no storage permission. Android cloud backup and device-to-device transfer are switched off for its data.
 
-Backups are yours to make: a single password-protected archive of every record, its photographs and its signature ink. Limen cannot recover that password.
+Backups are yours to make: a single archive of every record, its photographs and its signature ink, with a password if you choose to set one. Limen cannot recover that password.
 
 FIVE LANGUAGES
 

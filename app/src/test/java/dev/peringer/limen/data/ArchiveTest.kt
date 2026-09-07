@@ -137,4 +137,17 @@ class ArchiveTest {
       restored.importArchive("unused".toCharArray(), ByteArrayInputStream(bytes)).imported,
     )
   }
+
+  @Test
+  fun emptyPasswordWritesAPlainArchiveThatRestoresWithoutOne() {
+    val source = Store(tmp.newFolder("source-open"))
+    source.save(Protocol(id = "open", kind = Kind.Exit, createdEpochMs = 7L))
+    val none = CharArray(0)
+    val bytes = ByteArrayOutputStream().also { source.exportArchive(none, it) }.toByteArray()
+
+    // Plain means plain: a zip signature, not the LIMENSAFE envelope.
+    assertTrue(bytes.copyOfRange(0, 2).contentEquals("PK".toByteArray()))
+    val restored = Store(tmp.newFolder("restored-open"))
+    assertEquals(1, restored.importArchive(none, ByteArrayInputStream(bytes)).imported)
+  }
 }

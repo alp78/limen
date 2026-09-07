@@ -218,6 +218,9 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
 
   var archiveExported by mutableStateOf<dev.peringer.limen.data.ExportedFile?>(null)
     private set
+  /** Whether the last export carried a password, so the screen can say when it did not. */
+  var archiveProtected by mutableStateOf(true)
+    private set
 
   var archiveImported by mutableStateOf<ArchiveImportResult?>(null)
     private set
@@ -227,8 +230,8 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
 
   fun exportArchive(password: String) {
     if (archiveBusy) return
-    if (password.length < 12) return
     flush()
+    archiveProtected = password.isNotEmpty()
     archiveBusy = true
     archiveExported = null
     archiveImported = null
