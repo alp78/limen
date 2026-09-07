@@ -1,8 +1,10 @@
 package dev.peringer.limen.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,9 +16,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,9 +30,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import dev.peringer.limen.theme.Limen
 
@@ -42,6 +46,7 @@ fun DataPrivacyScreen(
   s: Str,
   onBack: () -> Unit,
 ) {
+  var showLicences by rememberSaveable { mutableStateOf(false) }
   var archiveAction by rememberSaveable { mutableStateOf<ArchiveAction?>(null) }
   // Saveable alongside the action it belongs to. Held in a plain remember, a recreation after
   // the document picker brought the password dialog back with no Uri behind it, and the
@@ -53,6 +58,11 @@ fun DataPrivacyScreen(
       archiveAction = ArchiveAction.Import
     }
   }
+  if (showLicences) {
+    LicencesView(s, modifier) { showLicences = false }
+    return
+  }
+
   Column(
     modifier
       .fillMaxSize()
@@ -110,6 +120,12 @@ fun DataPrivacyScreen(
               keyboardType = KeyboardType.Phone,
             ) { vm.updateController(controller.copy(phone = it)) }
           }
+        }
+      }
+      Panel(label = s.licencesTitle) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+          Text(s.licencesBody, style = MaterialTheme.typography.bodyMedium, color = Limen.colors.ink)
+          SmallKey(s.openLicences, Modifier.fillMaxWidth()) { showLicences = true }
         }
       }
       Panel(label = s.backupTitle) {
@@ -218,4 +234,47 @@ private fun ArchivePasswordDialog(
     },
     dismissButton = { SmallKey(s.cancel, onPress = onDismiss) },
   )
+}
+
+/**
+ * The third-party notice, read from the copy of the repo's NOTICE that the build stages into
+ * assets. Verbatim and unlocalized on purpose: a licence text that has been translated or
+ * reflowed is no longer the licence text. It scrolls both ways because the notice is written to
+ * a fixed column a phone is narrower than.
+ *
+ * Its own screen rather than a panel: the notice is several thousand characters and the privacy
+ * page is already a scrolling column, which cannot hold a second one.
+ */
+@Composable
+private fun LicencesView(s: Str, modifier: Modifier, onBack: () -> Unit) {
+  BackHandler(onBack = onBack)
+  val context = LocalContext.current
+  val notice = remember {
+    runCatching { context.assets.open("NOTICE").bufferedReader().use { it.readText() } }
+      .getOrElse { s.licencesMissing }
+  }
+  Column(
+    modifier
+      .fillMaxSize()
+      .background(Limen.colors.plate)
+      .safeDrawingPadding()
+      .padding(horizontal = 20.dp),
+  ) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+      IconKey(ButtonGlyph.Back, s.back, Modifier.width(48.dp), onPress = onBack)
+      Spacer(Modifier.width(10.dp))
+      Text(s.licencesTitle, style = MaterialTheme.typography.titleMedium, color = Limen.colors.ink)
+    }
+    Spacer(Modifier.height(14.dp))
+    Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())) {
+      Text(
+        notice,
+        style = MaterialTheme.typography.bodySmall,
+        fontFamily = FontFamily.Monospace,
+        color = Limen.colors.ink,
+        modifier = Modifier.horizontalScroll(rememberScrollState()),
+      )
+      Spacer(Modifier.height(24.dp))
+    }
+  }
 }

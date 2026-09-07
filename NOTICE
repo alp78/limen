@@ -1,0 +1,78 @@
+Limen
+Copyright 2026 Alexis Peringer
+
+This product includes third-party software and third-party artwork, listed below with its
+licence. Nothing here is bundled without a licence that permits redistribution. The same list
+is reachable inside the app, under Data, backup and privacy, because Apache-2.0 section 4(d)
+asks for the notice to travel with the distribution and an APK has nowhere else to put it.
+
+--------------------------------------------------------------------------------
+Android Jetpack and AndroidX
+  androidx.core:core-ktx, androidx.activity:activity-compose,
+  androidx.lifecycle:lifecycle-runtime-ktx, lifecycle-runtime-compose,
+  lifecycle-viewmodel-compose, androidx.exifinterface:exifinterface,
+  androidx.compose.* (ui, material3, material-icons-extended)
+  Copyright 2016-2026 The Android Open Source Project
+  Licence: Apache-2.0
+  https://developer.android.com/jetpack/androidx
+
+  Licensed under the Apache License, Version 2.0 (the "License"); you may not use these
+  files except in compliance with the License. You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software distributed under
+  the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+  KIND, either express or implied. See the License for the specific language governing
+  permissions and limitations under the License.
+
+--------------------------------------------------------------------------------
+Kotlin standard library and kotlinx.serialization
+  org.jetbrains.kotlin:kotlin-stdlib, org.jetbrains.kotlinx:kotlinx-serialization-json
+  Copyright 2010-2026 JetBrains s.r.o. and Kotlin Programming Language contributors
+  Licence: Apache-2.0
+  https://github.com/JetBrains/kotlin
+  https://github.com/Kotlin/kotlinx.serialization
+
+  Licensed under the Apache License, Version 2.0. See the text reproduced above.
+
+--------------------------------------------------------------------------------
+libphonenumber
+  com.googlecode.libphonenumber:libphonenumber
+  Copyright 2009-2026 The Libphonenumber Authors
+  Licence: Apache-2.0
+  https://github.com/google/libphonenumber
+
+  Licensed under the Apache License, Version 2.0. See the text reproduced above.
+
+  Used for national numbering metadata so a Swiss or foreign telephone number is validated
+  against the real numbering plan rather than a hand-written pattern.
+
+--------------------------------------------------------------------------------
+AndroidSVG
+  com.caverock:androidsvg-aar
+  Copyright 2013-2018 Paul LeBeau, Cave Rock Software Ltd.
+  Licence: Apache-2.0
+  https://github.com/BigBadaboom/androidsvg
+
+  Licensed under the Apache License, Version 2.0. See the text reproduced above.
+
+  Used to draw the cantonal coats of arms listed below.
+
+--------------------------------------------------------------------------------
+Cantonal flags of Switzerland
+  app/src/main/assets/cantons/*.svg
+  Source: Wikimedia Commons
+  Licence: Public domain
+
+  Twenty-six cantonal flags, retrieved from Wikimedia Commons and bundled verbatim. Each file
+  is recorded in cantons/manifest.json with its Commons title, original URL, source page,
+  SHA-256 and credit line, so any one of them can be traced back to what was downloaded.
+
+  Most derive from the Swiss Confederation's Reglement 51.340 d, "Der Umgang mit Fahnen,
+  Standarten und Fanions".
+
+  These flags identify cantons only and do not imply official endorsement. Rules on the use of
+  official symbols may apply independently of copyright: in Switzerland the Coat of Arms
+  Protection Act (WSchG, SR 232.21) governs cantonal arms, and public-domain status under
+  copyright is not permission to use a cantonal coat of arms as a badge of authority.

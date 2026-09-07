@@ -1497,6 +1497,28 @@ class Str(val lang: Lang) {
     "Create un archivio completo prima di cambiare telefono o cancellare i dati dell'app. Il ripristino verifica le prove e importa solo nuovi identificativi; i verbali esistenti non vengono mai sovrascritti.",
     "Creai in archiv cumplet avant da midar telefon u stizzar las datas da l'app. La restauraziun controllescha las cumprovas ed importescha mo novas IDs; protocols existents na vegnan mai remplazzads.",
   )
+  val licencesTitle = pick(
+    "Open-source licences",
+    "Licences open source",
+    "Open-Source-Lizenzen",
+    "Licenze open source",
+    "Licenzas open source",
+  )
+  val licencesBody = pick(
+    "Limen is built on open-source libraries, and its cantonal flags come from Wikimedia Commons. The full notice ships inside the app.",
+    "Limen repose sur des bibliothèques open source, et ses drapeaux cantonaux proviennent de Wikimedia Commons. L'avis complet est inclus dans l'app.",
+    "Limen baut auf Open-Source-Bibliotheken auf, und die Kantonsfahnen stammen von Wikimedia Commons. Der vollständige Hinweis ist in der App enthalten.",
+    "Limen si basa su librerie open source e le sue bandiere cantonali provengono da Wikimedia Commons. L'avviso completo è incluso nell'app.",
+    "Limen sa basa sin bibliotecas open source, e sias bandieras chantunalas derivan da Wikimedia Commons. L'avis cumplet è cuntegnì en l'app.",
+  )
+  val openLicences = pick("LICENCES", "LICENCES", "LIZENZEN", "LICENZE", "LICENZAS")
+  val licencesMissing = pick(
+    "The notice is missing from this build.",
+    "L'avis est absent de cette version.",
+    "Der Hinweis fehlt in diesem Build.",
+    "L'avviso manca in questa build.",
+    "L'avis manca en questa versiun.",
+  )
   val createBackup = pick("CREATE BACKUP", "CRÉER LA SAUVEGARDE", "SICHERUNG ERSTELLEN", "CREA BACKUP", "CREAR SEGIREZZA")
   val restoreBackup = pick("RESTORE", "RESTAURER", "WIEDERHERSTELLEN", "RIPRISTINA", "RESTAURAR")
   val protectBackup = pick("Protect backup", "Protéger la sauvegarde", "Sicherung schützen", "Proteggi backup", "Proteger la segirezza")

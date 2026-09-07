@@ -32,6 +32,9 @@ val buildStamp: String = providers.of(SourceStamp::class.java) {
   parameters.dir.set(layout.projectDirectory.dir("src"))
 }.get()
 
+/** Where the build stages the repo's NOTICE so it can be packaged as an app asset. */
+val noticeAssetDir = layout.buildDirectory.get().asFile.resolve("generated/noticeAsset")
+
 val limenSigningFile = providers.gradleProperty("limenSigningProperties")
   .map(::file)
   .orElse(file(System.getProperty("user.home")).resolve(".gradle/limen-signing.properties"))
@@ -51,8 +54,12 @@ android {
         // with scoped storage; everything else here would run on 26.
         minSdk = 29
         targetSdk = 36
-        versionCode = 2
-        versionName = "1.1.0"
+        // 1.1.1 is the version the published privacy page states its permission claims were
+        // checked against, so the app carries that number rather than contradicting a page that
+        // is already live. Bump the code before every Play upload: Play rejects a repeat, and
+        // the closed-test and production tracks share the numbering.
+        versionCode = 3
+        versionName = "1.1.1"
         // Without this the androidTest sources compile and never run: AGP falls back to
         // the deprecated platform runner, which cannot execute an @RunWith(AndroidJUnit4)
         // class, and the suite reports green having done nothing.
@@ -99,6 +106,12 @@ android {
       shaders = false
     }
 
+    // The third-party notice ships INSIDE the APK, copied from the repo's NOTICE rather than
+    // kept as a second copy under assets: Apache-2.0 section 4(d) asks for it to travel with
+    // the distribution, and two hand-maintained copies of a licence notice drift apart.
+    // A plain File, not a Provider: the Android SourceSet API rejects Providers outright.
+    sourceSets["main"].assets.srcDir(noticeAssetDir)
+
     packaging {
       resources {
         excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -109,6 +122,12 @@ android {
 kotlin {
     jvmToolchain(17)
 }
+
+val copyNotice by tasks.registering(Copy::class) {
+    from(rootProject.file("NOTICE"))
+    into(noticeAssetDir)
+}
+tasks.named("preBuild") { dependsOn(copyNotice) }
 
 /**
  * The house style bans the em-dash in source, comments and user-visible strings alike.

@@ -10,7 +10,7 @@ local.properties
 *.iml
 .kotlin/
 
-# Signing — NEVER commit these
+# Signing, never commit these
 *.jks
 *.keystore
 keystore.properties
