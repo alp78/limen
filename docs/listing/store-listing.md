@@ -82,15 +82,30 @@ Business tool with no user-generated public content, no ads, no purchases. Expec
 - **Privacy policy:** <https://alp78.github.io/legal/limen/privacy/>
 - **Support email:** aperinger@proton.me
 
-## Graphics still to produce
+## Graphics
 
-Not in the repository yet, and Play will not accept the listing without them.
+All of these are in `docs/listing/graphics/` and are ready to upload.
 
-| Asset | Requirement | State |
+| Asset | File | State |
 |---|---|---|
-| App icon | 512 x 512 PNG, 32-bit, under 1 MB | to produce from `limen_logo_master.xml` |
-| Feature graphic | 1024 x 500 PNG or JPEG | to produce |
-| Phone screenshots | 2 to 8, 16:9 or 9:16, min 320 px, max 3840 px | to capture |
-| Tablet screenshots | optional, improves ranking on large screens | optional |
+| App icon | `play-icon-512.png` | 512 x 512, 32-bit RGBA, 140 KB. The supplied seal on the launcher's plaster ground, so the store icon and the home-screen icon are the same mark |
+| Feature graphic | `play-feature-1024x500.png` | 1024 x 500. The seal, the wordmark and one line, in the app's navy, bone and bronze, set in Roboto because the app renders in `FontFamily.SansSerif` |
+| Phone screenshots | `phone-01` to `phone-08` | Eight, 1080 x 2424, captured from the release build at `versionCode 3` |
+| Tablet screenshots | none | Optional. Worth adding, since the Galaxy Tab Active 3 is a real target and large-screen shots help ranking |
 
-Screenshots worth taking, in order: the hub with both doors, a room with two defects, the defect editor with a photograph, the dossier with the cantonal panel open, the signature step, the finished PDF.
+The eight screenshots, in upload order:
+
+1. `phone-01-hub.png`, the two doors and what the record still needs
+2. `phone-02-rooms.png`, five rooms, each carrying its own inspected mark
+3. `phone-03-room-with-defects.png`, a room with two defects and their positions
+4. `phone-04-defect-editor.png`, recording one defect
+5. `phone-05-canton-overlay.png`, the Vaud overlay with the RULV basis and its dated period
+6. `phone-06-signature.png`, signing on the phone
+7. `phone-07-finalized.png`, the sealed record with its evidence fingerprint and the five PDF languages
+8. `phone-08-exported-pdf.png`, the exported PDF and the delivery record
+
+The feature graphic is a plain composition of assets that already exist, not an identity round. Replace it if the visual identity is ever revisited.
+
+**On the aspect ratio.** These are 1080 x 2424, which is the Pixel 10's own shape and taller than the 9:16 the Play documentation names. Play accepts modern tall screenshots in practice, since every recent handset produces them. If the Console ever refuses one, pad rather than crop, so nothing is lost from the frame.
+
+**The one shot not taken.** A defect carrying a photograph. The app takes photographs through the system camera, and an honest store screenshot needs a real one of a real mark on a real wall, which is thirty seconds with the phone and cannot be manufactured here. `phone-04` shows the defect editor with its camera and gallery controls instead.

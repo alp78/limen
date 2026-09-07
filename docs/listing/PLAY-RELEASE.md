@@ -63,11 +63,19 @@ Bump `versionCode` in `app\build.gradle.kts` before every upload. Play rejects a
 
 ## What is still missing before submission
 
-1. **Store graphics.** Icon at 512 x 512, feature graphic at 1024 x 500, and two to eight phone screenshots. None are in the repository. `docs/listing/store-listing.md` lists the six screenshots worth taking and in what order.
+1. ~~**Store graphics.**~~ Done. Icon, feature graphic and eight phone screenshots are in `docs/listing/graphics/`, captured from the release build at `versionCode 3`. `docs/listing/store-listing.md` names each file and its upload order. The only shot not taken is a defect carrying a photograph, which needs a real photograph of a real mark and is thirty seconds with the phone.
 2. **The closed test.** Twelve testers, fourteen continuous days, per the section above.
 3. **Country selection.** Limen is Swiss to the bone: Swiss tenancy law, cantonal overlay, swisstopo addresses, and five languages of which one is Romansh. A worldwide listing invites installs it cannot serve. Switzerland, and arguably Liechtenstein, is the honest reach.
 4. **Free or paid.** Play lets a paid app become free later and never the other way round, so this is decided once. Signet went paid at CHF 3.00 and carries the four obligations that follow, including a payments profile that is not instant to clear.
 5. **Data safety form.** Answers are worked out in `docs/listing/data-safety.md`. The one non-obvious answer is that the app does collect data, because the swisstopo address lookup sends typed address text off the device.
+
+## Two rough edges found while capturing the screenshots
+
+Neither blocks submission. Both were found by walking a whole exit protocol on the emulator, from an empty install to a signed PDF.
+
+**The review screen labels a phone number as an email.** [`FlowScreen.kt:424`](../../app/src/main/java/dev/peringer/limen/ui/FlowScreen.kt#L424) renders one row for the responsible data controller, joining `email` and `phone`, and labels it `s.email`. A controller who gave only a phone number sees `Email: +41 79 123 45 67` on the screen they read before finalizing. The PDF is unaffected, because [`PdfExport.kt:401`](../../app/src/main/java/dev/peringer/limen/data/PdfExport.kt#L401) adds the same values without that label. The fix is to split the row, or to label it neutrally.
+
+**Editing after signing discards the ink without warning.** Signatures carry the `contentRevision` they signed, `isCurrent` compares it against the record's, and any `edit()` bumps that number, so a single character typed into the dossier silently returns both parties to `Not signed`. The integrity rule is right and should not change: ink attests to a specific version of the content, and keeping it across an edit would be the real defect. What is missing is the warning. Two people sign at the door, someone corrects a typo in the bank name, and the app quietly needs both signatures again with nothing said. A confirmation before the edit, naming what will be lost, would cost one dialog.
 
 ## The maintenance commitment publication creates
 
