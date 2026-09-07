@@ -372,6 +372,7 @@ private fun <T> CountryDropDown(
   onSelect: (T) -> Unit,
 ) {
   var expanded by remember { mutableStateOf(false) }
+  val play = rememberTick()
   var query by rememberSaveable { mutableStateOf("") }
   val visibleOptions = if (query.isBlank()) {
     options
@@ -430,6 +431,7 @@ private fun <T> CountryDropDown(
           DropdownMenuItem(
             text = { Text(optionLabel(option), maxLines = 1) },
             onClick = {
+              play(Tick.Key)
               onSelect(option)
               expanded = false
               query = ""

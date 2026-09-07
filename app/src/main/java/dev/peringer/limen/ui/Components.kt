@@ -397,7 +397,11 @@ fun IconKey(
   fillColor: Color? = null,
   outlineColor: Color? = null,
   tint: Color? = null,
-  tick: Tick = Tick.Key,
+  // A destructive key rejects by default. Leaving this to each call site meant six of the
+  // twelve delete and clear keys felt like an ordinary press, which is the one thing
+  // Tick.Reject exists to prevent. Pass it explicitly to override, as the armed two-stage
+  // delete on the home screen does.
+  tick: Tick = if (destructive) Tick.Reject else Tick.Key,
   onPress: () -> Unit,
 ) {
   val resolvedFill = if (destructive) Limen.colors.danger else fillColor
@@ -536,6 +540,7 @@ fun Chip(
 @Composable
 fun LangMenu(current: Lang, onSelect: (Lang) -> Unit) {
   var open by remember { androidx.compose.runtime.mutableStateOf(false) }
+  val play = rememberTick()
   val names = mapOf(
     Lang.En to "English",
     Lang.Fr to "Français",
@@ -576,6 +581,7 @@ fun LangMenu(current: Lang, onSelect: (Lang) -> Unit) {
             { Icon(Icons.Outlined.Check, contentDescription = null, tint = Limen.colors.ink, modifier = Modifier.size(16.dp)) }
           } else null,
           onClick = {
+            play(Tick.Key)
             onSelect(l)
             open = false
           },

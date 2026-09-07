@@ -758,6 +758,7 @@ private fun AddressMatchList(
 @Composable
 private fun CautionProviderPicker(s: Str, storedName: String, onSelect: (CautionProvider) -> Unit) {
   var expanded by remember { mutableStateOf(false) }
+  val play = rememberTick()
   val selected = CautionProvider.fromStoredName(storedName)
 
   Box(Modifier.fillMaxWidth()) {
@@ -790,6 +791,7 @@ private fun CautionProviderPicker(s: Str, storedName: String, onSelect: (Caution
             { Icon(Icons.Outlined.Check, contentDescription = null, tint = Limen.colors.inkDim, modifier = Modifier.size(16.dp)) }
           } else null,
           onClick = {
+            play(Tick.Key)
             onSelect(provider)
             expanded = false
           },

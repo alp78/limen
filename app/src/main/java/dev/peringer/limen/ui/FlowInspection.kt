@@ -361,6 +361,7 @@ private fun RoomDetail(vm: LimenViewModel, s: Str, p: Protocol, room: Room) {
 @Composable
 private fun ItemPicker(s: Str, kind: RoomKind, onPick: (ItemKey, String) -> Unit) {
   var expanded by remember { mutableStateOf(false) }
+  val play = rememberTick()
   var namingOther by remember { mutableStateOf(false) }
   var otherName by remember { mutableStateOf("") }
   val items = remember(kind) { Templates.itemsFor(kind) }
@@ -407,6 +408,7 @@ private fun ItemPicker(s: Str, kind: RoomKind, onPick: (ItemKey, String) -> Unit
           DropdownMenuItem(
             text = { Text(s.item(item), color = Limen.colors.ink) },
             onClick = {
+              play(Tick.Key)
               expanded = false
               onPick(item, "")
             },
@@ -415,6 +417,7 @@ private fun ItemPicker(s: Str, kind: RoomKind, onPick: (ItemKey, String) -> Unit
         DropdownMenuItem(
           text = { Text(s.otherItem, color = Limen.colors.inkDim) },
           onClick = {
+            play(Tick.Key)
             expanded = false
             namingOther = true
           },
