@@ -18,7 +18,7 @@ Everything checked below was checked against the repository and the built artefa
 | Backup and transfer | `allowBackup="false"` plus `data_extraction_rules.xml` excluding cloud backup and device transfer |
 | Unit tests | 89 green |
 | Instrumented tests | 4 green on a Pixel 10, Android 17 |
-| Privacy policy | `https://alp78.github.io/legal/limen/privacy/`, committed and pushed in the `alp78/legal` repository |
+| Privacy policy | `https://peringer.ch/legal/limen/privacy/`, five languages, built from the peringer.ch repository |
 | Third-party notices | `NOTICE` copied into the APK at build time and shown in the app under Data, backup and privacy |
 
 ## Devices this was checked on

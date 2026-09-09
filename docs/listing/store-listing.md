@@ -311,7 +311,7 @@ Business tool with no user-generated public content, no ads, no purchases. Expec
 
 ## Contact and links
 
-- **Privacy policy:** <https://alp78.github.io/legal/limen/privacy/>
+- **Privacy policy:** <https://peringer.ch/legal/limen/privacy/>
 - **Support email:** aperinger@proton.me
 
 ## Graphics
@@ -321,7 +321,7 @@ All of these are in `docs/listing/graphics/` and are ready to upload.
 | Asset | File | State |
 |---|---|---|
 | App icon | `play-icon-512.png` | 512 x 512, 32-bit RGBA, 140 KB. The supplied seal on the launcher's plaster ground, so the store icon and the home-screen icon are the same mark |
-| Feature graphic | `play-feature-1024x500.png` | 1024 x 500. The seal, the wordmark and one line, in the app's navy, bone and bronze, set in Roboto because the app renders in `FontFamily.SansSerif` |
+| Feature graphic | `play-feature-1024x500-<locale>.png` | Five, 1024 x 500, one per listing language. The seal, the wordmark and one line, in the app's navy, bone and bronze, set in Roboto because the app renders in `FontFamily.SansSerif`. The line is the opening phrase of that language's short description, so the graphic and the listing name the app the same way. One type size across all five, the largest that fits the longest line |
 | Phone screenshots | `phone-01` to `phone-08` | Eight, 1080 x 2424, captured from the release build at `versionCode 3` |
 | Tablet screenshots | none | Optional. Worth adding, since the Galaxy Tab Active 3 is a real target and large-screen shots help ranking |
 
