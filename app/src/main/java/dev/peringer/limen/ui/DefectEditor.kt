@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -41,10 +42,14 @@ fun DefectEditor(vm: LimenViewModel, s: Str, p: Protocol, defectId: String) {
 
   BackHandler { vm.closeDefect() }
 
-  Box(Modifier.fillMaxSize().background(Limen.colors.plate)) {
+  Box(
+    Modifier.fillMaxSize().background(Limen.colors.plate),
+    contentAlignment = Alignment.TopCenter,
+  ) {
     Column(
       Modifier
-        .fillMaxSize()
+        .readable()
+        .fillMaxHeight()
         .padding(horizontal = 20.dp, vertical = 8.dp)
         .verticalScroll(rememberScrollState()),
       verticalArrangement = Arrangement.spacedBy(10.dp),

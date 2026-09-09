@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -88,7 +89,10 @@ fun SignPadOverlay(
       decorFitsSystemWindows = false,
     ),
   ) {
-  Box(Modifier.fillMaxSize().background(Limen.colors.plate)) {
+  Box(
+    Modifier.fillMaxSize().background(Limen.colors.plate),
+    contentAlignment = Alignment.TopCenter,
+  ) {
     // THE PAD MUST NOT DICTATE THE HEIGHT. It used to be fillMaxWidth().aspectRatio(2.1f) inside a
     // centred column, which is fine in portrait and unusable in landscape: at that width the pad
     // alone wants more height than the window has, and centring an overflowing column splits the
@@ -100,8 +104,11 @@ fun SignPadOverlay(
     // aspectRatio inside a bounded box resolves to the largest 2.1:1 rectangle that fits, by width
     // in portrait and by height in landscape, which is why the ratio survives both without a
     // second layout to keep in step with this one.
+    // Capped like every other screen: a signature pad as wide as a tablet is a strange
+    // target for a hand, and the keys under it would sit a forearm apart.
     Column(
-      Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp, vertical = 16.dp),
+      Modifier.readable().fillMaxHeight().safeDrawingPadding()
+        .padding(horizontal = 20.dp, vertical = 16.dp),
     ) {
       Text(title, style = MaterialTheme.typography.titleMedium, color = Limen.colors.ink)
       Spacer(Modifier.height(8.dp))

@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -82,9 +83,12 @@ fun FlowScreen(
           scaleX = 1f - backAmount * 0.018f
           scaleY = 1f - backAmount * 0.018f
           alpha = 1f - backAmount * 0.08f
-        }
+        },
+      // The box keeps the full width so the background behind it does too; only the
+      // column of content is capped. See Modifier.readable.
+      contentAlignment = Alignment.TopCenter,
     ) {
-      Column(Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
+      Column(Modifier.readable().fillMaxHeight().padding(horizontal = 20.dp)) {
         FlowMast(vm, s, p)
         Spacer(Modifier.height(8.dp))
         // Export carries the amendment door in full, with the sentence that explains it.
@@ -125,7 +129,7 @@ fun FlowScreen(
         Row(
           Modifier
             .align(Alignment.BottomCenter)
-            .fillMaxWidth()
+            .readable()
             .padding(horizontal = 20.dp, vertical = 10.dp)
             .background(Limen.colors.plateRaised, RoundedCornerShape(12.dp))
             .padding(start = 16.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),

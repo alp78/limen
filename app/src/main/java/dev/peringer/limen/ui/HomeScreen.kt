@@ -4,10 +4,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -109,11 +111,15 @@ private fun LandingScreen(
   onSessions: () -> Unit,
   onDataPrivacy: () -> Unit,
 ) {
-  BoxWithConstraints(modifier.fillMaxSize().background(Limen.colors.landing)) {
+  BoxWithConstraints(
+    modifier.fillMaxSize().background(Limen.colors.landing),
+    contentAlignment = Alignment.TopCenter,
+  ) {
     val compactHeight = maxHeight < 600.dp
     Column(
       Modifier
-        .fillMaxSize()
+        .readable()
+        .fillMaxHeight()
         .safeDrawingPadding()
         .then(if (compactHeight) Modifier.verticalScroll(rememberScrollState()) else Modifier)
         .padding(horizontal = 24.dp),
@@ -176,10 +182,14 @@ private fun SessionsScreen(
   LaunchedEffect(vm.protocols.isEmpty()) {
     if (vm.protocols.isEmpty()) onEmpty()
   }
+  Box(
+    modifier.fillMaxSize().background(Limen.colors.plate),
+    contentAlignment = Alignment.TopCenter,
+  ) {
   Column(
-    modifier
-      .fillMaxSize()
-      .background(Limen.colors.plate)
+    Modifier
+      .readable()
+      .fillMaxHeight()
       .safeDrawingPadding()
       .padding(horizontal = 20.dp),
   ) {
@@ -204,6 +214,7 @@ private fun SessionsScreen(
         }
       }
     }
+  }
   }
 }
 

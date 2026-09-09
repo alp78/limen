@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -159,10 +161,14 @@ fun NewSessionScreen(
     addressVerified = true
   }
 
+  Box(
+    Modifier.fillMaxSize().background(Limen.colors.plate),
+    contentAlignment = Alignment.TopCenter,
+  ) {
   Column(
     Modifier
-      .fillMaxSize()
-      .background(Limen.colors.plate)
+      .readable()
+      .fillMaxHeight()
       .safeDrawingPadding()
       .padding(horizontal = 20.dp),
     verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -331,6 +337,7 @@ fun NewSessionScreen(
       }
       Spacer(Modifier.height(20.dp))
     }
+  }
   }
 }
 

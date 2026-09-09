@@ -6,9 +6,11 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -53,15 +55,19 @@ fun DepositCompareOverlay(vm: LimenViewModel, s: Str) {
   val context = LocalContext.current
   BackHandler { vm.setDepositCompare(false) }
 
-  Column(
+  // The background and the tap trap stay on the full width. Capping the column without
+  // splitting these out would have reopened the bug the comment below describes, with the
+  // new side margins as the place taps fell through.
+  Box(
     Modifier
       .fillMaxSize()
       .background(Limen.colors.plate)
       // A background paints but does not hit-test, so every tap that missed a row here went
       // through to the masthead underneath: two of them on the back key closed the record.
-      .pointerInput(Unit) { awaitPointerEventScope { while (true) { awaitPointerEvent() } } }
-      .padding(horizontal = 20.dp),
+      .pointerInput(Unit) { awaitPointerEventScope { while (true) { awaitPointerEvent() } } },
+    contentAlignment = Alignment.TopCenter,
   ) {
+  Column(Modifier.readable().fillMaxHeight().padding(horizontal = 20.dp)) {
     Spacer(Modifier.height(18.dp))
     Row(verticalAlignment = Alignment.CenterVertically) {
       Text(
@@ -96,6 +102,7 @@ fun DepositCompareOverlay(vm: LimenViewModel, s: Str) {
     Spacer(Modifier.height(10.dp))
     SmallKey(s.done, Modifier.fillMaxWidth()) { vm.setDepositCompare(false) }
     Spacer(Modifier.height(16.dp))
+  }
   }
 }
 

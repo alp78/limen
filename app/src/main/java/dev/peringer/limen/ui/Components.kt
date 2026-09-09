@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -88,6 +89,32 @@ import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
+
+/**
+ * The widest a single column of this app's text and fields is allowed to get.
+ *
+ * Past this a form stops being readable: a label and the value it belongs to drift apart,
+ * and a row of two fields sharing the width ends up with a hand's width of nothing between
+ * them. The app was written for a phone and every screen is one full-bleed column, so on a
+ * tablet it stretched rather than adapted.
+ *
+ * The value sits above the Pixel's 411 dp, so a phone never reaches it and renders exactly
+ * as it did, and below the Galaxy Tab Active 3's 600 dp portrait, so a tablet always does.
+ * It is measured in composition rather than declared as a resource because the manifest
+ * swallows screenSize in configChanges, so the activity is never recreated on a rotation
+ * and a values-sw600dp dimension would never be re-resolved.
+ */
+val ReadableMax = 560.dp
+
+/**
+ * Caps a content column at [ReadableMax] and lets it fill whatever is narrower.
+ *
+ * Apply it to the content, never to the thing painting the background: every screen paints
+ * its own ground and the margins have to keep that colour, or a capped column sits in a
+ * band of the wrong one. widthIn comes first because it lowers the incoming maximum that
+ * fillMaxWidth then takes, which is what yields the smaller of the two.
+ */
+fun Modifier.readable(): Modifier = this.widthIn(max = ReadableMax).fillMaxWidth()
 
 /**
  * What an info mark explains: a lead sentence, then bullets, never a wall of text. The

@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -63,10 +65,14 @@ fun DataPrivacyScreen(
     return
   }
 
+  Box(
+    modifier.fillMaxSize().background(Limen.colors.plate),
+    contentAlignment = Alignment.TopCenter,
+  ) {
   Column(
-    modifier
-      .fillMaxSize()
-      .background(Limen.colors.plate)
+    Modifier
+      .readable()
+      .fillMaxHeight()
       .safeDrawingPadding()
       .padding(horizontal = 20.dp),
   ) {
@@ -158,6 +164,7 @@ fun DataPrivacyScreen(
       }
     }
     Spacer(Modifier.height(16.dp))
+  }
   }
 
   archiveAction?.let { action ->
@@ -257,6 +264,9 @@ private fun LicencesView(s: Str, modifier: Modifier, onBack: () -> Unit) {
     runCatching { context.assets.open("NOTICE").bufferedReader().use { it.readText() } }
       .getOrElse { s.licencesMissing }
   }
+  // Not capped, unlike every other screen. NOTICE is a preformatted monospace document
+  // that already needs a horizontal scroll on a phone, so narrowing it on a tablet would
+  // take away the one thing the extra width is good for here.
   Column(
     modifier
       .fillMaxSize()
