@@ -355,7 +355,14 @@ private fun HandoverDeadline(p: Protocol, s: Str) {
   }
 
   Panel(label = s.clockExitTitle, info = s.tipExitNotice()) {
-    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+    // Bottom-aligned because the two labels are not the same length and one wraps: in
+    // English "3-working-day practice reference" takes two lines where the other takes
+    // one, which hangs the two dates at different heights. Aligning the bottoms puts the
+    // dates on one line, which is the pair a reader compares.
+    Row(
+      horizontalArrangement = Arrangement.spacedBy(16.dp),
+      verticalAlignment = Alignment.Bottom,
+    ) {
       Box(Modifier.weight(1f)) { Deadline(s.safeBy, Clocks.exitNoticeSafeBy(handover)) }
       Box(Modifier.weight(1f)) { Deadline(s.latestBy, Clocks.exitNoticeLatest(handover)) }
     }

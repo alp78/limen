@@ -1618,12 +1618,14 @@ class Str(val lang: Lang) {
     "Nessuna sessione salvata su questo telefono.",
     "Nagina sesiun memorisada sin quest telefon.",
   )
+  // One line under the mark, not a paragraph. What the app IS, in the same words the
+  // store listing and the feature graphic use, so the phone and the listing agree.
   val welcomeLead = pick(
-    "Limen records the apartment handover, from the first meter reading to a final PDF both sides receive.",
-    "Limen consigne l'état des lieux, du premier relevé au PDF final remis aux deux parties.",
-    "Limen hält die Wohnungsübergabe fest, vom ersten Zählerstand bis zum finalen PDF für beide Seiten.",
-    "Limen registra la consegna dell'alloggio, dalla prima lettura al PDF finale ricevuto da entrambe le parti.",
-    "Limen documentescha la surdada da l'abitaziun, da l'emprima letga fin al PDF final per omaduas partidas.",
+    "Swiss handover protocol",
+    "État des lieux suisse",
+    "Schweizer Übergabeprotokoll",
+    "Verbale di consegna svizzero",
+    "Protocol da surdada svizzer",
   )
   fun stepLead(step: FlowStep) = when (step) {
     FlowStep.Hub -> pick(
