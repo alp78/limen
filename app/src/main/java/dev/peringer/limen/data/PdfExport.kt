@@ -350,7 +350,7 @@ object PdfExport {
       sheet.wrapped("${s.legalOverlayNote}: ${p.legalOverlay.note}", sheet.small)
     }
     val ruleSet = p.legalOverlay.ruleSetId.takeIf { it.isNotBlank() }?.let { " ($it)" }.orEmpty()
-    sheet.wrapped("${s.legalSnapshot}$ruleSet", sheet.small)
+    sheet.wrapped("${s.legalSnapshotFor(overlay.canton)}$ruleSet", sheet.small)
   }
 
   private fun parties(sheet: Sheet, p: Protocol, s: Str) {

@@ -335,13 +335,28 @@ class Str(val lang: Lang) {
     "Aggiungete una nota per ogni esito mancante, contestato o non applicabile",
     "Agiuntai ina nota per mintga resultat mancant, contestà u betg applitgabel",
   )
+  // The BWO initial-rent form is federal and applies in every canton. The RULV
+  // are a Vaud instrument, so naming them on a Bern or Ticino protocol states
+  // something untrue about the record's legal basis. Split accordingly, and
+  // chosen by canton at the point of print.
   val legalSnapshot = pick(
+    "Rule snapshot: BWO initial-rent form 2026",
+    "Référentiel: formule OFL 2026",
+    "Regelstand: BWO-Anfangsmietzinsformular 2026",
+    "Riferimento: modulo UFAB 2026",
+    "Stadi da reglas: formular UFL 2026",
+  )
+  val legalSnapshotVaud = pick(
     "Rule snapshot: BWO initial-rent form 2026 and dated Vaud RULV periods",
     "Référentiel: formule OFL 2026 et périodes RULV Vaud datées",
     "Regelstand: BWO-Anfangsmietzinsformular 2026 und datierte Waadtländer RULV",
     "Riferimento: modulo UFAB 2026 e periodi RULV Vaud datati",
     "Stadi da reglas: formular UFL 2026 e periodas RULV Vad datadas",
   )
+
+  /** The snapshot line for one canton: only Vaud rests on the RULV. */
+  fun legalSnapshotFor(canton: SwissCanton): String =
+    if (canton == SwissCanton.VD) legalSnapshotVaud else legalSnapshot
   val vaudPreviousExitReport = pick(
     "Vaud entry: the tenant may request a copy of the previous tenant's exit report.",
     "Entrée vaudoise: le locataire peut demander une copie de l'état des lieux de sortie précédent.",
