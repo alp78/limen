@@ -316,25 +316,29 @@ Business tool with no user-generated public content, no ads, no purchases. Expec
 
 ## Graphics
 
-All of these are in `docs/listing/graphics/` and are ready to upload.
+All of these are in `docs/listing/graphics/` and are ready to upload. `play_push.py` reads this layout directly, so a file added here reaches Play without the manifest below being edited twice.
 
 | Asset | File | State |
 |---|---|---|
 | App icon | `play-icon-512.png` | 512 x 512, 32-bit RGBA, 140 KB. The supplied seal on the launcher's plaster ground, so the store icon and the home-screen icon are the same mark |
 | Feature graphic | `play-feature-1024x500-<locale>.png` | Five, 1024 x 500, one per listing language. The seal, the wordmark and one line, in the app's navy, bone and bronze, set in Roboto because the app renders in `FontFamily.SansSerif`. The line is the opening phrase of that language's short description, so the graphic and the listing name the app the same way. One type size across all five, the largest that fits the longest line |
-| Phone screenshots | `phone-01` to `phone-08` | Eight, 1080 x 2424, captured from the release build at `versionCode 3` |
-| Tablet screenshots | none | Optional. Worth adding, since the Galaxy Tab Active 3 is a real target and large-screen shots help ranking |
+| Phone screenshots | `phone/<locale>/phone-01` to `phone-08` | Forty, 1080 x 2424, eight per listing language, captured on the Pixel 10 from the release build of the RULV fix, which is the code `versionCode 4` ships and differs from it only in the version number |
+| Tablet screenshots | `tablet/<locale>/tablet-01` to `tablet-08` | Forty, 1200 x 1920, eight per listing language, captured on the Galaxy Tab Active 3 at API 33 and uploaded to both the seven-inch and the ten-inch slot |
+
+Each language carries its own canton, town, names and rent, because a German screenshot showing a Lausanne address reads as the French one with the words swapped. Vaud for French, Bern for German, Ticino for Italian, Graubünden for Romansh, Zug for English.
 
 The eight screenshots, in upload order:
 
-1. `phone-01-hub.png`, the two doors and what the record still needs
-2. `phone-02-rooms.png`, five rooms, each carrying its own inspected mark
-3. `phone-03-room-with-defects.png`, a room with two defects and their positions
-4. `phone-04-defect-editor.png`, recording one defect
-5. `phone-05-canton-overlay.png`, the Vaud overlay with the RULV basis and its dated period
-6. `phone-06-signature.png`, signing on the phone
+1. `phone-01-home.png`, the app's face and the two ways into a record
+2. `phone-02-rooms.png`, the rooms, each carrying its own inspected mark
+3. `phone-03-defect-editor.png`, recording one defect with its photographs and the tenant's stated position
+4. `phone-04-canton-overlay.png`, the canton overlay with its legal basis and dated period
+5. `phone-05-review.png`, the whole protocol before signing
+6. `phone-06-signature.png`, signing on the device
 7. `phone-07-finalized.png`, the sealed record with its evidence fingerprint and the five PDF languages
-8. `phone-08-exported-pdf.png`, the exported PDF and the delivery record
+8. `phone-08-exported.png`, the exported PDF and the delivery record
+
+The walk that produces them photographs four screens before anything has been entered, and those four are deliberately not here: an empty form with a "still missing" list of eight items is honest as a process strip on peringer.ch and useless on a listing.
 
 The feature graphic is a plain composition of assets that already exist, not an identity round. Replace it if the visual identity is ever revisited.
 

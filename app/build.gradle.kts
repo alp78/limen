@@ -54,12 +54,14 @@ android {
         // with scoped storage; everything else here would run on 26.
         minSdk = 29
         targetSdk = 36
-        // 1.1.1 is the version the published privacy page states its permission claims were
-        // checked against, so the app carries that number rather than contradicting a page that
-        // is already live. Bump the code before every Play upload: Play rejects a repeat, and
-        // the closed-test and production tracks share the numbering.
-        versionCode = 3
-        versionName = "1.1.1"
+        // Bump the code before every Play upload: Play rejects a repeat, and the closed-test
+        // and production tracks share the numbering. Code 3 is spent on the first closed test,
+        // which shipped the protocol citing the Vaud RULV in every canton.
+        // (This comment used to say 1.1.1 was pinned by the published privacy page stating the
+        // version its permission claims were checked against. None of the five published
+        // notices names a version, so nothing was holding the name back.)
+        versionCode = 4
+        versionName = "1.1.2"
         // Without this the androidTest sources compile and never run: AGP falls back to
         // the deprecated platform runner, which cannot execute an @RunWith(AndroidJUnit4)
         // class, and the suite reports green having done nothing.

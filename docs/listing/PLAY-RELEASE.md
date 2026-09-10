@@ -1,6 +1,6 @@
 # Limen, release runbook for Google Play
 
-Everything checked below was checked against the repository and the built artefact on 7 September 2026, at `versionCode 3` / `versionName 1.1.1`. Redo the checks after any commit that changes the app.
+Everything checked below was checked against the repository and the built artefact on 10 September 2026, at `versionCode 4` / `versionName 1.1.2`. Redo the checks after any commit that changes the app.
 
 ## What is verified
 
@@ -63,7 +63,7 @@ Bump `versionCode` in `app\build.gradle.kts` before every upload. Play rejects a
 
 ## What is still missing before submission
 
-1. ~~**Store graphics.**~~ Done. Icon, feature graphic and eight phone screenshots are in `docs/listing/graphics/`, captured from the release build at `versionCode 3`. `docs/listing/store-listing.md` names each file and its upload order. The only shot not taken is a defect carrying a photograph, which needs a real photograph of a real mark and is thirty seconds with the phone.
+1. ~~**Store graphics.**~~ Done, and localized. Icon, five feature graphics, eight phone screenshots per language and eight tablet screenshots per language are in `docs/listing/graphics/`. Each language carries its own canton and its own names. `docs/listing/store-listing.md` names the layout and the upload order. The only shot not taken is a defect carrying a photograph, which needs a real photograph of a real mark and is thirty seconds with the phone.
 2. **The closed test.** Twelve testers, fourteen continuous days, per the section above.
 3. **Country selection.** Limen is Swiss to the bone: Swiss tenancy law, cantonal overlay, swisstopo addresses, and five languages of which one is Romansh. A worldwide listing invites installs it cannot serve. Switzerland, and arguably Liechtenstein, is the honest reach.
 4. **Free or paid.** Play lets a paid app become free later and never the other way round, so this is decided once. Signet went paid at CHF 3.00 and carries the four obligations that follow, including a payments profile that is not instant to clear.
@@ -73,7 +73,7 @@ Bump `versionCode` in `app\build.gradle.kts` before every upload. Play rejects a
 
 Neither blocks submission. Both were found by walking a whole exit protocol on the emulator, from an empty install to a signed PDF.
 
-**The review screen labels a phone number as an email.** [`FlowScreen.kt:424`](../../app/src/main/java/dev/peringer/limen/ui/FlowScreen.kt#L424) renders one row for the responsible data controller, joining `email` and `phone`, and labels it `s.email`. A controller who gave only a phone number sees `Email: +41 79 123 45 67` on the screen they read before finalizing. The PDF is unaffected, because [`PdfExport.kt:401`](../../app/src/main/java/dev/peringer/limen/data/PdfExport.kt#L401) adds the same values without that label. The fix is to split the row, or to label it neutrally.
+~~**The review screen labels a phone number as an email.**~~ Fixed in `618ecab`, which split the controller row so the phone number carries its own label. The PDF was never affected, because [`PdfExport.kt:401`](../../app/src/main/java/dev/peringer/limen/data/PdfExport.kt#L401) adds the same values without that label.
 
 **Editing after signing discards the ink without warning.** Signatures carry the `contentRevision` they signed, `isCurrent` compares it against the record's, and any `edit()` bumps that number, so a single character typed into the dossier silently returns both parties to `Not signed`. The integrity rule is right and should not change: ink attests to a specific version of the content, and keeping it across an edit would be the real defect. What is missing is the warning. Two people sign at the door, someone corrects a typo in the bank name, and the app quietly needs both signatures again with nothing said. A confirmation before the edit, naming what will be lost, would cost one dialog.
 
