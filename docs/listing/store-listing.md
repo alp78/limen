@@ -27,7 +27,7 @@ Swiss handover protocol: defects, photos, signatures, PDF. Stays on your phone.
 ```
 Limen records the handover of a Swiss apartment, from the first meter reading to a signed PDF both parties take away.
 
-It is one document, not two apps. The tenant, the landlord and the managing agency each start a session from their own side, and the record that comes out is the same two-sided protocol.
+It is one document, not two apps. A handover is one session on one phone: whoever holds it picks their side at the start, and both parties sign that same record.
 
 WHAT IT RECORDS
 
@@ -91,7 +91,7 @@ The Romansh below has not been read by a native speaker. It ships because you ch
 ```
 Limen consigne l'état des lieux d'un appartement suisse, du premier relevé des compteurs au PDF signé que chaque partie emporte.
 
-C'est un seul document, pas deux applications. Le locataire, le bailleur et la régie ouvrent chacun une session de leur côté, et le constat qui en sort est le même état des lieux à deux voix.
+C'est un seul document, pas deux applications. Un état des lieux tient dans une seule session sur un seul téléphone : la personne qui le tient choisit son côté au début, et les deux parties signent ce même constat.
 
 CE QUE LE CONSTAT CONTIENT
 
@@ -147,7 +147,7 @@ Schweizer Übergabeprotokoll: Mängel, Fotos, Unterschriften, PDF. Bleibt lokal.
 ```
 Limen hält die Übergabe einer Schweizer Wohnung fest, vom ersten Zählerstand bis zum unterschriebenen PDF, das beide Parteien mitnehmen.
 
-Es ist ein Dokument, nicht zwei Apps. Mieterschaft, Vermieterschaft und Verwaltung starten je eine Sitzung von ihrer Seite, und heraus kommt dasselbe zweiseitige Protokoll.
+Es ist ein Dokument, nicht zwei Apps. Eine Übergabe ist eine einzige Sitzung auf einem einzigen Telefon: Wer es hält, wählt zu Beginn die eigene Seite, und beide Parteien unterschreiben dasselbe Protokoll.
 
 WAS DAS PROTOKOLL FESTHÄLT
 
@@ -203,7 +203,7 @@ Verbale di consegna svizzero: difetti, foto, firme, PDF. Resta sul telefono.
 ```
 Limen registra la consegna di un appartamento svizzero, dalla prima lettura dei contatori al PDF firmato che entrambe le parti portano via.
 
-È un solo documento, non due applicazioni. Il conduttore, il locatore e l'amministrazione avviano ciascuno una sessione dal proprio lato, e il verbale che ne esce è lo stesso documento a due voci.
+È un solo documento, non due applicazioni. Una riconsegna è un'unica sessione su un solo telefono: chi lo tiene sceglie la propria parte all'inizio, e le due parti firmano lo stesso verbale.
 
 COSA REGISTRA
 
@@ -259,7 +259,7 @@ Protocol da surdada svizzer: mancanzas, fotos, suttascripziuns, PDF.
 ```
 Limen registrescha la surdada d'ina abitaziun svizra, da l'emprima posiziun dals contaturs enfin al PDF suttascrit che omaduas partidas prendan cun sai.
 
-Igl è in sulet document, betg duas applicaziuns. Il locatari, il locatur e l'administraziun avran mintgin ina sesida da lur vart, ed il protocol che resulta è il medem document da duas varts.
+Igl è in sulet document, betg duas applicaziuns. Ina surdada è ina suletta sesida sin in sulet telefon: tgi che al tegna tscherna sia vart al cumenzament, ed omaduas varts suttascrivan il medem protocol.
 
 TGE CHE VEGN REGISTRÀ
 
