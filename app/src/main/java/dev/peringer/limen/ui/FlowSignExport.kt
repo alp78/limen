@@ -292,7 +292,7 @@ internal fun ExportStep(vm: LimenViewModel, s: Str, p: Protocol) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
           Text(file.displayName, style = MaterialTheme.typography.titleMedium, color = Limen.colors.ink)
           Text(
-            "${s.exportedTo} Download/Limen · ${(file.bytes / 1024).coerceAtLeast(1)} KB",
+            "${s.exportedTo} Download/Limen · ${(file.bytes / 1024).coerceAtLeast(1)} ${if (s.lang == Lang.Fr) "ko" else "KB"}",
             style = MaterialTheme.typography.labelSmall,
             color = Limen.colors.inkDim,
           )

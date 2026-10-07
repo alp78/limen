@@ -151,21 +151,21 @@ class Str(val lang: Lang) {
   val hubClose = pick("CLOSE THE RECORD", "CLORE LE CONSTAT", "PROTOKOLL ABSCHLIESSEN", "CHIUDI IL VERBALE", "SERRAR IL PROTOCOL")
   val objectPreflight = pick(
     "Object and canton first",
-    "Objet et canton d'abord",
+    "Informations sur le logement",
     "Objekt und Kanton zuerst",
     "Prima oggetto e cantone",
     "Emprim object e chantun",
   )
   val objectPreflightBody = pick(
     "Confirm the handed-over object's address, canton, date and legal overlay before the walk.",
-    "Confirmez l'adresse de l'objet remis, son canton, la date et la couche juridique avant la visite.",
+    "Vérifiez l’adresse du logement, son canton, la date de l’état des lieux et les règles applicables avant la visite.",
     "Bestätigen Sie vor dem Rundgang Adresse, Kanton, Datum und Rechtszusatz des Übergabeobjekts.",
     "Prima del giro confermate indirizzo, cantone, data e livello giuridico dell'oggetto consegnato.",
     "Confermai avant il gir adressa, chantun, data e cumplement giuridic da l'object surdà.",
   )
   val completeObjectAndCanton = pick(
     "COMPLETE OBJECT AND CANTON",
-    "COMPLÉTER OBJET ET CANTON",
+    "COMPLÉTER LE LOGEMENT ET LE CANTON",
     "OBJEKT UND KANTON ERGÄNZEN",
     "COMPLETA OGGETTO E CANTONE",
     "CUMPLETTAR OBJECT E CHANTUN",
@@ -181,7 +181,7 @@ class Str(val lang: Lang) {
   fun countObjects(n: Int) = "$countObjects $n"
   fun countComponents(n: Int) = "$countComponents $n"
   val nothingYet = pick("Nothing recorded yet", "Rien de consigné", "Noch nichts erfasst", "Ancora nulla", "Anc nagut registrà")
-  val stillMissing = pick("Still missing", "Encore manquant", "Noch offen", "Ancora mancante", "Anc mancant")
+  val stillMissing = pick("Still missing", "Informations à compléter", "Noch offen", "Ancora mancante", "Anc mancant")
 
   // Setup.
   val protocolKind = pick("Protocol", "État des lieux", "Protokoll", "Verbale", "Protocol")
@@ -218,7 +218,7 @@ class Str(val lang: Lang) {
   }
   val legalOverlayTitle = pick(
     "Canton overlay",
-    "Couche cantonale",
+    "Règles applicables dans le canton",
     "Kantonale Ergänzung",
     "Livello cantonale",
     "Cumplement chantunal",
@@ -263,7 +263,7 @@ class Str(val lang: Lang) {
   fun legalRequirement(requirement: LegalRequirement) = when (requirement) {
     LegalRequirement.LeaseAndLocalTiming -> pick(
       "Appointment checked against the lease, local dates and public holidays",
-      "Rendez-vous vérifié selon le bail, les termes locaux et les jours fériés",
+      "Date de l’état des lieux vérifiée selon le bail, les échéances locales et les jours fériés",
       "Termin mit Mietvertrag, örtlichen Terminen und Feiertagen abgeglichen",
       "Appuntamento verificato con contratto, termini locali e giorni festivi",
       "Termin controllà tenor contract, termins locals e dis da festa",
@@ -298,7 +298,7 @@ class Str(val lang: Lang) {
     )
     LegalRequirement.VaudExitReadiness -> pick(
       "Vaud return readiness checked: empty, clean, accessible and due at noon",
-      "Restitution vaudoise vérifiée: vide, propre, accessible et due à midi",
+      "Restitution dans le canton de Vaud : logement vide, propre et accessible ; échéance de remise à midi vérifiée",
       "Waadtländer Rückgabe geprüft: leer, sauber, zugänglich und mittags fällig",
       "Restituzione vodese verificata: vuota, pulita, accessibile e dovuta a mezzogiorno",
       "Restituziun vadaisa controllada: vida, netta, accessibla e dueivel a mezdi",
@@ -605,8 +605,8 @@ class Str(val lang: Lang) {
   )
   val roomInspected = pick("ROOM INSPECTED", "PIÈCE CONTRÔLÉE", "RAUM GEPRÜFT", "LOCALE CONTROLLATO", "LOCAL CONTROLLÀ")
   val notInspected = pick("Not inspected", "Non contrôlé", "Nicht geprüft", "Non controllato", "Betg controllà")
-  val inspectedNoDefects = pick("Inspected, no defect recorded", "Contrôlé, aucun défaut consigné", "Geprüft, kein Mangel erfasst", "Controllato, nessun difetto registrato", "Controllà, nagina mancanza registrada")
-  val clearRoom = pick("CLEAR ROOM", "VIDER LA PIÈCE", "RAUM LEEREN", "SVUOTA IL LOCALE", "SVIDAR IL LOCAL")
+  val inspectedNoDefects = pick("Inspected, no defect recorded", "Contrôle effectué, aucun défaut consigné", "Geprüft, kein Mangel erfasst", "Controllato, nessun difetto registrato", "Controllà, nagina mancanza registrada")
+  val clearRoom = pick("CLEAR ROOM", "EFFACER LES CONSTATS DE LA PIÈCE", "RAUM LEEREN", "SVUOTA IL LOCALE", "SVIDAR IL LOCAL")
   val removeRoom = pick("REMOVE ROOM", "RETIRER LA PIÈCE", "RAUM ENTFERNEN", "RIMUOVI IL LOCALE", "ALLONTANAR IL LOCAL")
   val chooseRoomsPresent = pick(
     "Rooms present",
@@ -685,8 +685,8 @@ class Str(val lang: Lang) {
     "Contratto concluso / firmato il",
     "Contract concludì / suttascrit ils",
   )
-  val tenancyStart = pick("Tenancy from", "Bail depuis le", "Mietbeginn", "Locazione dal", "Locaziun dapi ils")
-  val tenancyEnd = pick("Tenancy until", "Bail jusqu'au", "Mietende", "Locazione fino al", "Locaziun enfin ils")
+  val tenancyStart = pick("Tenancy from", "Début du bail", "Mietbeginn", "Locazione dal", "Locaziun dapi ils")
+  val tenancyEnd = pick("Tenancy until", "Fin du bail", "Mietende", "Locazione fino al", "Locaziun enfin ils")
   val noticeDate = pick("Notice given on", "Résiliation notifiée le", "Kündigung erfolgt am", "Disdetta notificata il", "Disditga dada ils")
   val notes = pick("Notes", "Observations", "Bemerkungen", "Osservazioni", "Remartgas")
   fun dossierCard(card: DossierCard) = when (card) {
@@ -702,7 +702,7 @@ class Str(val lang: Lang) {
   // The defect editor.
   val defectText = pick(
     "Defect, precisely: what, where, how big",
-    "Le défaut, précisément : quoi, où, quelle taille",
+    "Description du défaut : emplacement et dimensions",
     "Der Mangel, präzis: was, wo, wie gross",
     "Il difetto, con precisione: cosa, dove, dimensione",
     "La mancanza, precis: tge, nua, con grond",
@@ -730,8 +730,8 @@ class Str(val lang: Lang) {
   )
   val fixByLabel = pick("To be fixed by", "À réparer par", "Behebung durch", "Da riparare a cura di", "Da reparar tras")
   val fixOpen = pick("Open", "À définir", "Offen", "Da definire", "Avert")
-  val fixDeadline = pick("By (date)", "D'ici au", "Bis am", "Entro il", "Fin ils")
-  val costNote = pick("Cost note / estimate", "Coûts / devis", "Kosten / Voranschlag", "Costi / preventivo", "Custs / preventiv")
+  val fixDeadline = pick("By (date)", "Délai de réparation", "Bis am", "Entro il", "Fin ils")
+  val costNote = pick("Cost note / estimate", "Coût estimé ou montant du devis", "Kosten / Voranschlag", "Costi / preventivo", "Custs / preventiv")
   val reservationLabel = pick("Reservation", "Réserve", "Vorbehalt", "Riserva", "Resalva")
   val reservationBeforeSign = pick(
     "Enter any reservation before signing. It is sealed with that person's ink.",
@@ -742,7 +742,7 @@ class Str(val lang: Lang) {
   )
   val inkEvidenceNotice = pick(
     "Captured ink is evidence of the recorded outcome, not a Swiss qualified electronic signature.",
-    "La signature dessinée atteste l'issue consignée; ce n'est pas une signature électronique qualifiée suisse.",
+    "La signature confirme les constatations et réserves enregistrées. La prise en charge des frais reste distincte. Il ne s’agit pas d’une signature électronique qualifiée.",
     "Die erfasste Unterschrift belegt das protokollierte Ergebnis; sie ist keine qualifizierte elektronische Signatur der Schweiz.",
     "La firma acquisita prova l'esito registrato; non è una firma elettronica qualificata svizzera.",
     "La suttascripziun registrada documentescha il resultat; ella n'è betg ina suttascripziun electronica qualifitgada svizra.",
@@ -930,7 +930,7 @@ class Str(val lang: Lang) {
   val capturedOn = pick("Captured", "Saisie", "Erfasst", "Acquisita", "Registrada")
   val revisionLabel = pick("Record revision", "Révision du constat", "Protokollrevision", "Revisione del verbale", "Revisiun dal protocol")
   val copyDelivery = pick("Copies delivered", "Copies remises", "Kopien zugestellt", "Copie consegnate", "Copias surdadas")
-  val recordCopyFor = pick("Record copy for", "Consigner la copie pour", "Kopie erfassen für", "Registra copia per", "Registrar copia per")
+  val recordCopyFor = pick("Record copy for", "Confirmer la remise d’une copie à", "Kopie erfassen für", "Registra copia per", "Registrar copia per")
   val deliveryDetail = pick("Recipient, address or delivery reference", "Destinataire, adresse ou référence d'envoi", "Empfänger, Adresse oder Zustellreferenz", "Destinatario, indirizzo o riferimento di consegna", "Destinatari, adressa u referenza da consegna")
   val clearDelivery = pick("Clear delivery record", "Effacer la remise", "Zustellnachweis löschen", "Cancella consegna", "Stizzar la consegna")
   val deliveryChanged = pick(
@@ -955,7 +955,7 @@ class Str(val lang: Lang) {
   }
   val deliverySelfDeclared = pick(
     "Confirm only after an identical copy was actually handed over or sent. This self-declared post-finalization metadata is not covered by the evidence fingerprint.",
-    "Confirmez seulement après la remise ou l'envoi effectif d'une copie identique. Cette métadonnée autodéclarée après finalisation n'est pas couverte par l'empreinte des preuves.",
+    "Confirmez la remise après avoir transmis une copie identique. Cette confirmation, ajoutée après la finalisation, ne fait pas partie des éléments couverts par l’empreinte du constat.",
     "Erst bestätigen, nachdem eine identische Kopie tatsächlich übergeben oder gesendet wurde. Diese selbst deklarierte Metadatenangabe nach Abschluss ist nicht vom Beleg-Fingerabdruck gedeckt.",
     "Confermate solo dopo aver realmente consegnato o inviato una copia identica. Questo metadato autodichiarato dopo la finalizzazione non è coperto dall'impronta delle prove.",
     "Confermai pir suenter che ina copia identica è vegnida surdada u tramessa. Questa metadata declerada sez suenter la finalisaziun n'è betg cumpigliada da l'impronta da las cumprovas.",
@@ -1004,7 +1004,7 @@ class Str(val lang: Lang) {
     "Non è stato possibile creare l'integrazione. Verificare lo spazio libero sul telefono e riprovare.",
     "Il supplement n'ha betg pudì vegnir creà. Controllai il spazi liber sin il telefon ed empruvai anc ina giada.",
   )
-  val fingerprint = pick("Evidence fingerprint", "Empreinte des preuves", "Fingerabdruck der Belege", "Impronta delle prove", "Impronta da las cumprovas")
+  val fingerprint = pick("Evidence fingerprint", "Empreinte numérique du constat", "Fingerabdruck der Belege", "Impronta delle prove", "Impronta da las cumprovas")
   val pdfFinalized = pick("Finalized record", "Constat finalisé", "Abgeschlossenes Protokoll", "Verbale finalizzato", "Protocol finalisà")
   val pdfAmends = pick("Amends record", "Modifie le constat", "Ändert Protokoll", "Modifica verbale", "Mida protocol")
 
@@ -1419,14 +1419,14 @@ class Str(val lang: Lang) {
   // ── Role: which side of the threshold holds this phone ────────────────────────────────
   val startNewSession = pick(
     "NEW SESSION",
-    "NOUVELLE SESSION",
+    "NOUVEL ÉTAT DES LIEUX",
     "NEUE SITZUNG",
     "NUOVA SESSIONE",
     "NOVA SESIUN",
   )
   val allSessions = pick(
     "ALL SESSIONS",
-    "TOUTES LES SESSIONS",
+    "MES ÉTATS DES LIEUX",
     "ALLE SITZUNGEN",
     "TUTTE LE SESSIONI",
     "TUTTAS LAS SESIUNS",

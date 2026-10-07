@@ -156,7 +156,7 @@ private fun InitialRoomSetup(vm: LimenViewModel, s: Str, p: Protocol) {
       }
       Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         SmallKey(s.selectAll, Modifier.weight(1f)) { selected = Templates.defaultRooms.toSet() }
-        SmallKey(s.clear, Modifier.weight(1f), enabled = selected.isNotEmpty()) { selected = emptySet() }
+        SmallKey(if (s.lang == Lang.Fr) "DÉSÉLECTIONNER" else s.clear, Modifier.weight(1f), enabled = selected.isNotEmpty()) { selected = emptySet() }
       }
       BigKey(
         s.useSelectedRooms,
