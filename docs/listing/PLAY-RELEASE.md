@@ -4,7 +4,9 @@ The historical checks below were checked against the repository and the built ar
 
 ## Android 1.2.0 handoff, 13 October 2026
 
-This release implements the audit remediation. Consult [the implementation ledger](../audits/2026-10-13/IMPLEMENTATION.md) for the actual build, test and signer results. It is not an upload or a claim of Play approval. The configured upload-key SHA-256 and the installed Pixel app both use `bd11a58669405d6a3bb58aa4055b654e22cd670105c3e3c19ab189c2e2b509d3`. Play Console registration of this key remains unverified; older recorded certificate digests must not override direct certificate verification.
+This release implements the audit remediation. Consult [the implementation ledger](../audits/2026-10-13/IMPLEMENTATION.md) for the build, test and signer results of commit `eb5c038`. Five fixes followed before upload, found by a review of that commit: an endless activity recreate on phones whose system language is outside the five, the HTML companion embedding photographs as lossless PNG, finalization decoding every photograph on the main thread, amount fields refusing `2'400.-`, and three serialized defaults left out of the stored JSON. With them, 102 unit tests and 16 instrumented tests pass on the Pixel 10.
+
+The bundle, SHA-256 `3c311a2f63859b49a82db3dd220713b4ff14c054f6ac9449e1af12eaa9184952`, its R8 mapping and the five release notes went to the closed-testing track on 13 October 2026 through the Play Developer API, as a completed release replacing versionCode 4. Play accepted the bundle signed with the upload key `bd11a58669405d6a3bb58aa4055b654e22cd670105c3e3c19ab189c2e2b509d3`, which is the registration check; the installed Pixel app uses the same key.
 
 The Pixel is a physical device containing user records. Install the matching-signer APK with `adb -s <serial> install -r <apk>` to preserve those records. Do not use the deploy script’s uninstall step on that phone. The audit tests use the separate `.uitest` package.
 

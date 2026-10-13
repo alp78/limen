@@ -61,7 +61,7 @@ internal fun incompleteDossierTarget(p: Protocol): String {
   if (listOf(p.contract.conclusionDate, p.contract.startDate, p.contract.endDate, p.contract.noticeDate).any(::invalidDate) ||
       listOf(p.contract.monthlyRentChf, p.contract.serviceChargesChf).any { it.isNotBlank() && nonNegativeNumber(it) == null } ||
       DossierCard.Contract in p.dossierCards() && p.contract == Contract()) return "card-Contract"
-  if (!depositRecorded(p)) return "card-Deposit"
+  if (!depositRecorded(p) || p.deposit.amountChf.isNotBlank() && nonNegativeNumber(p.deposit.amountChf) == null) return "card-Deposit"
   if (p.details.attachments.any { it.title.isBlank() || it.file.isBlank() && it.externalReference.isBlank() }) return "documents"
   if (p.details.followUps.any { it.description.isBlank() || listOf(it.discoveredDate, it.notifiedDate, it.deadline).any(::invalidDate) }) return "follow-up"
   if (DossierCard.Meters in p.dossierCards() && (p.meters == Meters() && p.details.readings.isEmpty() && p.details.scopeNotes["Meters"].isNullOrBlank() ||

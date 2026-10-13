@@ -926,17 +926,22 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     finalizationIssues = issues
     finalizationError = false
     if (issues.isNotEmpty()) return
-    val unreadable = dev.peringer.limen.photo.EvidenceValidation.unreadable(p, store.photoDir(p.id), store.signatureDir(p.id))
-    if (unreadable.isNotEmpty()) {
-      evidenceError = unreadable.joinToString()
-      finalizationIssues = listOf(FinalizationIssue.Evidence)
-      return
-    }
 
+    // Locks the content first: checking means hashing and decoding every photograph, which
+    // takes seconds on a large record and froze the screen when it ran on the main thread.
     finalizing = true
-    saveJob?.cancel()
-    saveJob = null
     viewModelScope.launch {
+      val unreadable = withContext(Dispatchers.IO) {
+        dev.peringer.limen.photo.EvidenceValidation.unreadable(p, store.photoDir(p.id), store.signatureDir(p.id))
+      }
+      if (unreadable.isNotEmpty()) {
+        evidenceError = unreadable.joinToString()
+        finalizationIssues = listOf(FinalizationIssue.Evidence)
+        finalizing = false
+        return@launch
+      }
+      saveJob?.cancel()
+      saveJob = null
       val result = withContext(Dispatchers.IO) {
         runCatching {
           val withMoment = p.copy(

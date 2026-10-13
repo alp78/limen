@@ -46,6 +46,16 @@ class RemediationTest {
     assertEquals(setOf(LegalRequirement.InitialRentForm), base.invalidatedLegalRequirements(base.copy(details = base.details.copy(habitableRooms = "4"))))
   }
 
+  @Test fun storedRecordPinsDefaultsTheFingerprintCovers() {
+    // The canonical form hashes defaults while the store omits them, so a default left out of
+    // the file would be re-read as whatever a later release declares, and fail the fingerprint.
+    val root = tmp.newFolder()
+    Store(root).save(p().copy(details = RecordDetails(legalSnapshot = p().freezeLegalRules(),
+      attachments = listOf(SupportingDocument(id = "a1")), estimates = mapOf("d1" to ReplacementEstimate()))))
+    val stored = File(root, "protocols/p1.json").readText()
+    listOf("\"checkedOn\"", "\"mime\"", "\"source\"").forEach { assertTrue(it, it in stored) }
+  }
+
   @Test fun staleSaveCannotReplaceLatestAndCorruptCopyIsRecoverable() {
     val root = tmp.newFolder(); val store = Store(root)
     val first = p().copy(address = "first", contentRevision = 1, saveSequence = 1)

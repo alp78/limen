@@ -6,9 +6,9 @@ Paste each block into the matching language on the release, or let `play_push.py
 
 ---
 
-## versionCode 5, versionName 1.2.0 (prepared, not uploaded)
+## versionCode 5, versionName 1.2.0
 
-13 October 2026. Romansh native review remains pending. RULV means the Vaud rental rules, not rent-control periods. The federal BWO document is an overview of cantonal form duties, not a federal initial-rent form. Older notes below are historical.
+Uploaded to the closed-testing track on 13 October 2026 through the Play Developer API, as a completed release with these five notes, replacing versionCode 4. Romansh native review remains pending. RULV means the Vaud rental rules, not rent-control periods. The federal BWO document is an overview of cantonal form duties, not a federal initial-rent form. Older notes below are historical.
 
 ### en-US
 

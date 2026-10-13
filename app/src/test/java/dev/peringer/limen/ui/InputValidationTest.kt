@@ -38,6 +38,16 @@ class InputValidationTest {
     assertThrows(IllegalArgumentException::class.java) { dev.peringer.limen.sense.Zeitwert.remainingReplacementValue(Double.POSITIVE_INFINITY, 10.0, 2.0) }
   }
 
+  @Test fun swissWrittenAmountsPassAndAnInvalidDepositPointsAtTheDeposit() {
+    listOf("2'400.-", "CHF 2’400.–", "2400.- CHF", "Fr. 2400", "2400.").forEach { assertEquals(it, 2400.0, nonNegativeNumber(it)!!, 0.0001) }
+    listOf("abc", ".-", "CHF", "-2400").forEach { assertNull(it, nonNegativeNumber(it)) }
+    assertFalse(FinalizationIssue.Dossier in issues(base.copy(contract = Contract(monthlyRentChf = "CHF 1'850.-"))))
+    val deposit = base.copy(dossier = listOf(DossierCard.Deposit), dossierChosen = true,
+      deposit = Deposit(DepositKind.BankAccount, amountChf = "two months", bank = "BCV", account = "CH93 0076 2011 6238 5295 7"))
+    assertTrue(FinalizationIssue.Dossier in issues(deposit))
+    assertEquals("card-Deposit", incompleteDossierTarget(deposit))
+  }
+
   @Test fun quickDraftAcceptsSingleLetterNameAndOptionalContact() {
     assertTrue(SessionIdentity(firstName = "Ö").hasRequiredFields())
     assertTrue(SessionIdentity(firstName = "Li", addressCountry = "IE", usesSwissAddress = false).hasRequiredFields())

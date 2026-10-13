@@ -31,6 +31,7 @@ import dev.peringer.limen.theme.LimenTheme
 import dev.peringer.limen.ui.FlowScreen
 import dev.peringer.limen.ui.HomePage
 import dev.peringer.limen.ui.HomeScreen
+import dev.peringer.limen.ui.Lang
 import dev.peringer.limen.ui.LimenViewModel
 import dev.peringer.limen.ui.Str
 import kotlinx.coroutines.CancellationException
@@ -38,7 +39,11 @@ import kotlinx.coroutines.flow.collect
 
 class MainActivity : ComponentActivity() {
   override fun attachBaseContext(base: android.content.Context) {
+    // With no stored choice the app speaks Lang.default(), which is English for any system
+    // language outside the five. The resources have to speak it too: left on Spanish, the
+    // check in onCreate compared "es" with "en" and recreated the activity without end.
     val tag = base.getSharedPreferences("limen", MODE_PRIVATE).getString("lang", null)?.lowercase()
+      ?: Lang.default().name.lowercase().takeIf { it != base.resources.configuration.locales[0].language }
     if (tag == null) { super.attachBaseContext(base); return }
     val locale = java.util.Locale.forLanguageTag(tag)
     java.util.Locale.setDefault(locale)

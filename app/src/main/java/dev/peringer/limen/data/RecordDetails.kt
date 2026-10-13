@@ -1,5 +1,7 @@
 package dev.peringer.limen.data
 
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 
 /** Optional additions are absent in legacy canonical records, preserving their signatures. */
@@ -58,6 +60,7 @@ data class SupportingDocument(
   val kind: DocumentKind = DocumentKind.Other,
   val title: String = "",
   val file: String = "",
+  @OptIn(ExperimentalSerializationApi::class) @EncodeDefault(EncodeDefault.Mode.ALWAYS)
   val mime: String = "application/pdf",
   val sha256: String = "",
   val bytes: Long = 0,
@@ -84,6 +87,7 @@ data class ReplacementEstimate(
   val lifeYears: String = "",
   val basis: String = "",
   val date: String = "",
+  @OptIn(ExperimentalSerializationApi::class) @EncodeDefault(EncodeDefault.Mode.ALWAYS)
   val source: String = "https://www.mieterverband.ch/mietrecht/unterlagen-und-tools/lebensdauertabelle/",
 )
 
@@ -94,6 +98,7 @@ data class LegalSnapshot(
   val initialRentFormRule: String,
   val requirements: List<LegalRequirement>,
   val sources: List<String>,
+  @OptIn(ExperimentalSerializationApi::class) @EncodeDefault(EncodeDefault.Mode.ALWAYS)
   val checkedOn: String = "2026-10-13",
 )
 
