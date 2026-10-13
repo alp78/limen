@@ -1,0 +1,107 @@
+
+C:\Users\aperi\DEV\ANDROID\apps\limen>if "Windows_NT" == "Windows_NT" setlocal
+
+C:\Users\aperi\DEV\ANDROID\apps\limen>set DIRNAME=C:\Users\aperi\DEV\ANDROID\apps\limen\ 
+
+C:\Users\aperi\DEV\ANDROID\apps\limen>if "C:\Users\aperi\DEV\ANDROID\apps\limen\" == "" set DIRNAME=. 
+
+C:\Users\aperi\DEV\ANDROID\apps\limen>set APP_BASE_NAME=gradlew 
+
+C:\Users\aperi\DEV\ANDROID\apps\limen>set APP_HOME=C:\Users\aperi\DEV\ANDROID\apps\limen\ 
+
+C:\Users\aperi\DEV\ANDROID\apps\limen>set DEFAULT_JVM_OPTS= 
+
+C:\Users\aperi\DEV\ANDROID\apps\limen>if defined JAVA_HOME goto findJavaFromJavaHome 
+
+C:\Users\aperi\DEV\ANDROID\apps\limen>set JAVA_HOME=C:\Program Files\Eclipse Adoptium\jdk-21.0.11.10-hotspot 
+
+C:\Users\aperi\DEV\ANDROID\apps\limen>set JAVA_EXE=C:\Program Files\Eclipse Adoptium\jdk-21.0.11.10-hotspot/bin/java.exe 
+
+C:\Users\aperi\DEV\ANDROID\apps\limen>if exist "C:\Program Files\Eclipse Adoptium\jdk-21.0.11.10-hotspot/bin/java.exe" goto init 
+
+C:\Users\aperi\DEV\ANDROID\apps\limen>if not "Windows_NT" == "Windows_NT" goto win9xME_args 
+
+C:\Users\aperi\DEV\ANDROID\apps\limen>set CMD_LINE_ARGS= 
+
+C:\Users\aperi\DEV\ANDROID\apps\limen>set _SKIP=2 
+
+C:\Users\aperi\DEV\ANDROID\apps\limen>if "x--offline" == "x" goto execute 
+
+C:\Users\aperi\DEV\ANDROID\apps\limen>set CMD_LINE_ARGS=--offline :app:assembleRelease :app:lintRelease 
+
+C:\Users\aperi\DEV\ANDROID\apps\limen>set CLASSPATH=C:\Users\aperi\DEV\ANDROID\apps\limen\\gradle\wrapper\gradle-wrapper.jar 
+
+C:\Users\aperi\DEV\ANDROID\apps\limen>"C:\Program Files\Eclipse Adoptium\jdk-21.0.11.10-hotspot/bin/java.exe"    "-Dorg.gradle.appname=gradlew" -classpath "C:\Users\aperi\DEV\ANDROID\apps\limen\\gradle\wrapper\gradle-wrapper.jar" org.gradle.wrapper.GradleWrapperMain --offline :app:assembleRelease :app:lintRelease 
+Calculating task graph as no cached configuration is available for tasks: :app:assembleRelease :app:lintRelease
+> Task :app:generateReleaseAssets UP-TO-DATE
+> Task :app:copyNotice UP-TO-DATE
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preReleaseBuild UP-TO-DATE
+> Task :app:extractProguardFiles UP-TO-DATE
+> Task :app:mergeReleaseJniLibFolders UP-TO-DATE
+> Task :app:generateReleaseResources UP-TO-DATE
+> Task :app:javaPreCompileRelease UP-TO-DATE
+> Task :app:extractDeepLinksRelease UP-TO-DATE
+> Task :app:processReleaseNavigationResources UP-TO-DATE
+> Task :app:createReleaseCompatibleScreenManifests UP-TO-DATE
+> Task :app:checkReleaseDuplicateClasses UP-TO-DATE
+> Task :app:checkReleaseAarMetadata UP-TO-DATE
+> Task :app:mergeReleaseStartupProfile UP-TO-DATE
+> Task :app:mapReleaseSourceSetPaths UP-TO-DATE
+> Task :app:compileReleaseNavigationResources UP-TO-DATE
+> Task :app:mergeReleaseNativeLibs UP-TO-DATE
+> Task :app:packageReleaseResources UP-TO-DATE
+> Task :app:processReleaseMainManifest UP-TO-DATE
+> Task :app:validateSigningRelease UP-TO-DATE
+> Task :app:writeReleaseSigningConfigVersions UP-TO-DATE
+> Task :app:parseReleaseLocalResources UP-TO-DATE
+> Task :app:processReleaseManifest UP-TO-DATE
+> Task :app:stripReleaseDebugSymbols UP-TO-DATE
+> Task :app:extractReleaseNativeSymbolTables UP-TO-DATE
+> Task :app:processReleaseManifestForPackage UP-TO-DATE
+> Task :app:mergeReleaseNativeDebugMetadata NO-SOURCE
+> Task :app:generateReleaseRFile UP-TO-DATE
+> Task :app:writeReleaseAppMetadata UP-TO-DATE
+> Task :app:collectReleaseDependencies UP-TO-DATE
+> Task :app:sdkReleaseDependencyData UP-TO-DATE
+> Task :app:mergeReleaseAssets UP-TO-DATE
+> Task :app:mergeReleaseArtProfile UP-TO-DATE
+> Task :app:compressReleaseAssets UP-TO-DATE
+> Task :app:mergeReleaseResources UP-TO-DATE
+> Task :app:compileReleaseKotlin UP-TO-DATE
+> Task :app:compileReleaseJavaWithJavac NO-SOURCE
+> Task :app:processReleaseJavaRes UP-TO-DATE
+> Task :app:processReleaseResources UP-TO-DATE
+> Task :app:expandReleaseArtProfileWildcards UP-TO-DATE
+> Task :app:mergeReleaseGeneratedProguardFiles UP-TO-DATE
+> Task :app:mergeReleaseJavaResource UP-TO-DATE
+> Task :app:generateReleaseLintVitalReportModel UP-TO-DATE
+> Task :app:produceReleaseComposeMapping UP-TO-DATE
+> Task :app:reportReleaseComposeMappingErrors
+> Task :app:generateReleaseLintReportModel
+> Task :app:extractReleaseVersionControlInfo
+> Task :app:minifyReleaseWithR8 FROM-CACHE
+> Task :app:convertShrunkResourcesToBinaryRelease UP-TO-DATE
+> Task :app:optimizeReleaseResources UP-TO-DATE
+> Task :app:mergeReleaseComposeMapping UP-TO-DATE
+> Task :app:compileReleaseArtProfile UP-TO-DATE
+> Task :app:lintVitalAnalyzeRelease
+> Task :app:lintVitalReportRelease SKIPPED
+> Task :app:lintVitalRelease SKIPPED
+> Task :app:packageRelease
+> Task :app:assembleRelease
+> Task :app:createReleaseApkListingFileRedirect UP-TO-DATE
+> Task :app:lintAnalyzeRelease
+
+> Task :app:lintReportRelease
+Wrote HTML report to file:///C:/Users/aperi/DEV/ANDROID/apps/limen/app/build/reports/lint-results-release.html
+
+> Task :app:lintRelease
+
+BUILD SUCCESSFUL in 12s
+53 actionable tasks: 8 executed, 1 from cache, 44 up-to-date
+Configuration cache entry stored.
+
+C:\Users\aperi\DEV\ANDROID\apps\limen>if "0" == "0" goto mainEnd 
+
+C:\Users\aperi\DEV\ANDROID\apps\limen>if "Windows_NT" == "Windows_NT" endlocal

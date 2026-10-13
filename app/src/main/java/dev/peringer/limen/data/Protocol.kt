@@ -151,6 +151,19 @@ data class Protocol(
   @EncodeDefault(EncodeDefault.Mode.NEVER)
   val deliveryMetadataEpochMs: Long = 0,
   val exportedEpochMs: Long = 0,
+  @OptIn(ExperimentalSerializationApi::class)
+  @EncodeDefault(EncodeDefault.Mode.NEVER)
+  val details: RecordDetails = RecordDetails(),
+  /** Metadata excluded from the signed aggregate. */
+  @OptIn(ExperimentalSerializationApi::class)
+  @EncodeDefault(EncodeDefault.Mode.NEVER)
+  val deliveryRevision: Long = 0,
+  @OptIn(ExperimentalSerializationApi::class)
+  @EncodeDefault(EncodeDefault.Mode.NEVER)
+  val exportHistory: List<ExportCopy> = emptyList(),
+  @OptIn(ExperimentalSerializationApi::class)
+  @EncodeDefault(EncodeDefault.Mode.NEVER)
+  val saveSequence: Long = 0,
 ) {
   /** The record plane has current ink from at least one person. */
   fun isSigned(): Boolean = signatures.any {
@@ -162,7 +175,11 @@ data class Protocol(
   fun isCurrent(signature: Signature): Boolean = signature.contentRevision == contentRevision
   fun copyDeliveredTo(role: Role): Boolean = deliveryReceipts.any { it.role == role }
   fun deliveryComplete(): Boolean =
-    listOf(Role.Tenant, Role.Landlord).all(::copyDeliveredTo)
+    listOf(Role.Tenant, Role.Landlord).all { role -> parties.any { it.role == role } } &&
+      parties.filter { it.role in listOf(Role.Tenant, Role.Landlord) }.all { party ->
+        deliveryReceipts.any { receipt -> receipt.role == party.role &&
+          (receipt.participantId == party.participantKey() || receipt.participantId.isBlank() && party.id.isBlank()) }
+      }
 }
 
 @Serializable
@@ -204,6 +221,15 @@ data class Party(
   val representedBy: String = "",
   val phone: String = "",
   val email: String = "",
+  @OptIn(ExperimentalSerializationApi::class)
+  @EncodeDefault(EncodeDefault.Mode.NEVER)
+  val id: String = "",
+  @OptIn(ExperimentalSerializationApi::class)
+  @EncodeDefault(EncodeDefault.Mode.NEVER)
+  val agency: String = "",
+  @OptIn(ExperimentalSerializationApi::class)
+  @EncodeDefault(EncodeDefault.Mode.NEVER)
+  val authority: String = "",
 )
 
 /** The person who opened this session and their contact address for this handover. */
@@ -285,7 +311,7 @@ data class Deposit(
 )
 
 @Serializable
-enum class DepositKind { None, BankAccount, Insurance }
+enum class DepositKind { None, BankAccount, Insurance, Unknown }
 
 /**
  * The recurring Swiss rental-guarantee insurers shown in the setup picker. Only the
@@ -476,7 +502,13 @@ data class Defect(
   @OptIn(ExperimentalSerializationApi::class)
   @EncodeDefault(EncodeDefault.Mode.NEVER)
   val objectId: String = "",
+  @OptIn(ExperimentalSerializationApi::class)
+  @EncodeDefault(EncodeDefault.Mode.NEVER)
+  val participantPositions: Map<String, TenantPosition> = emptyMap(),
 )
+
+@Serializable
+data class TenantPosition(val response: TenantResponse = TenantResponse.NotStated, val comment: String = "")
 
 /**
  * True while a finding carries nothing but the place it hangs on. Written as a comparison
@@ -501,6 +533,9 @@ data class PhotoEvidence(
   val sha256: String = "",
   val capturedEpochMs: Long = 0,
   val source: PhotoSource = PhotoSource.Unknown,
+  @OptIn(ExperimentalSerializationApi::class)
+  @EncodeDefault(EncodeDefault.Mode.NEVER)
+  val importedEpochMs: Long = 0,
 )
 
 @Serializable
@@ -515,6 +550,9 @@ data class DeliveryReceipt(
   val epochMs: Long = 0,
   val method: DeliveryMethod = DeliveryMethod.InPerson,
   val note: String = "",
+  @OptIn(ExperimentalSerializationApi::class)
+  @EncodeDefault(EncodeDefault.Mode.NEVER)
+  val participantId: String = "",
 )
 
 @Serializable
@@ -535,6 +573,12 @@ data class Signature(
   val epochMs: Long = 0,
   /** The protocol revision shown to the signer. */
   val contentRevision: Long = 0,
+  @OptIn(ExperimentalSerializationApi::class)
+  @EncodeDefault(EncodeDefault.Mode.NEVER)
+  val participantId: String = "",
+  @OptIn(ExperimentalSerializationApi::class)
+  @EncodeDefault(EncodeDefault.Mode.NEVER)
+  val outcome: String = "",
 )
 
 /** [Costs] remains only so records created by older Limen versions still deserialize. */

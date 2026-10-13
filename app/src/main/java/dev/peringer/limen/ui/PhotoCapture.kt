@@ -8,8 +8,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -31,10 +33,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import dev.peringer.limen.data.PhotoSource
+import dev.peringer.limen.data.allPhotoEvidence
 import dev.peringer.limen.photo.PhotoDecode
 import dev.peringer.limen.theme.Limen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
 import java.io.File
 
 /**
@@ -58,6 +63,7 @@ class PhotoIntake(
 @Composable
 fun rememberPhotoIntake(s: Str, onFile: (File, PhotoSource) -> Unit): PhotoIntake {
   val context = LocalContext.current
+  val scope = rememberCoroutineScope()
   // The slot path survives process death on purpose: the camera app routinely kills this
   // process while the shutter is open, and the result still arrives afterwards.
   var cameraSlot by rememberSaveable { mutableStateOf<String?>(null) }
@@ -76,14 +82,27 @@ fun rememberPhotoIntake(s: Str, onFile: (File, PhotoSource) -> Unit): PhotoIntak
     rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
       if (uri != null) {
         val slot = File(captureDir(context), "pick${System.currentTimeMillis()}.jpg")
-        val copied = runCatching {
-          context.contentResolver.openInputStream(uri)?.use { input ->
-            slot.outputStream().use { input.copyTo(it) }
-          } != null
-        }.getOrDefault(false)
-        // A copy that failed part way leaves a truncated file behind, and attaching that as
-        // evidence is worse than attaching nothing: it hashes and prints as a torn picture.
-        if (copied && slot.length() > 0L) onFile(slot, PhotoSource.Gallery) else slot.delete()
+        scope.launch {
+          val copied = withContext(Dispatchers.IO) { runCatching {
+            context.contentResolver.openInputStream(uri)?.use { input ->
+              slot.outputStream().use { output ->
+                val buffer = ByteArray(32 * 1024)
+                var bytes = 0L
+                while (true) {
+                  val read = input.read(buffer)
+                  if (read < 0) break
+                  bytes += read
+                  require(bytes <= 32L * 1024 * 1024) { "Photo exceeds 32 MB" }
+                  output.write(buffer, 0, read)
+                }
+              }
+            } != null
+          }.getOrDefault(false) }
+          if (copied && slot.length() > 0L) onFile(slot, PhotoSource.Gallery) else {
+            slot.delete()
+            Toast.makeText(context, s.finalizationIssue(FinalizationIssue.Evidence), Toast.LENGTH_LONG).show()
+          }
+        }
       }
     }
 
@@ -122,6 +141,14 @@ private fun captureDir(context: Context): File =
 fun PhotoThumb(vm: LimenViewModel, s: Str, name: String, size: Int = 84, onRemove: () -> Unit) {
   val dir = vm.photoDir() ?: return
   val file = File(dir, name)
+  var open by remember { mutableStateOf(false) }
+  val evidence = vm.working?.allPhotoEvidence()?.firstOrNull { it.file == name }
+  val subject = vm.working?.defects?.firstOrNull { name in it.photos }?.text?.take(120)
+    ?: vm.working?.objects?.firstOrNull { name in it.photos }?.displayName(s) ?: s.overviewPhotos
+  val caption = listOf(subject, evidence?.source?.let { s.words("Source", "Source", "Quelle", "Fonte", "Funtauna") + ": " + when (it) { PhotoSource.Camera -> s.photo; PhotoSource.Gallery -> s.gallery; PhotoSource.Unknown -> s.toVerify } },
+    evidence?.importedEpochMs?.takeIf { it > 0 }?.let { s.importedOn + ": " + java.time.Instant.ofEpochMilli(it).atZone(java.time.ZoneId.systemDefault()).toLocalDateTime() })
+    .filterNotNull().joinToString(" · ")
+  if (open) PhotoViewer(file, caption, s) { open = false }
   // Decoded off this thread. Done inside the composition, as it was, opening a defect that
   // already carried three photos stalled the frame for as long as three JPEGs take, which
   // is the editor feeling heavy exactly when a hand is holding the phone up to a wall.
@@ -138,20 +165,20 @@ fun PhotoThumb(vm: LimenViewModel, s: Str, name: String, size: Int = 84, onRemov
     Box(frame)
     return
   }
-  Box {
+  Column(horizontalAlignment = Alignment.CenterHorizontally) {
     Image(
       bitmap = shown.asImageBitmap(),
-      contentDescription = name,
+      contentDescription = caption,
       contentScale = ContentScale.Crop,
-      modifier = frame,
+      modifier = frame.clickable { open = true },
     )
     // On a finalized record the photograph is evidence the fingerprint covers, so the
     // square is a picture and nothing else.
-    if (LocalRecordLocked.current) return@Box
+    if (LocalRecordLocked.current) return@Column
     KeySurface(
       // 44dp, not the 30dp it was: this is a destructive key and it was the one target in
       // the app below the size a thumb actually hits.
-      modifier = Modifier.align(Alignment.TopEnd).padding(3.dp).size(44.dp),
+      modifier = Modifier.padding(top = 3.dp).size(48.dp),
       shape = RoundedCornerShape(8.dp),
       fillColor = Limen.colors.danger,
       outlineColor = Limen.colors.dangerOutline,

@@ -118,7 +118,7 @@ class Str(val lang: Lang) {
     UndoKind.KeyCounts -> pick(
       "Key counts cleared",
       "Nombres de clés effacés",
-      "Schluesselzahlen geleert",
+      "Schlüsselzahlen geleert",
       "Numero di chiavi azzerato",
       "Dumbers da clavs stizzads",
     )
@@ -148,7 +148,7 @@ class Str(val lang: Lang) {
     "Contratto, deposito, contatori, chiavi e le persone",
     "Contract, cauziun, dumbraders, clavs e las persunas",
   )
-  val hubClose = pick("CLOSE THE RECORD", "CLORE LE CONSTAT", "PROTOKOLL ABSCHLIESSEN", "CHIUDI IL VERBALE", "SERRAR IL PROTOCOL")
+  val hubClose = pick("REVIEW THE RECORD", "RELIRE LE CONSTAT", "PROTOKOLL PRÜFEN", "RIVEDI IL VERBALE", "REPASSAR IL PROTOCOL")
   val objectPreflight = pick(
     "Object and canton first",
     "Informations sur le logement",
@@ -220,7 +220,7 @@ class Str(val lang: Lang) {
     "Canton overlay",
     "Règles applicables dans le canton",
     "Kantonale Ergänzung",
-    "Livello cantonale",
+    "Regole cantonali",
     "Cumplement chantunal",
   )
   val initialRentForm = pick(
@@ -250,7 +250,7 @@ class Str(val lang: Lang) {
       "Aucune obligation cantonale générale dans le relevé officiel 2026",
       "Keine kantonsweite Pflicht in der amtlichen Übersicht 2026 aufgeführt",
       "Nessun obbligo cantonale generale nel rilevamento ufficiale 2026",
-      "Nagins obligaziun chantunala generala en la survista uffiziala 2026",
+      "Nagina obligaziun chantunala generala en la survista uffiziala 2026",
     )
     InitialRentFormRule.VerifyCurrent -> pick(
       "Add the lease conclusion date or verify the rule in force on that date",
@@ -261,6 +261,13 @@ class Str(val lang: Lang) {
     )
   }
   fun legalRequirement(requirement: LegalRequirement) = when (requirement) {
+    LegalRequirement.CantonalDepositHandling -> pick(
+      "Cantonal deposit handling: tenant-named account, deadline, bank and receipt checked",
+      "Garantie cantonale : compte au nom du locataire, délai, banque et reçu vérifiés",
+      "Kantonale Sicherheit: Konto auf Mieternamen, Frist, Bank und Beleg geprüft",
+      "Garanzia cantonale: conto intestato al conduttore, termine, banca e ricevuta verificati",
+      "Garanzia chantunala: conto en num dal locatari, termin, banca e quittanza controllads",
+    )
     LegalRequirement.LeaseAndLocalTiming -> pick(
       "Appointment checked against the lease, local dates and public holidays",
       "Date de l’état des lieux vérifiée selon le bail, les échéances locales et les jours fériés",
@@ -305,6 +312,7 @@ class Str(val lang: Lang) {
     )
   }
   fun legalCheckStatus(status: LegalCheckStatus) = when (status) {
+    LegalCheckStatus.ToVerify -> toVerify
     LegalCheckStatus.Confirmed -> pick("Confirmed", "Confirmé", "Bestätigt", "Confermato", "Confermà")
     LegalCheckStatus.MissingOrDisputed -> pick(
       "Missing / disputed",
@@ -335,24 +343,9 @@ class Str(val lang: Lang) {
     "Aggiungete una nota per ogni esito mancante, contestato o non applicabile",
     "Agiuntai ina nota per mintga resultat mancant, contestà u betg applitgabel",
   )
-  // The BWO initial-rent form is federal and applies in every canton. The RULV
-  // are a Vaud instrument, so naming them on a Bern or Ticino protocol states
-  // something untrue about the record's legal basis. Split accordingly, and
-  // chosen by canton at the point of print.
-  val legalSnapshot = pick(
-    "Rule snapshot: BWO initial-rent form 2026",
-    "Référentiel: formule OFL 2026",
-    "Regelstand: BWO-Anfangsmietzinsformular 2026",
-    "Riferimento: modulo UFAB 2026",
-    "Stadi da reglas: formular UFL 2026",
-  )
-  val legalSnapshotVaud = pick(
-    "Rule snapshot: BWO initial-rent form 2026 and dated Vaud RULV periods",
-    "Référentiel: formule OFL 2026 et périodes RULV Vaud datées",
-    "Regelstand: BWO-Anfangsmietzinsformular 2026 und datierte Waadtländer RULV",
-    "Riferimento: modulo UFAB 2026 e periodi RULV Vaud datati",
-    "Stadi da reglas: formular UFL 2026 e periodas RULV Vad datadas",
-  )
+  // Federal overview of cantonal duties; the approved forms belong to the cantons.
+  val legalSnapshot = pick("2026 BWO overview of cantonal initial-rent form duties", "Aperçu OFL 2026 des obligations cantonales de formule du loyer initial", "BWO-Übersicht 2026 der kantonalen Formularpflicht für Anfangsmietzinse", "Panoramica UFAB 2026 degli obblighi cantonali del modulo di pigione iniziale", "Survista UFL 2026 da las obligaziuns chantunalas per il formular da la fit iniziala")
+  val legalSnapshotVaud = pick("2026 BWO cantonal overview and dated Vaud RULV", "Aperçu cantonal OFL 2026 et RULV vaudoises datées", "BWO-Kantonsübersicht 2026 und datierte Waadtländer RULV", "Panoramica cantonale UFAB 2026 e RULV vodesi datate", "Survista chantunala UFL 2026 e RULV vadaisas datadas")
 
   /** The snapshot line for one canton: only Vaud rests on the RULV. */
   fun legalSnapshotFor(canton: SwissCanton): String =
@@ -418,7 +411,7 @@ class Str(val lang: Lang) {
   // Roles.
   fun role(r: Role) = when (r) {
     Role.Tenant -> pick("Tenant", "Locataire", "Mieter/in", "Conduttore/trice", "Locatari/a")
-    Role.Landlord -> pick("Landlord / agency", "Bailleur / régie", "Vermieter/Verwaltung", "Locatore / amministrazione", "Locatur / administraziun")
+    Role.Landlord -> pick("Contractual landlord", "Bailleur contractuel", "Vertragliche Vermieterschaft", "Locatore contrattuale", "Locatur contractual")
     Role.NextTenant -> pick("Next tenant", "Locataire suivant", "Nachmieter/in", "Conduttore successivo", "Proxim locatari")
     Role.Witness -> pick("Witness", "Témoin", "Zeuge/Zeugin", "Testimone", "Perditga")
     Role.Expert -> pick("Expert", "Expert·e", "Experte/Expertin", "Perito/a", "Expert/a")
@@ -432,11 +425,11 @@ class Str(val lang: Lang) {
   val actorAgency = pick("Agency", "Régie", "Verwaltung", "Amministrazione", "Administraziun")
   val companyName = pick("Agency name", "Nom de la régie", "Name der Verwaltung", "Nome dell'amministrazione", "Num da l'administraziun")
   val agencyRoleExplanation = pick(
-    "The agency acts on the landlord side. The firm is printed as the party and the person present as its representative.",
-    "La régie agit du côté bailleur. La société figure comme partie et la personne présente comme sa représentante.",
-    "Die Verwaltung handelt auf Vermieterseite. Die Firma erscheint als Partei und die anwesende Person als Vertretung.",
-    "L'amministrazione agisce per il locatore. La società figura come parte e la persona presente come rappresentante.",
-    "L'administraziun agescha sin la vart dal locatur. La firma vegn stampada sco partida e la persuna preschenta sco represchentanza.",
+    "Enter the contractual landlord separately in the dossier. The agency, attending representative and mandate have their own fields.",
+    "Indiquez séparément le bailleur contractuel dans le dossier. La régie, le représentant présent et son mandat ont leurs propres champs.",
+    "Die vertragliche Vermieterschaft im Dossier gesondert erfassen. Verwaltung, anwesende Vertretung und Vollmacht haben eigene Felder.",
+    "Indicate separatamente il locatore contrattuale nel dossier. Amministrazione, rappresentante presente e mandato hanno campi propri.",
+    "Inditgai separadamain il locatur contractual en il dossier. Administraziun, represchentant preschent e mandat han agens champs.",
   )
   val email = pick("Email", "E-mail", "E-Mail", "E-mail", "E-mail")
   val tenantExitAddressHint = pick(
@@ -448,8 +441,8 @@ class Str(val lang: Lang) {
   )
 
   // Meters.
-  val meterElec1 = pick("Electricity I", "Électricité I", "Elektrisch I", "Elettricità I", "Electricitad I")
-  val meterElec2 = pick("Electricity II", "Électricité II", "Elektrisch II", "Elettricità II", "Electricitad II")
+  val meterElec1 = pick("Electricity I", "Électricité I", "Stromzähler I", "Elettricità I", "Electricitad I")
+  val meterElec2 = pick("Electricity II", "Électricité II", "Stromzähler II", "Elettricità II", "Electricitad II")
   val meterGas = pick("Gas", "Gaz", "Gas", "Gas", "Gas")
   val meterWater = pick("Water", "Eau", "Wasser", "Acqua", "Aua")
   val meterHotWater = pick("Hot water", "Eau chaude", "Warmwasser", "Acqua calda", "Aua chauda")
@@ -573,6 +566,7 @@ class Str(val lang: Lang) {
 
   fun depositKind(k: DepositKind) = when (k) {
     DepositKind.None -> depositNone
+    DepositKind.Unknown -> toVerify
     DepositKind.BankAccount -> depositBank
     DepositKind.Insurance -> depositInsurance
   }
@@ -714,13 +708,7 @@ class Str(val lang: Lang) {
     "Esempio: macchia d'acqua di ca. 3 cm sotto la finestra nord",
     "Exempel: macla d'aua da ca. 3 cm sut la fanestra nord",
   )
-  val chargedToTenant = pick(
-    "Charged to the tenant",
-    "Imputé au locataire",
-    "Dem Mieter angelastet",
-    "Imputato al conduttore",
-    "Mess a quint al locatari",
-  )
+  val chargedToTenant = pick("Landlord asserts a tenant liability claim", "Le bailleur invoque la responsabilité du locataire", "Vermieterschaft macht einen Anspruch geltend", "Il locatore fa valere una pretesa verso il conduttore", "Il locatur fa valair ina pretensiun envers il locatari")
   val infoCharged = pick(
     "An exit protocol is only a valid defect notice for the defects it explicitly charges to the tenant. Unmarked findings document the state of the flat without a claim.",
     "L'état des lieux de sortie ne vaut avis des défauts que pour les défauts explicitement imputés au locataire. Les constats non marqués documentent l'état sans prétention.",
@@ -759,7 +747,7 @@ class Str(val lang: Lang) {
   val tenantResponse = pick("Tenant's response", "Réponse du locataire", "Stellungnahme der Mieterschaft", "Posizione del conduttore", "Posiziun dal locatari")
   fun tenantResponse(value: TenantResponse) = when (value) {
     TenantResponse.NotStated -> pick("Not stated", "Non indiquée", "Nicht angegeben", "Non indicata", "Betg inditgà")
-    TenantResponse.Agrees -> pick("Agrees", "Accepte", "Einverstanden", "Accetta", "Accepta")
+    TenantResponse.Agrees -> pick("Agrees with the description", "Accepte la description", "Mit der Beschreibung einverstanden", "Concorda con la descrizione", "Accepta la descripziun")
     TenantResponse.Disputes -> pick("Disputes", "Conteste", "Bestreitet", "Contesta", "Contesta")
     TenantResponse.NormalWear -> pick("Normal wear", "Usure normale", "Normale Abnützung", "Usura normale", "Isanza normala")
     TenantResponse.ExistingAtEntry -> pick("Already at entry", "Déjà présent à l'entrée", "Bereits bei Einzug", "Già presente all'entrata", "Gia tar l'entrada")
@@ -827,16 +815,10 @@ class Str(val lang: Lang) {
     "Signature of the record",
     "Signature du constat",
     "Unterschrift des Befunds",
-    "Firma del rilievo",
+    "Firma del verbale",
     "Suttascripziun dal protocol",
   )
-  val signRecordMeaning = pick(
-    "This signature confirms the condition report and the reservation printed beside it. Responsibility and any payment remain separate.",
-    "Cette signature confirme l'état des lieux et la réserve imprimée à côté. La responsabilité et tout paiement restent séparés.",
-    "Diese Unterschrift bestätigt das Zustandsprotokoll und den daneben gedruckten Vorbehalt. Verantwortung und eine allfällige Zahlung bleiben getrennt.",
-    "Questa firma conferma lo stato dei luoghi e la riserva stampata accanto. Responsabilità ed eventuali pagamenti restano separati.",
-    "Questa suttascripziun conferma il protocol dal stadi e la resalva stampada dasperas. Responsabladad ed eventuals pajaments restan separads.",
-  )
+  val signRecordMeaning get() = tipRecord().lead
   val signKey = pick("SIGN", "SIGNER", "UNTERSCHREIBEN", "FIRMA", "SUTTASCRIVER")
   val refusedKey = pick("REFUSED", "REFUSÉE", "VERWEIGERT", "RIFIUTATA", "REFUSADA")
   val clearInk = pick("CLEAR", "EFFACER", "LÖSCHEN", "CANCELLA", "STIZZAR")
@@ -853,7 +835,7 @@ class Str(val lang: Lang) {
     "Aucune signature dessinée",
     "Noch keine Unterschrift gezeichnet",
     "Nessuna firma disegnata",
-    "Naginas suttascripziun dissegnada",
+    "Nagina suttascripziun dissegnada",
   )
   val signaturePadHasInk = pick(
     "Signature drawn",
@@ -987,7 +969,7 @@ class Str(val lang: Lang) {
     )
     ExportIssue.Failed -> pick("The PDF could not be created. Try again.", "Le PDF n'a pas pu être créé. Réessayez.", "Das PDF konnte nicht erstellt werden. Erneut versuchen.", "Il PDF non ha potuto essere creato. Riprovate.", "Il PDF n'ha betg pudì vegnir creà. Empruvai danovamain.")
   }
-  val lockedRecord = pick("Signed, read only", "Signé, lecture seule", "Unterzeichnet, nur lesen", "Firmato, sola lettura", "Suttascrit, mo leger")
+  val lockedRecord = pick("Finalized, read only", "Finalisé, lecture seule", "Abgeschlossen, nur lesen", "Finalizzato, sola lettura", "Finalisà, mo leger")
   val amendRecord = pick("CREATE AMENDMENT", "CRÉER UN AVENANT", "NACHTRAG ERSTELLEN", "CREA INTEGRAZIONE", "CREAR SUPPLEMENT")
   val amendLead = pick(
     "A correction starts a new draft linked to this final record; the original remains unchanged.",
@@ -1000,7 +982,7 @@ class Str(val lang: Lang) {
   val amendFailed = pick(
     "The amendment could not be created. Check the free space on the phone and try again.",
     "L'avenant n'a pas pu être créé. Vérifiez l'espace libre sur le téléphone et réessayez.",
-    "Der Nachtrag konnte nicht erstellt werden. Pruefen Sie den freien Speicher und versuchen Sie es erneut.",
+    "Der Nachtrag konnte nicht erstellt werden. Prüfen Sie den freien Speicher und versuchen Sie es erneut.",
     "Non è stato possibile creare l'integrazione. Verificare lo spazio libero sul telefono e riprovare.",
     "Il supplement n'ha betg pudì vegnir creà. Controllai il spazi liber sin il telefon ed empruvai anc ina giada.",
   )
@@ -1043,8 +1025,8 @@ class Str(val lang: Lang) {
   // The Zeitwert face.
   val lifespanYears = pick("Lifespan, years", "Longévité, années", "Lebensdauer, Jahre", "Durata di vita, anni", "Durada da vita, onns")
   val ageYears = pick("Age since last renovation, years", "Âge depuis la dernière rénovation, années", "Alter seit letzter Renovation, Jahre", "Età dall'ultimo rinnovo, anni", "Vegliadetgna dapi l'ultima renovaziun, onns")
-  val repairCost = pick("Repair cost CHF", "Coût de la réparation CHF", "Reparaturkosten CHF", "Costo della riparazione CHF", "Custs da reparatura CHF")
-  val tenantShare = pick("Tenant's share", "Part du locataire", "Anteil Mieterschaft", "Quota del conduttore", "Part dal locatari")
+  val repairCost = pick("Equivalent replacement cost CHF", "Coût de remplacement équivalent CHF", "Kosten für gleichwertigen Ersatz CHF", "Costo di sostituzione equivalente CHF", "Custs da remplazzament equivalent CHF")
+  val tenantShare = pick("Indicative remaining replacement value", "Valeur résiduelle indicative de remplacement", "Unverbindlicher Restwert bei Ersatz", "Valore residuo indicativo di sostituzione", "Valur restanta indicativa da remplazzament")
   val remainingValue = pick("Remaining value", "Valeur résiduelle", "Restwert", "Valore residuo", "Valur restanta")
   val customLifespan = pick("Own value", "Valeur libre", "Eigener Wert", "Valore proprio", "Atgna valur")
 
@@ -1118,11 +1100,11 @@ class Str(val lang: Lang) {
   )
   fun tipRecord() = Tip(
     pick(
-      "This signature confirms one thing only: the defects are correctly recorded.",
-      "Cette signature confirme une seule chose : les défauts sont correctement consignés.",
-      "Diese Unterschrift bestätigt nur eines: die Mängel sind richtig protokolliert.",
-      "Questa firma conferma una sola cosa: i difetti sono correttamente verbalizzati.",
-      "Questa suttascripziun conferma mo ina chaussa: las mancanzas èn registradas correctamain.",
+      "This signature confirms the complete handover record and its reservations, without admitting liability or a payment obligation.",
+      "Cette signature confirme l’ensemble du constat et ses réserves, sans reconnaissance de responsabilité ni de dette.",
+      "Diese Unterschrift bestätigt das vollständige Protokoll samt Vorbehalten, ohne Anerkennung einer Haftung oder Zahlungspflicht.",
+      "Questa firma conferma l’intero verbale e le riserve, senza riconoscimento di responsabilità o debito.",
+      "Questa suttascripziun conferma l’entir protocol e las resalvas, senza renconuschientscha da responsabladad u da debit.",
     ),
     listOf(
       pick(
@@ -1418,18 +1400,18 @@ class Str(val lang: Lang) {
 
   // ── Role: which side of the threshold holds this phone ────────────────────────────────
   val startNewSession = pick(
-    "NEW SESSION",
+    "NEW HANDOVER",
     "NOUVEL ÉTAT DES LIEUX",
-    "NEUE SITZUNG",
-    "NUOVA SESSIONE",
-    "NOVA SESIUN",
+    "NEUE ÜBERGABE",
+    "NUOVA CONSEGNA",
+    "NOVA SURDADA",
   )
   val allSessions = pick(
-    "ALL SESSIONS",
+    "SAVED HANDOVERS",
     "MES ÉTATS DES LIEUX",
-    "ALLE SITZUNGEN",
-    "TUTTE LE SESSIONI",
-    "TUTTAS LAS SESIUNS",
+    "GESPEICHERTE PROTOKOLLE",
+    "VERBALI SALVATI",
+    "PROTOCOLS MEMORISADS",
   )
   val dataAndPrivacy = pick(
     "DATA, BACKUP & PRIVACY",
@@ -1460,20 +1442,8 @@ class Str(val lang: Lang) {
       "Verbali, foto e firme disegnate restano nello spazio privato dell'app. Limen non dispone di un account o server gestito dallo sviluppatore e non gli invia dati del verbale.",
       "Protocols, fotos e suttascripziuns dissegnadas restan en la memoria privata da l'app. Limen n'ha nagin conto u server dal sviluppader e na trametta naginas datas dal protocol al sviluppader.",
     ),
-    pick(
-      "When you request an official Swiss address suggestion, the typed search text and ordinary network metadata go to the federal swisstopo service. Opening provider links sends data under that website's own terms.",
-      "Lorsque vous demandez une suggestion d'adresse suisse officielle, le texte saisi et les métadonnées réseau usuelles sont transmis au service fédéral swisstopo. L'ouverture d'un lien de prestataire relève des conditions de ce site.",
-      "Bei einer amtlichen Schweizer Adresssuche gehen der eingegebene Suchtext und übliche Netzwerkdaten an den Bundesdienst swisstopo. Für geöffnete Anbieterlinks gelten die Bedingungen der jeweiligen Website.",
-      "Quando richiedete un suggerimento ufficiale per un indirizzo svizzero, il testo digitato e i normali metadati di rete sono inviati al servizio federale swisstopo. Ai link dei fornitori si applicano le condizioni del relativo sito.",
-      "Tar ina dumonda d'ina adressa svizra uffiziala vegnan il text endatà e metadatas da rait usitadas tramess al servetsch federal swisstopo. Per links da purschiders valan lur atgnas cundiziuns.",
-    ),
-    pick(
-      "A PDF or backup leaves private storage only when you export, share or restore it. New backups encrypt the record, original photos and signature ink with your password.",
-      "Un PDF ou une sauvegarde ne quitte l'espace privé que lors de l'export, du partage ou de la restauration. Les nouvelles sauvegardes chiffrent le constat, les photos et les signatures avec votre mot de passe.",
-      "PDF oder Sicherung verlassen den privaten Speicher nur beim Exportieren, Teilen oder Wiederherstellen. Neue Sicherungen verschlüsseln Protokoll, Originalfotos und Unterschriften mit Ihrem Passwort.",
-      "Un PDF o backup lascia lo spazio privato solo durante esportazione, condivisione o ripristino. I nuovi backup cifrano verbale, foto e firme con la vostra password.",
-      "In PDF u backup banduna la memoria privata mo tar export, cundivisiun u restauraziun. Novas segirezzas criptan protocol, fotos e suttascripziuns cun Voss pled-clav.",
-    ),
+    lookupDisclosure,
+    pick("Exported PDFs, HTML copies and backups are readable outside private app storage. A backup is encrypted only when you set a password; an explicitly chosen archive without a password is unencrypted.", "Les PDF, copies HTML et sauvegardes exportés sont lisibles hors du stockage privé de l’app. Une sauvegarde est chiffrée uniquement avec un mot de passe ; l’archive sans mot de passe, choisie explicitement, ne l’est pas.", "Exportierte PDFs, HTML-Kopien und Sicherungen sind ausserhalb des privaten App-Speichers lesbar. Nur mit Passwort wird eine Sicherung verschlüsselt; ein ausdrücklich gewähltes Archiv ohne Passwort bleibt unverschlüsselt.", "PDF, copie HTML e backup esportati sono leggibili fuori dallo spazio privato dell’app. Il backup è cifrato solo con una password; l’archivio senza password, scelto esplicitamente, non è cifrato.", "PDFs, copias HTML e segirezzas exportadas èn legiblas ordaifer la memoria privata da l’app. Ina segirezza è criptada mo cun pled-clav; in archiv senza pled-clav, tschernì explicitamain, n’è betg criptà."),
     pick(
       "Records remain until you delete them or remove app data. Use the device lock, keep copies only as long as needed, and direct access, correction or deletion requests to the person or organisation operating this installation.",
       "Les constats restent jusqu'à leur suppression ou l'effacement des données de l'app. Verrouillez l'appareil, ne gardez les copies que le temps nécessaire et adressez les demandes d'accès, de rectification ou d'effacement à l'exploitant de cette installation.",
@@ -1492,7 +1462,7 @@ class Str(val lang: Lang) {
   val controllerBody = pick(
     "Configure the professional operator shown on new handover records. Changes apply to new sessions; existing records keep their original controller.",
     "Configurez l'opérateur professionnel indiqué sur les nouveaux constats. Les modifications valent pour les nouvelles sessions; les constats existants gardent leur responsable initial.",
-    "Konfigurieren Sie die professionelle Stelle für neue Protokolle. Änderungen gelten für neue Sitzungen; bestehende Protokolle behalten ihre ursprüngliche Stelle.",
+    "Konfigurieren Sie die professionelle Stelle für neue Protokolle. Änderungen gelten für neue Übergaben; bestehende Protokolle behalten ihre ursprüngliche Stelle.",
     "Configurate l'operatore professionale indicato nei nuovi verbali. Le modifiche valgono per le nuove sessioni; i verbali esistenti mantengono il titolare originale.",
     "Configurai il gestiunari professiunal per novs protocols. Midadas valan per novas sesiuns; protocols existents mantegnan il post original.",
   )
@@ -1601,17 +1571,17 @@ class Str(val lang: Lang) {
   )
   val street = pick("Street", "Rue", "Strasse", "Via", "Via")
   val flatNumber = pick("House / flat no.", "N° de maison / logement", "Haus- / Wohnungsnr.", "N. civico / appartamento", "Nr. da chasa / abitaziun")
-  val postalCode = pick("Postcode", "NPA", "PLZ", "NAP", "NAP")
+  val postalCode = pick("Postcode", "NPA", "PLZ", "NAP", "NPA")
   val city = pick("City", "Localité", "Ort", "Località", "Lieu")
   val phoneCountry = pick("Phone country / code", "Pays / indicatif téléphonique", "Telefonland / Vorwahl", "Paese / prefisso telefonico", "Pajais / code da telefon")
   val countryNoMatches = pick("No matching country", "Aucun pays correspondant", "Kein passendes Land", "Nessun paese corrispondente", "Nagin pajais adattà")
   val phoneNumber = pick("Phone number", "Numéro de téléphone", "Telefonnummer", "Numero di telefono", "Numer da telefon")
   val addressLookupHint = pick(
-    "Type an address, then choose its official suggestion.",
-    "Saisissez une adresse, puis choisissez la suggestion officielle.",
-    "Adresse eingeben und den offiziellen Vorschlag wählen.",
-    "Inserite un indirizzo, poi scegliete il suggerimento ufficiale.",
-    "Endatai ina adressa e tschernai il recumandament uffizial.",
+    "Enter the address manually, or enable optional swisstopo suggestions.",
+    "Saisissez l’adresse manuellement ou activez les suggestions facultatives de swisstopo.",
+    "Adresse manuell eingeben oder optionale swisstopo-Vorschläge aktivieren.",
+    "Inserite l’indirizzo manualmente o attivate i suggerimenti facoltativi di swisstopo.",
+    "Endatai l’adressa manualmain u activai las propostas facultativas da swisstopo.",
   )
   val addressSearching = pick("Searching official addresses...", "Recherche d'adresses officielles...", "Offizielle Adressen werden gesucht...", "Ricerca di indirizzi ufficiali...", "Tschertgar adressas uffizialas...")
   val addressVerified = pick("Official address selected", "Adresse officielle sélectionnée", "Offizielle Adresse ausgewählt", "Indirizzo ufficiale selezionato", "Adressa uffiziala tschernida")
@@ -1629,7 +1599,7 @@ class Str(val lang: Lang) {
   val sessionsEmpty = pick(
     "No sessions saved on this phone.",
     "Aucune session enregistrée sur ce téléphone.",
-    "Keine Sitzungen auf diesem Telefon gespeichert.",
+    "Keine Übergabeprotokolle auf diesem Telefon gespeichert.",
     "Nessuna sessione salvata su questo telefono.",
     "Nagina sesiun memorisada sin quest telefon.",
   )
@@ -1694,13 +1664,7 @@ class Str(val lang: Lang) {
     )
   }
   /** Said on the paper, because two signed originals are what both parties go home with. */
-  val pdfTwoCopies = pick(
-    "Established in two identical copies, one for each party.",
-    "Établi en deux exemplaires identiques, un pour chaque partie.",
-    "In zwei gleichlautenden Exemplaren erstellt, eines für jede Partei.",
-    "Redatto in due esemplari identici, uno per ciascuna parte.",
-    "Fatg en dus exemplars identics, in per mintga partida.",
-  )
+  val pdfTwoCopies = pick("Provide an identical copy to each party. Delivery is recorded separately.", "Remettre un exemplaire identique à chaque partie. La remise est consignée séparément.", "Jeder Partei eine gleichlautende Kopie übergeben. Die Zustellung wird gesondert erfasst.", "Consegnare una copia identica a ogni parte. La consegna è registrata separatamente.", "Surdar ina copia identica a mintga partida. La surdada vegn registrada separadamain.")
 
   val notAdvice = pick(
     "Practice values with their sources; not legal advice. No court fee is charged in conciliation proceedings, but your own advice, representation or other costs may remain.",

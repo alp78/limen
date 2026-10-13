@@ -1,30 +1,29 @@
 package dev.peringer.limen.sense
 
 /**
- * The arithmetic of the paritaetische Lebensdauertabelle (MV + HEV), the joint lifespan
- * table Swiss conciliation boards compute with. Two iron rules, both encoded here and
- * printed wherever the numbers appear:
- *
- * 1. The tenant owes only the remaining value: cost x (lifespan - age) / lifespan.
- *    Past the full lifespan the share is zero, however real the damage.
- * 2. Age counts from the LAST RENOVATION of the surface or device, not from the start of
- *    the tenancy; a flat taken over unrenovated carries its full age.
- *
- * The table itself carries no binding force (its own disclaimer), so the values shipped
- * in [Lifespans] are the publicly cited ones with sources, and every lifespan can be
- * overridden by hand.
+ * Indicative residual replacement value using a declared useful life and age since
+ * installation or renovation. This arithmetic does not establish tenant liability,
+ * determine repair/cleaning compensation, or create a payment obligation. The table is
+ * guidance; users retain the source and may enter a supported different useful life.
  */
 object Zeitwert {
 
   /** The unamortized fraction of a thing's value, in 0..1. */
   fun remainingFraction(lifespanYears: Double, ageYears: Double): Double {
+    require(lifespanYears.isFinite() && ageYears.isFinite())
     if (lifespanYears <= 0.0) return 0.0
     if (ageYears < 0.0) return 1.0
     return ((lifespanYears - ageYears) / lifespanYears).coerceIn(0.0, 1.0)
   }
 
-  /** The tenant's share of a repair, by remaining value. Zero past the lifespan. */
+  /** Legacy API name retained for callers; returns an estimate, never an adjudicated debt. */
   fun tenantShare(costChf: Double, lifespanYears: Double, ageYears: Double): Double {
+    return remainingReplacementValue(costChf, lifespanYears, ageYears)
+  }
+
+  /** Indicative depreciated replacement value; neither liability nor repair compensation. */
+  fun remainingReplacementValue(costChf: Double, lifespanYears: Double, ageYears: Double): Double {
+    require(costChf.isFinite())
     if (costChf <= 0.0) return 0.0
     return costChf * remainingFraction(lifespanYears, ageYears)
   }

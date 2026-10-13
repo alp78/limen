@@ -1,0 +1,7 @@
+Starting: Intent { cmp=dev.peringer.limen/.MainActivity }
+Status: ok
+LaunchState: COLD
+Activity: dev.peringer.limen/.MainActivity
+TotalTime: 131
+WaitTime: 133
+Complete

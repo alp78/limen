@@ -25,6 +25,8 @@ object Report {
     data class Finding(val number: Int) : PlateOwner
     /** A supplied object, cited by name, because an object has no number to cite. */
     data class Supplied(val entry: ObjectEntry) : PlateOwner
+    data class Overview(val room: Room) : PlateOwner
+    data class Meter(val reading: MeterReading) : PlateOwner
   }
 
   /**
@@ -68,5 +70,11 @@ object Report {
         add(Plate(name, entry.photoEvidence.firstOrNull { it.file == name }?.sha256.orEmpty(), PlateOwner.Supplied(entry)))
       }
     }
+    p.rooms.forEach { room -> p.details.roomPhotos[room.id].orEmpty().forEach {
+      add(Plate(it.file, it.sha256, PlateOwner.Overview(room)))
+    } }
+    p.details.readings.forEach { reading -> reading.photos.forEach {
+      add(Plate(it.file, it.sha256, PlateOwner.Meter(reading)))
+    } }
   }
 }

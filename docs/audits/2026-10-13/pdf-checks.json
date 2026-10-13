@@ -1,0 +1,146 @@
+[
+  {
+    "file": "corrupt-photo-omitted.pdf",
+    "pages": 1,
+    "pageSizesPoints": [
+      [
+        1240.0,
+        1754.0
+      ]
+    ],
+    "taggedStructure": false,
+    "documentLanguage": "null",
+    "textLength": 1320,
+    "renderedImages": 1
+  },
+  {
+    "file": "De-sample.pdf",
+    "pages": 2,
+    "pageSizesPoints": [
+      [
+        1240.0,
+        1754.0
+      ],
+      [
+        1240.0,
+        1754.0
+      ]
+    ],
+    "taggedStructure": false,
+    "documentLanguage": "null",
+    "textLength": 1781,
+    "renderedImages": 1
+  },
+  {
+    "file": "En-sample.pdf",
+    "pages": 2,
+    "pageSizesPoints": [
+      [
+        1240.0,
+        1754.0
+      ],
+      [
+        1240.0,
+        1754.0
+      ]
+    ],
+    "taggedStructure": false,
+    "documentLanguage": "null",
+    "textLength": 1624,
+    "renderedImages": 1
+  },
+  {
+    "file": "entry-ui-completed.pdf",
+    "pages": 2,
+    "pageSizesPoints": [
+      [
+        1240.0,
+        1754.0
+      ],
+      [
+        1240.0,
+        1754.0
+      ]
+    ],
+    "taggedStructure": false,
+    "documentLanguage": "null",
+    "textLength": 1706,
+    "renderedImages": 3
+  },
+  {
+    "file": "Fr-sample.pdf",
+    "pages": 2,
+    "pageSizesPoints": [
+      [
+        1240.0,
+        1754.0
+      ],
+      [
+        1240.0,
+        1754.0
+      ]
+    ],
+    "taggedStructure": false,
+    "documentLanguage": "null",
+    "textLength": 1795,
+    "renderedImages": 1
+  },
+  {
+    "file": "It-sample.pdf",
+    "pages": 2,
+    "pageSizesPoints": [
+      [
+        1240.0,
+        1754.0
+      ],
+      [
+        1240.0,
+        1754.0
+      ]
+    ],
+    "taggedStructure": false,
+    "documentLanguage": "null",
+    "textLength": 1697,
+    "renderedImages": 1
+  },
+  {
+    "file": "original-en.pdf",
+    "pages": 3,
+    "pageSizesPoints": [
+      [
+        1240.0,
+        1754.0
+      ],
+      [
+        1240.0,
+        1754.0
+      ],
+      [
+        1240.0,
+        1754.0
+      ]
+    ],
+    "taggedStructure": false,
+    "documentLanguage": "null",
+    "textLength": 3468,
+    "renderedImages": 4
+  },
+  {
+    "file": "Rm-sample.pdf",
+    "pages": 2,
+    "pageSizesPoints": [
+      [
+        1240.0,
+        1754.0
+      ],
+      [
+        1240.0,
+        1754.0
+      ]
+    ],
+    "taggedStructure": false,
+    "documentLanguage": "null",
+    "textLength": 1744,
+    "renderedImages": 1
+  }
+]

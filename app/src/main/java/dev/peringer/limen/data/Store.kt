@@ -19,6 +19,8 @@ import java.nio.file.StandardCopyOption.REPLACE_EXISTING
  * and migration tests run without an emulator.
  */
 class Store(private val root: File) {
+  data class UnreadableRecord(val id: String, val hasRecovery: Boolean)
+  data class Catalogue(val records: List<Protocol>, val unreadable: List<UnreadableRecord>)
 
   private val json = Json {
     // A version-1 reader opening a version-2 file skips what it does not know rather
@@ -32,25 +34,63 @@ class Store(private val root: File) {
   fun photoDir(id: String): File = File(File(root, "photos"), id).apply { mkdirs() }
   fun signatureDir(id: String): File = File(File(root, "signatures"), id).apply { mkdirs() }
 
-  fun list(): List<Protocol> =
-    (dir.listFiles { f -> f.extension == "json" } ?: emptyArray())
-      .mapNotNull { f -> runCatching { json.decodeFromString<Protocol>(f.readText()) }.getOrNull() }
-      .sortedByDescending { it.createdEpochMs }
+  @Synchronized
+  fun catalogue(): Catalogue {
+    val records = mutableListOf<Protocol>()
+    val failures = mutableListOf<UnreadableRecord>()
+    (dir.listFiles { f -> f.extension == "json" } ?: emptyArray()).forEach { file ->
+      val p = read(file)?.takeIf { it.id == file.nameWithoutExtension }
+      if (p != null) records += p else failures += UnreadableRecord(file.nameWithoutExtension,
+        read(File(dir, "${file.name}.last-good")) != null)
+    }
+    return Catalogue(records.sortedByDescending { it.createdEpochMs }, failures)
+  }
+
+  fun list(): List<Protocol> = catalogue().records
+
+  private fun read(file: File): Protocol? = runCatching {
+    require(file.length() <= 8L * 1024 * 1024)
+    json.decodeFromString<Protocol>(file.readText())
+  }.getOrNull()
+
+  @Synchronized
+  fun recover(id: String): Boolean {
+    require(safeId(id))
+    val target = File(dir, "$id.json")
+    val recovered = read(File(dir, "$id.json.last-good")) ?: return false
+    if (target.exists()) target.copyTo(File(dir, "$id.${System.nanoTime()}.quarantine"))
+    target.delete()
+    save(recovered)
+    return true
+  }
+
+  private fun safeId(id: String) = id !in setOf(".", "..") && id.matches(Regex("[A-Za-z0-9._-]{1,160}"))
 
   fun load(id: String): Protocol? {
+    if (!safeId(id)) return null
     val f = File(dir, "$id.json")
     if (!f.exists()) return null
-    return runCatching { json.decodeFromString<Protocol>(f.readText()) }.getOrNull()
+    return read(f)?.takeIf { it.id == id }
   }
 
   @Synchronized
   fun save(p: Protocol) {
+    require(safeId(p.id))
     // Keep the previous record until the replacement is fully written. A shared fixed .tmp
     // let a lifecycle flush race the debounce and could leave no readable protocol behind.
     val target = File(dir, "${p.id}.json")
+    val previous = read(target)
+    if (target.exists() && previous == null) target.copyTo(File(dir, "${p.id}.${System.nanoTime()}.quarantine"))
+    if (previous != null && (previous.saveSequence > p.saveSequence ||
+        previous.contentRevision > p.contentRevision ||
+        (previous.isFinalized() && !p.isFinalized()))) return
     val tmp = File.createTempFile("${p.id}-", ".tmp", dir)
     try {
-      tmp.writeText(json.encodeToString(Protocol.serializer(), p))
+      java.io.FileOutputStream(tmp).use { output ->
+        output.write(json.encodeToString(Protocol.serializer(), p).toByteArray(Charsets.UTF_8))
+        output.fd.sync()
+      }
+      if (previous != null) target.copyTo(File(dir, "${p.id}.json.last-good"), overwrite = true)
       try {
         Files.move(tmp.toPath(), target.toPath(), ATOMIC_MOVE, REPLACE_EXISTING)
       } catch (_: AtomicMoveNotSupportedException) {
@@ -62,16 +102,23 @@ class Store(private val root: File) {
   }
 
   fun delete(id: String) {
+    require(safeId(id))
     File(dir, "$id.json").delete()
+    File(dir, "$id.json.last-good").delete()
     photoDir(id).deleteRecursively()
     signatureDir(id).deleteRecursively()
+    File(root, "exports/$id").deleteRecursively()
+    dir.listFiles()?.filter { it.name.startsWith("$id.") && it.extension == "quarantine" &&
+      it.name.removePrefix("$id.").removeSuffix(".quarantine").matches(Regex("[0-9]+")) }?.forEach { it.delete() }
+    File(root, "recovery").listFiles()?.filter { it.isDirectory && it.name.startsWith("$id-") &&
+      it.name.removePrefix("$id-").matches(Regex("[0-9]+")) }?.forEach { it.deleteRecursively() }
   }
 
-  /** Writes every protocol and its original evidence into an authenticated encrypted archive. */
-  fun exportArchive(password: CharArray, output: OutputStream) =
-    ArchiveCrypto.export(root, password, output)
+  /** Writes referenced evidence and retained exports; a password enables authenticated encryption. */
+  fun exportArchive(password: CharArray, output: OutputStream, protocolIds: Set<String>? = null) =
+    ArchiveCrypto.export(root, password, output, protocolIds)
 
-  /** Restores encrypted or legacy archives, validates evidence, and never replaces an id. */
-  fun importArchive(password: CharArray, input: InputStream): ArchiveImportResult =
-    ArchiveCrypto.import(root, password, input)
+  /** Validates before restore. Healthy IDs are preserved; explicit repair retains corrupt originals. */
+  fun importArchive(password: CharArray, input: InputStream, repairCorrupt: Boolean = false): ArchiveImportResult =
+    ArchiveCrypto.import(root, password, input, repairCorrupt)
 }

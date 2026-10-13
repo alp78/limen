@@ -10,7 +10,7 @@ import java.util.Date
 import java.util.Locale
 
 /** What an export produced: where it is, what it is called, how heavy it got. */
-data class ExportedFile(val uri: Uri, val displayName: String, val bytes: Long)
+data class ExportedFile(val uri: Uri, val displayName: String, val bytes: Long, val companionUri: Uri? = null, val sha256: String = "")
 
 internal fun exportStamp(): String =
   SimpleDateFormat("yyyyMMdd-HHmmss", Locale.ROOT).format(Date())

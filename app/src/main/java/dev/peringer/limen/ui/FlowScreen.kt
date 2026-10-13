@@ -34,6 +34,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
@@ -90,6 +93,24 @@ fun FlowScreen(
     ) {
       Column(Modifier.readable().fillMaxHeight().padding(horizontal = 20.dp)) {
         FlowMast(vm, s, p)
+        Text(when (vm.flowStep) {
+          FlowStep.Hub -> s.words("Handover overview", "Vue d’ensemble", "Übersicht", "Panoramica", "Survista")
+          FlowStep.Inspection -> s.stepInspection
+          FlowStep.Objects -> s.objects
+          FlowStep.Dossier -> s.stepDossier
+          FlowStep.Review -> s.preview
+          FlowStep.Sign -> s.stepSign
+          FlowStep.Export -> s.stepExport
+        } + " · " + when (vm.saveState) {
+          "saving" -> s.words("Saving…", "Enregistrement…", "Speichern…", "Salvataggio…", "Memorisar…")
+          "failed" -> s.retry
+          else -> s.words("Saved", "Enregistré", "Gespeichert", "Salvato", "Memorisà")
+        }, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
+        if (vm.saveState == "failed") {
+          Text(s.saveFailed, color = Limen.colors.dangerOutline, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+          SmallKey(s.retry) { vm.flush() }
+        }
+        if (vm.evidenceError.isNotBlank()) Text("${s.finalizationIssue(FinalizationIssue.Evidence)}: ${vm.evidenceError}", color = Limen.colors.dangerOutline)
         Spacer(Modifier.height(8.dp))
         // Export carries the amendment door in full, with the sentence that explains it.
         if (locked && vm.flowStep != FlowStep.Export) {
@@ -120,15 +141,22 @@ fun FlowScreen(
         }
       }
       if (vm.editingDefectId != null) {
-        DefectEditor(vm, s, p, vm.editingDefectId!!)
+        androidx.compose.ui.window.Dialog(onDismissRequest = vm::closeDefect,
+          properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
+          DefectEditor(vm, s, p, vm.editingDefectId!!)
+        }
       }
       if (vm.showDepositCompare) {
-        DepositCompareOverlay(vm, s)
+        androidx.compose.ui.window.Dialog(onDismissRequest = { vm.setDepositCompare(false) },
+          properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
+          DepositCompareOverlay(vm, s)
+        }
       }
       vm.undoNotice?.let { notice ->
         Row(
           Modifier
             .align(Alignment.BottomCenter)
+            .semantics { liveRegion = LiveRegionMode.Polite }
             .readable()
             .padding(horizontal = 20.dp, vertical = 10.dp)
             .background(Limen.colors.plateRaised, RoundedCornerShape(12.dp))
@@ -147,6 +175,9 @@ fun FlowScreen(
       }
     }
   }
+  if (vm.affectedSigners.isNotEmpty()) ConfirmDialog(s,
+    body = s.signatureEditWarning + "\n" + vm.affectedSigners.joinToString("\n"),
+    onConfirm = { vm.confirmSignedEdit(true) }, onDismiss = { vm.confirmSignedEdit(false) })
 }
 
 /**
@@ -526,6 +557,7 @@ private fun ReviewDossier(s: Str, p: Protocol) {
               DepositKind.BankAccount -> deposit.bank
               DepositKind.Insurance -> deposit.provider
               DepositKind.None -> ""
+              DepositKind.Unknown -> s.toVerify
             }.takeIf { it.isNotBlank() },
             deposit.policyNo.takeIf { it.isNotBlank() },
             deposit.account.takeIf { it.isNotBlank() },
@@ -589,6 +621,10 @@ private fun ReviewStep(vm: LimenViewModel, s: Str, p: Protocol) {
     Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
     verticalArrangement = Arrangement.spacedBy(10.dp),
   ) {
+    DocumentPreviewButton(vm, s, p)
+    Field(s.understoodLanguage, p.details.understoodLanguage) { value ->
+      vm.edit { it.copy(details = it.details.copy(understoodLanguage = value)) }
+    }
     ReviewIdentity(s, p)
     ReviewLegalOverlay(s, p)
     ReviewInspection(s, p)

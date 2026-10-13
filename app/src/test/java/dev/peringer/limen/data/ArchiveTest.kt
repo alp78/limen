@@ -53,7 +53,13 @@ class ArchiveTest {
         defects = listOf(Defect(id = "d2", photos = listOf("missing.jpg"))),
       )
     )
-    val bytes = ByteArrayOutputStream().also { source.exportArchive(password, it) }.toByteArray()
+    assertThrows(IllegalArgumentException::class.java) { source.exportArchive(password, ByteArrayOutputStream()) }
+    // Import must also reject an archive from another writer that omitted the evidence.
+    val bytes = ByteArrayOutputStream().also { output -> ZipOutputStream(output).use { zip ->
+      zip.putNextEntry(ZipEntry("limen-archive.txt")); zip.write("LIMEN_ARCHIVE\nversion=1\n".toByteArray()); zip.closeEntry()
+      zip.putNextEntry(ZipEntry("protocols/p2.json"))
+      zip.write(kotlinx.serialization.json.Json.encodeToString(Protocol.serializer(), source.load("p2")!!).toByteArray()); zip.closeEntry()
+    } }.toByteArray()
     val restored = Store(tmp.newFolder("restored-missing"))
 
     assertEquals(1, restored.importArchive(password, ByteArrayInputStream(bytes)).rejected)

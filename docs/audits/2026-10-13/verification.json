@@ -1,0 +1,71 @@
+{
+  "auditDate": "2026-10-13",
+  "commit": "95b42314edeb2ea170f9f356bf941400a59775cd",
+  "versionName": "1.1.2",
+  "versionCode": 4,
+  "mainKotlinFiles": 43,
+  "mainKotlinLines": 12819.0,
+  "unitTests": {
+    "tests": 90.0,
+    "failures": 0.0,
+    "errors": 0.0
+  },
+  "lint": {
+    "debugErrors": 0,
+    "debugWarnings": 21,
+    "releaseErrors": 0,
+    "releaseWarnings": 21
+  },
+  "existingInstrumentationTests": 4,
+  "auditProbeMethods": 6,
+  "device": {
+    "restoredFontScale": 1.15,
+    "model": "Pixel 10",
+    "pixels": "1080x2424",
+    "largeFontScale": 2.0,
+    "androidVersion": 17,
+    "api": 37,
+    "dpi": 420,
+    "originalFontScale": 1.15
+  },
+  "apks": {
+    "release": "8031E9F7929A68FE5106418FD21F11F73221BDED6EF2736D9E95E9290DA3F7DD",
+    "debug": "772E94C2E1FA9DA638147947F8D8CF38343B37F8E10110196B6A5F62F34627EB"
+  },
+  "permissions": [
+    "android.permission.INTERNET",
+    "dev.peringer.limen.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+  ],
+  "notesReviewed": [
+    "AGENTS.md",
+    "CLAUDE.md",
+    "NOTICE",
+    "docs/listing/data-safety.md",
+    "docs/listing/PLAY-RELEASE.md",
+    "docs/listing/privacy-policy.md",
+    "docs/listing/release-notes.md",
+    "docs/listing/store-listing.md",
+    "_scratch/README.md",
+    "_scratch/COMPLIANCE-AND-UX-HANDOFF-2026-08-21.md",
+    "_scratch/PLAY-DESCRIPTIONS.md",
+    "_scratch/PLAY-RELEASE-NOTES.md",
+    "_scratch/screenshots/README.md"
+  ],
+  "cantonAssetsVerified": 26,
+  "publishedPrivacyStatuses": {
+    "de": 200,
+    "fr": 200,
+    "it": 200,
+    "rm": 200,
+    "en": 200
+  },
+  "limitations": [
+    "No iOS runtime or source audit",
+    "No moderated usability study",
+    "No human TalkBack/Switch Access audit",
+    "No minimum-API physical device",
+    "No production account/Play Console verification",
+    "No real external delivery",
+    "No disk-full/large-archive fault injection"
+  ]
+}

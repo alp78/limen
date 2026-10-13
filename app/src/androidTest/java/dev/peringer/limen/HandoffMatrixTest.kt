@@ -5,6 +5,8 @@ import android.graphics.Color
 import android.graphics.Paint
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -71,6 +73,7 @@ class HandoffMatrixTest {
   @Before
   fun launchIsolatedApp() {
     val context = InstrumentationRegistry.getInstrumentation().targetContext
+    check(context.packageName == "dev.peringer.limen.uitest")
     context.getSharedPreferences("limen", 0).edit().clear().putString("lang", "En").commit()
     context.filesDir.listFiles()?.forEach { it.deleteRecursively() }
     scenario = ActivityScenario.launch(MainActivity::class.java)
@@ -87,7 +90,7 @@ class HandoffMatrixTest {
     SwissCanton.entries.forEach { canton ->
       assets.open("cantons/${canton.code.lowercase()}.svg").use { assertTrue(it.read() >= 0) }
     }
-    compose.onNodeWithText("NEW SESSION").performClick()
+    compose.onNodeWithText("NEW HANDOVER").performClick()
 
     compose.onNodeWithText("Tenant").assertIsDisplayed()
     compose.onNodeWithText("Landlord").assertIsDisplayed().performClick()
@@ -106,7 +109,7 @@ class HandoffMatrixTest {
     compose.onNodeWithText("Protect backup").assertIsDisplayed()
     compose.onNodeWithText("CANCEL").performClick()
     compose.onNodeWithContentDescription("BACK").performClick()
-    compose.onNodeWithText("NEW SESSION").assertIsDisplayed()
+    compose.onNodeWithText("NEW HANDOVER").assertIsDisplayed()
 
     relaunchWithDraft()
     compose.onNodeWithText("INSPECTION").performClick()
@@ -127,14 +130,14 @@ class HandoffMatrixTest {
       "Required throughout the canton in the 2026 official snapshot"
     ).performScrollTo().assertIsDisplayed()
     compose.onNodeWithContentDescription("BACK").performClick()
-    compose.onNodeWithText("CLOSE THE RECORD").performScrollTo().performClick()
+    compose.onNode(hasText("REVIEW THE RECORD") and hasClickAction()).performScrollTo().performClick()
     compose.onNodeWithText("Object").assertExists()
     compose.onNodeWithText("SIGNATURES").performScrollTo().performClick()
     compose.onNodeWithText("Unilateral record").assertExists()
     compose.onNodeWithContentDescription("BACK").performClick()
     compose.onNodeWithContentDescription("BACK").performClick()
     compose.onNodeWithContentDescription("BACK").performClick()
-    compose.onNodeWithText("NEW SESSION").assertIsDisplayed()
+    compose.onNodeWithText("NEW HANDOVER").assertIsDisplayed()
     verifyPdfExport()
   }
 
@@ -228,11 +231,13 @@ class HandoffMatrixTest {
             ruleSetId = LEGAL_RULE_SET_ID,
           ),
           parties = listOf(
-            Party(Role.Tenant, "Matrix Tenant", representedBy = "Tenant proxy", email = "tenant@example.invalid"),
+            Party(Role.Tenant, "Matrix Tenant", representedBy = "Tenant proxy", authority = "Written mandate", email = "tenant@example.invalid"),
             Party(
               Role.Landlord,
-              if (actor == "agency") "Matrix Agency SA" else "Matrix Landlord",
+              "Matrix Landlord",
               representedBy = if (actor == "agency") "Agency Operator" else "",
+              agency = if (actor == "agency") "Matrix Agency SA" else "",
+              authority = if (actor == "agency") "Written mandate" else "",
               email = "landlord@example.invalid",
             ),
           ),

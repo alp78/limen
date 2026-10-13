@@ -68,6 +68,10 @@ private fun RoomGrid(vm: LimenViewModel, s: Str, p: Protocol) {
   ) {
     if (!locked && p.rooms.isEmpty() && !p.roomSetupComplete) {
       InitialRoomSetup(vm, s, p)
+      ScopeReason(vm, s, p, "Inspection")
+      if (!p.details.scopeNotes["Inspection"].isNullOrBlank()) SmallKey(s.done, Modifier.fillMaxWidth()) {
+        vm.edit { it.copy(roomSetupComplete = true) }
+      }
       Spacer(Modifier.height(12.dp))
       return@Column
     }
@@ -217,6 +221,7 @@ private fun RoomDetail(vm: LimenViewModel, s: Str, p: Protocol, room: Room) {
   val locked = LocalRecordLocked.current
   var confirmingClear by remember { mutableStateOf(false) }
   var confirmingRemove by remember { mutableStateOf(false) }
+  var actionsOpen by remember { mutableStateOf(false) }
   val roomDefects = p.defects.filter { it.roomId == room.id }
   val entryRoom = vm.entryBaseline?.rooms?.firstOrNull { it.id == room.id }
   val entryDefects = vm.entryBaseline?.defects?.count { it.roomId == room.id } ?: 0
@@ -228,8 +233,7 @@ private fun RoomDetail(vm: LimenViewModel, s: Str, p: Protocol, room: Room) {
     // Back on the left, where the other five back keys in the app are, and where the
     // masthead's own sits. On the right it was directly under that one and read as its twin.
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-      IconKey(ButtonGlyph.Back, s.back) { vm.closeRoom() }
-      Spacer(Modifier.width(8.dp))
+
       Column(Modifier.weight(1f)) {
         Text(
           room.name.ifBlank { s.room(room.kind) }.uppercase(),
@@ -247,7 +251,7 @@ private fun RoomDetail(vm: LimenViewModel, s: Str, p: Protocol, room: Room) {
     }
 
     // Only a room the canon has no word for needs naming; the rest are named already.
-    if (room.kind == RoomKind.Custom) {
+    run {
       Field(s.roomName, room.name) { v -> vm.renameRoom(room.id, v) }
     }
 
@@ -258,6 +262,9 @@ private fun RoomDetail(vm: LimenViewModel, s: Str, p: Protocol, room: Room) {
       enabled = !locked,
     ) { vm.setRoomInspected(room.id, !room.inspected) }
 
+    if (!room.inspected) ScopeReason(vm, s, p, room.id)
+    OverviewPhotos(vm, s, p, room)
+    vm.entryBaseline?.let { baseline -> BaselinePanel(vm, s, baseline, roomId = room.id) }
     if (!locked) ItemPicker(s, room.kind) { key, label -> vm.openDefect(room.id, key, label) }
 
     if (roomDefects.isEmpty()) {
@@ -306,23 +313,15 @@ private fun RoomDetail(vm: LimenViewModel, s: Str, p: Protocol, room: Room) {
       }
     }
 
-    if (!locked) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-      RoomActionKey(
-        label = s.clearRoom,
-        fill = Limen.colors.danger,
-        outline = Limen.colors.dangerOutline,
-        text = Limen.colors.dangerOutline,
-        glyph = ButtonGlyph.Clear,
-        modifier = Modifier.weight(1f),
-      ) { confirmingClear = true }
-      RoomActionKey(
-        label = s.removeRoom,
-        fill = Limen.colors.danger,
-        outline = Limen.colors.dangerOutline,
-        text = Limen.colors.dangerOutline,
-        glyph = ButtonGlyph.Delete,
-        modifier = Modifier.weight(1f),
-      ) { confirmingRemove = true }
+    if (!locked) {
+      SmallKey(s.roomActions, Modifier.fillMaxWidth()) { actionsOpen = !actionsOpen }
+      if (actionsOpen) {
+        SmallKey(s.moveUp, Modifier.fillMaxWidth()) { vm.moveRoom(room.id, -1) }
+        SmallKey(s.moveDown, Modifier.fillMaxWidth()) { vm.moveRoom(room.id, 1) }
+        SmallKey(s.clearRoom, Modifier.fillMaxWidth()) { confirmingClear = true }
+        SmallKey(s.removeRoom, Modifier.fillMaxWidth()) { confirmingRemove = true }
+      }
+      BigKey(s.nextRoom, active = true, Modifier.fillMaxWidth()) { vm.nextRoom(room.id) }
     }
     Spacer(Modifier.height(12.dp))
   }

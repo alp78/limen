@@ -21,15 +21,15 @@ internal object ArchiveCrypto {
   private const val ITERATIONS = 210_000
 
   /** The same ceiling the unpacker applies, enforced before the unpacker ever sees the bytes. */
-  private const val MAX_PLAINTEXT_BYTES = 2L * 1024L * 1024L * 1024L
+  private const val MAX_PLAINTEXT_BYTES = 64L * 1024L * 1024L
   private val random = SecureRandom()
 
-  fun export(root: java.io.File, password: CharArray, output: OutputStream) {
+  fun export(root: java.io.File, password: CharArray, output: OutputStream, protocolIds: Set<String>? = null) {
     // No password writes the plain archive, byte for byte the form the legacy branch of
     // [import] has always read, so an unprotected backup needs no new reader and no new
     // version. Whether to protect is the person's call; the screen says which they made.
     if (password.isEmpty()) {
-      ArchiveIO.export(root, output)
+      ArchiveIO.export(root, output, protocolIds)
       return
     }
     val salt = ByteArray(SALT_BYTES).also(random::nextBytes)
@@ -42,7 +42,7 @@ internal object ArchiveCrypto {
     }
     output.write(header)
     CipherOutputStream(output, cipher).use { encrypted ->
-      ArchiveIO.export(root, encrypted)
+      ArchiveIO.export(root, encrypted, protocolIds)
     }
   }
 
@@ -51,12 +51,15 @@ internal object ArchiveCrypto {
     root: java.io.File,
     password: CharArray,
     input: InputStream,
+    repairCorrupt: Boolean = false,
   ): ArchiveImportResult {
+    root.mkdirs()
+    root.listFiles()?.filter { it.isFile && it.name.startsWith("archive-decrypt-") }?.forEach { it.delete() }
     val probe = PushbackInputStream(input.buffered(), magic.size)
     val prefix = probe.readUpTo(magic.size)
     if (!prefix.contentEquals(magic)) {
       probe.unread(prefix)
-      return ArchiveIO.import(root, probe)
+      return ArchiveIO.import(root, probe, repairCorrupt)
     }
 
     require(password.isNotEmpty()) { "Backup password is empty" }
@@ -82,20 +85,27 @@ internal object ArchiveCrypto {
       staged.outputStream().buffered().use { out ->
         val buffer = ByteArray(64 * 1024)
         var written = 0L
+        var received = 0L
         while (true) {
           val read = probe.read(buffer)
           if (read < 0) break
           if (read == 0) continue
+          received += read
+          require(received <= MAX_PLAINTEXT_BYTES + 16) { "Encrypted archive exceeds 64 MB; restore smaller scoped archives" }
           cipher.update(buffer, 0, read)?.let { plain ->
             written += plain.size
             require(written <= MAX_PLAINTEXT_BYTES) { "Archive is too large" }
             out.write(plain)
           }
         }
-        cipher.doFinal()?.let(out::write)
+        cipher.doFinal()?.let { plain ->
+          written += plain.size
+          require(written <= MAX_PLAINTEXT_BYTES) { "Archive is too large" }
+          out.write(plain)
+        }
       }
       return staged.inputStream().buffered().use { verified ->
-        ArchiveIO.import(root, verified)
+        ArchiveIO.import(root, verified, repairCorrupt)
       }
     } finally {
       staged.delete()

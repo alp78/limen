@@ -37,12 +37,24 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.collect
 
 class MainActivity : ComponentActivity() {
+  override fun attachBaseContext(base: android.content.Context) {
+    val tag = base.getSharedPreferences("limen", MODE_PRIVATE).getString("lang", null)?.lowercase()
+    if (tag == null) { super.attachBaseContext(base); return }
+    val locale = java.util.Locale.forLanguageTag(tag)
+    java.util.Locale.setDefault(locale)
+    val config = android.content.res.Configuration(base.resources.configuration)
+    config.setLocales(android.os.LocaleList(locale))
+    super.attachBaseContext(base.createConfigurationContext(config))
+  }
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
 
     enableEdgeToEdge()
     setContent {
       val vm: LimenViewModel = viewModel()
+      LaunchedEffect(vm.lang) {
+        if (resources.configuration.locales[0].language != vm.lang.name.lowercase()) recreate()
+      }
 
       // The draft reaches the disk whenever this window stops: the camera app kills this
       // process routinely mid-handover, and the debounced write must never be what a
@@ -68,14 +80,15 @@ class MainActivity : ComponentActivity() {
       // Keyed on whether a record is open, not on the record: keyed on the record itself it
       // reconfigured the window on every keystroke.
       val recordOpen = vm.working != null
-      LaunchedEffect(vm.darkTheme, recordOpen) {
+      LaunchedEffect(vm.darkTheme, recordOpen, homePage) {
         val transparent = android.graphics.Color.TRANSPARENT
+        val darkBackground = vm.darkTheme || (!recordOpen && homePage == HomePage.Landing)
         enableEdgeToEdge(
           statusBarStyle =
-            if (!recordOpen || vm.darkTheme) SystemBarStyle.dark(transparent)
+            if (darkBackground) SystemBarStyle.dark(transparent)
             else SystemBarStyle.light(transparent, transparent),
           navigationBarStyle =
-            if (!recordOpen || vm.darkTheme) SystemBarStyle.dark(transparent)
+            if (darkBackground) SystemBarStyle.dark(transparent)
             else SystemBarStyle.light(transparent, transparent),
         )
       }

@@ -9,6 +9,7 @@ import android.graphics.Paint
 import android.graphics.Typeface
 import android.graphics.pdf.PdfDocument
 import dev.peringer.limen.ui.Str
+import dev.peringer.limen.ui.*
 import dev.peringer.limen.photo.PhotoDecode
 import java.io.File
 import java.time.Instant
@@ -50,6 +51,7 @@ object PdfExport {
   ): ExportedFile {
     require(p.isFinalized()) { "Only finalized protocols can be exported" }
     check(ProtocolIntegrity.matches(p, photoDir, signatureDir)) { "Finalized evidence does not match its fingerprint" }
+    dev.peringer.limen.photo.EvidenceValidation.requireReadable(p, photoDir, signatureDir)
     val reference = reference(p)
     // Twice: the first pass only counts the sheets so the second can number them "3 / 7".
     // A form that names its own total is a form nobody can quietly take a page out of,
@@ -57,14 +59,30 @@ object PdfExport {
     val counted = build(context, p, s, photoDir, signatureDir, reference, 0)
     val total = try { counted.pages.size } finally { counted.close() }
 
-    val doc = build(context, p, s, photoDir, signatureDir, reference, total)
+    var companion = ""
+    val doc = build(context, p, s, photoDir, signatureDir, reference, total) { companion = it }
     try {
       val kind = if (p.kind == Kind.Entry) s.entry else s.exit
-      val name = "limen-${kind.lowercase().replace(' ', '-')}-${exportStamp()}.pdf"
-      return writeToDownloads(context, name, "application/pdf") { out -> doc.writeTo(out) }
+      val property = (p.address + "-" + p.place).replace(Regex("[^\\p{L}\\p{N}._-]+"), "-").take(65)
+      val name = java.text.Normalizer.normalize("limen-$property-${kind.lowercase()}-${s.lang.name.lowercase()}-${reference}-d${p.deliveryRevision}-${exportStamp()}.pdf", java.text.Normalizer.Form.NFD)
+        .replace(Regex("\\p{M}"), "").replace(Regex("[^A-Za-z0-9._-]"), "-")
+      val retained = File(context.filesDir, "exports/${p.id}").apply { mkdirs() }
+      val original = File(retained, name)
+      original.outputStream().use { doc.writeTo(it) }
+      File(retained, name.removeSuffix(".pdf") + ".html").writeText(companion, Charsets.UTF_8)
+      val out = writeToDownloads(context, name, "application/pdf") { out -> original.inputStream().use { it.copyTo(out) } }
+      val html = writeToDownloads(context, name.removeSuffix(".pdf") + ".html", "text/html") { it.write(companion.toByteArray(Charsets.UTF_8)) }
+      return out.copy(companionUri = html.uri, sha256 = ProtocolIntegrity.fileHash(original))
     } finally {
       doc.close()
     }
+  }
+
+  fun preview(context: Context, p: Protocol, s: Str, photos: File, ink: File): String {
+    dev.peringer.limen.photo.EvidenceValidation.requireReadable(p, photos, ink)
+    var html = ""
+    build(context, p, s, photos, ink, if (p.isFinalized()) reference(p) else s.previewDraft, 1) { html = it }.close()
+    return html
   }
 
   /** One rendering pass. [total] is 0 while counting, and the real page count afterwards. */
@@ -76,6 +94,7 @@ object PdfExport {
     signatureDir: File,
     reference: String,
     total: Int,
+    onHtml: ((String) -> Unit)? = null,
   ): PdfDocument {
     val doc = PdfDocument()
     val sheet = Sheet(doc, s, reference, total)
@@ -88,17 +107,22 @@ object PdfExport {
     dataController(sheet, p, s)
     if (DossierCard.Contract in cards) contract(sheet, p, s)
     if (DossierCard.Deposit in cards) deposit(sheet, p, s)
-    if (DossierCard.Meters in cards) meters(sheet, p, s)
+    if (DossierCard.Meters in cards && !p.meters.isBlank()) meters(sheet, p, s)
     if (DossierCard.Keys in cards) keys(sheet, p, s)
     rooms(sheet, p, s)
     objects(sheet, p, s)
     findings(sheet, p, s)
+    extraContent(p, s).forEach { (heading, lines) ->
+      sheet.sectionTitle(heading)
+      lines.forEach { sheet.wrapped(it, sheet.body) }
+    }
     if (DossierCard.Notes in cards) remarks(sheet, p, s)
     signatures(sheet, p, s, signatureDir)
     delivery(sheet, p, s)
     release(sheet, p, s)
     annex(sheet, p, s, photoDir, measuring = total == 0)
     sheet.close()
+    onHtml?.invoke(sheet.html.finish())
     return doc
   }
 
@@ -108,6 +132,7 @@ object PdfExport {
   // ── The sheet: cursor, page breaks, footer ───────────────────────────────────────────
 
   private class Sheet(val doc: PdfDocument, val s: Str, val reference: String, val total: Int) {
+    val html = HtmlCompanion(s.lang.name.lowercase(), "Limen · $reference")
     val ink = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.BLACK }
     val titlePaint = Paint(ink).apply {
       typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD); textSize = 40f
@@ -119,8 +144,8 @@ object PdfExport {
       typeface = Typeface.SANS_SERIF; textSize = 20f; color = Color.rgb(90, 90, 90)
     }
     val value = Paint(ink).apply { typeface = Typeface.MONOSPACE; textSize = 22f }
-    val body = Paint(ink).apply { typeface = Typeface.SANS_SERIF; textSize = 21f }
-    val small = Paint(ink).apply { typeface = Typeface.SANS_SERIF; textSize = 17f; color = Color.rgb(90, 90, 90) }
+    val body = Paint(ink).apply { typeface = Typeface.SANS_SERIF; textSize = 24f }
+    val small = Paint(ink).apply { typeface = Typeface.SANS_SERIF; textSize = 21f; color = Color.rgb(70, 70, 70) }
     val rule = Paint().apply { color = Color.rgb(200, 200, 200); strokeWidth = 1.5f }
 
     var pageNo = 0
@@ -131,9 +156,10 @@ object PdfExport {
     fun newPage() {
       finish()
       pageNo++
-      page = doc.startPage(PdfDocument.PageInfo.Builder(W, H, pageNo).create())
+      page = doc.startPage(PdfDocument.PageInfo.Builder(595, 842, pageNo).create())
       canvas = page!!.canvas
       canvas.drawColor(Color.WHITE)
+      canvas.scale(595f / W, 842f / H)
       y = MARGIN
     }
 
@@ -160,6 +186,7 @@ object PdfExport {
     }
 
     fun sectionTitle(text: String) {
+      html.heading(text)
       ensure(60f)
       gap(16f)
       canvas.drawText(text.uppercase(), MARGIN, y + section.textSize, section)
@@ -179,6 +206,15 @@ object PdfExport {
       val labelStep = label.textSize + 5f
       val valueStep = value.textSize + 6f
       val need = labelLines * labelStep + valueLines * valueStep + 14f
+      if (need > H - FOOT - MARGIN - 30f) {
+        // An unusually long legal name/address must paginate rather than run off paper.
+        pairs.forEach { (heading, entry) ->
+          wrapped(heading, label)
+          wrapped(entry.ifBlank { "–" }, value)
+        }
+        return
+      }
+      html.fields(pairs)
       ensure(need)
       columns.forEachIndexed { index, (headings, values) ->
         val x = MARGIN + index * width
@@ -194,6 +230,7 @@ object PdfExport {
     }
 
     fun wrapped(text: String, paint: Paint, x: Float = MARGIN, width: Float = W - 2 * MARGIN) {
+      html.text(text)
       wrapLines(text, paint, width).forEach { line ->
         ensure(paint.textSize + 10f)
         canvas.drawText(line, x, y + paint.textSize, paint)
@@ -306,7 +343,7 @@ object PdfExport {
 
   /** Identifies the immutable record and, when applicable, the record it corrects. */
   private fun integrity(sheet: Sheet, p: Protocol, s: Str) {
-    sheet.sectionTitle(s.pdfFinalized)
+    sheet.sectionTitle(if (p.isFinalized()) s.pdfFinalized else s.previewDraft)
     sheet.wrapped("${s.fingerprint}: ${p.evidenceFingerprint}", sheet.small)
     if (p.amendedFromId.isNotBlank()) {
       // By the reference the amended document actually prints on itself. The raw store id
@@ -345,6 +382,7 @@ object PdfExport {
         "${s.legalRequirement(requirement)}: ${s.legalCheckStatus(status)}",
         sheet.body,
       )
+      p.legalOverlay.notes[requirement]?.takeIf(String::isNotBlank)?.let { sheet.wrapped(it, sheet.small) }
     }
     if (p.legalOverlay.note.isNotBlank()) {
       sheet.wrapped("${s.legalOverlayNote}: ${p.legalOverlay.note}", sheet.small)
@@ -358,6 +396,8 @@ object PdfExport {
     p.parties.forEach { party ->
       val detail = buildList {
         if (party.representedBy.isNotBlank()) add("${s.representedBy}: ${party.representedBy}")
+        if (party.agency.isNotBlank()) add("${s.actorAgency}: ${party.agency}")
+        if (party.authority.isNotBlank()) add("${s.authority}: ${party.authority}")
         if (party.phone.isNotBlank()) add(party.phone)
         if (party.email.isNotBlank()) add(party.email)
         if (party.address.isNotBlank()) add("${s.newAddress}: ${party.address}")
@@ -409,8 +449,8 @@ object PdfExport {
   }
 
   private fun deposit(sheet: Sheet, p: Protocol, s: Str) {
-    if (p.deposit.kind == DepositKind.None) return
     sheet.sectionTitle(s.deposit)
+    if (p.deposit.kind == DepositKind.None) { sheet.wrapped(s.depositKind(DepositKind.None), sheet.body); return }
     when (p.deposit.kind) {
       DepositKind.Insurance -> sheet.labeledRow(
         listOf(
@@ -427,6 +467,7 @@ object PdfExport {
         )
       )
       DepositKind.None -> Unit
+      DepositKind.Unknown -> sheet.wrapped(s.toVerify, sheet.body)
     }
   }
 
@@ -580,6 +621,7 @@ object PdfExport {
 
   /** One numbered finding: what it is about, what it says, and everything hanging on it. */
   private fun finding(sheet: Sheet, p: Protocol, s: Str, d: Defect, number: Int) {
+    sheet.html.text("${s.defects} $number · ${p.defectPlace(d, s)} · ${p.defectItemLabel(d, s).orEmpty()}")
     sheet.ensure(80f)
     sheet.canvas.drawText("$number.", MARGIN, sheet.y + sheet.value.textSize, sheet.value)
     val where = buildList {
@@ -621,6 +663,10 @@ object PdfExport {
     if (d.tenantComment.isNotBlank()) {
       sheet.wrapped("${s.tenantComment}: ${d.tenantComment}", sheet.small, MARGIN + 60f, W - 2 * MARGIN - 60f)
     }
+    d.participantPositions.forEach { (id, position) ->
+      val name = p.parties.firstOrNull { it.participantKey() == id }?.name ?: id
+      sheet.wrapped("$name · ${s.tenantResponse(position.response)}\n${position.comment}", sheet.body)
+    }
     sheet.gap(8f)
   }
 
@@ -652,6 +698,7 @@ object PdfExport {
       name to state
     }
     val rowsPerCol = (lines.size + 1) / 2
+    sheet.html.fields(lines)
     var i = 0
     while (i < rowsPerCol) {
       sheet.ensure(30f)
@@ -735,6 +782,10 @@ object PdfExport {
     sheet.wrapped(s.signRecordMeaning, sheet.small)
     sheet.gap(10f)
     drawPlane(sheet, p, s, signatureDir, Plane.Record)
+    if (p.signatures.any { it.plane == Plane.Costs }) {
+      sheet.sectionTitle(s.words("Historical cost signature", "Signature historique relative aux frais", "Historische Kostenunterschrift", "Firma storica relativa ai costi", "Suttascripziun istorica davart ils custs"))
+      drawPlane(sheet, p, s, signatureDir, Plane.Costs)
+    }
     sheet.wrapped(s.inkEvidenceNotice, sheet.small)
 
     // The Swiss ritual, said on the document itself: two identical papers, one per party.
@@ -753,13 +804,14 @@ object PdfExport {
     sigs.forEach { sig ->
       sheet.ensure(190f)
       val x = MARGIN
-      if (sig.refused) {
-        sheet.canvas.drawText(s.refusedNote.uppercase(), x, sheet.y + sheet.value.textSize, sheet.value)
-        sheet.y += sheet.value.textSize + 6f
+      if (sig.refused || sig.outcome.isNotBlank()) {
+        sheet.wrapped(when (sig.outcome) { "absent" -> s.absentOutcome; "unable" -> s.unableToDraw; else -> s.refusedNote }, sheet.body)
       } else {
         val file = File(dir, sig.file)
         val bmp = if (sig.file.isNotBlank() && file.exists()) BitmapFactory.decodeFile(file.absolutePath) else null
+        require(sig.file.isBlank() || bmp != null) { "Signature cannot be rendered: ${sig.file}" }
         if (bmp != null) {
+          sheet.html.image(bmp, "${s.signRecordTitle}: ${sig.name}")
           val maxW = 420f
           val maxH = 130f
           val scale = minOf(maxW / bmp.width, maxH / bmp.height, 1f)
@@ -796,6 +848,7 @@ object PdfExport {
     p.deliveryReceipts.sortedBy { it.role.ordinal }.forEach { receipt ->
       val detail = buildList {
         add(s.role(receipt.role))
+        p.parties.firstOrNull { it.participantKey() == receipt.participantId || receipt.participantId.isBlank() && it.id.isBlank() && it.role == receipt.role }?.let { add(it.name) }
         add(s.deliveryMethod(receipt.method))
         if (receipt.epochMs > 0L) add(formatMoment(receipt.epochMs))
         if (receipt.note.isNotBlank()) add(receipt.note)
@@ -810,6 +863,7 @@ object PdfExport {
       DepositKind.BankAccount -> s.releaseBank
       DepositKind.Insurance -> s.releaseInsurance
       DepositKind.None -> ""
+              DepositKind.Unknown -> s.toVerify
     }
     var need = 70f + sheet.wrapLines(releaseText, sheet.body, W - 2 * MARGIN)
       .size * (sheet.body.textSize + 7f)
@@ -835,6 +889,7 @@ object PdfExport {
         }
       }
       DepositKind.None -> Unit
+      DepositKind.Unknown -> sheet.wrapped(s.toVerify, sheet.body)
     }
   }
 
@@ -847,6 +902,8 @@ object PdfExport {
   private fun Report.Plate.caption(s: Str): String = when (val o = owner) {
     is Report.PlateOwner.Finding -> "${s.defects} ${o.number}"
     is Report.PlateOwner.Supplied -> o.entry.displayName(s)
+    is Report.PlateOwner.Overview -> "${s.overviewPhotos}: ${o.room.name.ifBlank { s.room(o.room.kind) }}"
+    is Report.PlateOwner.Meter -> "${s.meters}: ${o.reading.label} · ${o.reading.identifier}"
   }
 
   private fun annex(sheet: Sheet, p: Protocol, s: Str, photoDir: File, measuring: Boolean) {
@@ -854,7 +911,8 @@ object PdfExport {
     if (plates.isEmpty()) return
     val cellW = (W - 2 * MARGIN - 40f) / 2f
     val cellH = 420f
-    val readablePlates = plates.filter { plate -> readable(File(photoDir, plate.file)) }
+    require(plates.all { readable(File(photoDir, it.file)) }) { "A referenced photograph cannot be rendered" }
+    val readablePlates = plates
     if (readablePlates.isEmpty()) return
     sheet.ensure(cellH + 120f)
     sheet.sectionTitle(s.pdfDefectAnnex)
@@ -863,6 +921,7 @@ object PdfExport {
       val file = File(photoDir, plate.file)
       // The counting pass reads the dimensions only: same page breaks, no decoding.
       val bmp = if (measuring) null else decodeDown(file, cellW.toInt())
+      require(measuring || bmp != null) { "Photograph cannot be rendered: ${plate.file}" }
       if (if (measuring) readable(file) else bmp != null) {
         if (col == 0) sheet.ensure(cellH + 50f)
         val x = MARGIN + col * (cellW + 40f)
@@ -876,6 +935,7 @@ object PdfExport {
             append(plate.caption(s))
             if (plate.sha256.isNotBlank()) append(" · ").append(plate.sha256.take(12))
           }
+          sheet.html.image(bmp, caption)
           sheet.canvas.drawText(
             sheet.ellipsize(caption, sheet.small, cellW),
             x,

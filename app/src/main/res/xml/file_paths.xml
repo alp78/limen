@@ -3,4 +3,6 @@
      a defect photo back. Nothing here is readable by anything the user has not opened. -->
 <paths>
     <cache-path name="captures" path="captures/" />
+    <files-path name="documents" path="photos/" />
+    <files-path name="exports" path="exports/" />
 </paths>

@@ -2,6 +2,8 @@
 
 **Published at <https://peringer.ch/legal/limen/privacy/>**, in five languages.
 
+The five canonical source files were updated for Android 1.2.0 on 13 October 2026, covering optional address lookup, supporting documents, recovery retention and PDF/HTML copies. These targeted corrections are model-authored and are not proof of native review or website deployment. The previous translation `sourceHash` is retained as historical provenance; a full provider retranslation/native review has not been represented as completed. See the remediation ledger for the release state.
+
 ## This file is a pointer, not a copy
 
 The policy used to be kept here as readable Markdown and republished by hand as

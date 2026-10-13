@@ -1,0 +1,15 @@
+Confirmed: clearing a stale reservation restores the old signature reservation.
+Confirmed: Normal wear removes the charge, retains its hidden CHF 100 cost note.
+Confirmed: unreadable photo passes fingerprint checks and PDF export succeeds.
+Confirmed: clearing a stale reservation restores the old signature reservation.
+Confirmed: Normal wear removes the charge, retains its hidden CHF 100 cost note.
+Confirmed: unreadable photo passes fingerprint checks and PDF export succeeds.
+Confirmed: clearing a stale reservation restores the old signature reservation.
+Confirmed: Normal wear removes the charge, retains its hidden CHF 100 cost note.
+Confirmed: unreadable photo passes fingerprint checks and PDF export succeeds.
+Completed new entry through UI: identity, object, canton, legal checks, parties, keys, room, finding, two drawn signatures, finalization and PDF.
+Confirmed: visible invalid date 31/02/2026 leaves prior stored date 2026-10-13 and finalization sees the old date.
+Confirmed: both signatures refused, finalized hub nevertheless says Signed, read only.
+Confirmed: a delivery entered while a repeated PDF export runs is lost in memory and on disk when export completes.
+Confirmed: visible invalid date 31/02/2026 leaves prior stored date 2026-10-13 and finalization sees the old date.
+Confirmed: both signatures refused, finalized hub nevertheless says Signed, read only.

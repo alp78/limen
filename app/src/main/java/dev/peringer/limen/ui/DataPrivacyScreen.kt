@@ -39,7 +39,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import dev.peringer.limen.theme.Limen
 
-private enum class ArchiveAction { Export, Import }
+internal enum class ArchiveAction { Export, Import }
 
 @Composable
 fun DataPrivacyScreen(
@@ -50,6 +50,7 @@ fun DataPrivacyScreen(
 ) {
   var showLicences by rememberSaveable { mutableStateOf(false) }
   var archiveAction by rememberSaveable { mutableStateOf<ArchiveAction?>(null) }
+  var repairCorrupt by rememberSaveable { mutableStateOf(false) }
   // Saveable alongside the action it belongs to. Held in a plain remember, a recreation after
   // the document picker brought the password dialog back with no Uri behind it, and the
   // restore then did nothing at all: no busy state, no error, no message.
@@ -86,6 +87,9 @@ fun DataPrivacyScreen(
       Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()),
       verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
+      AddressPrivacyChoice(vm, s)
+      val deviceSecure = LocalContext.current.getSystemService(android.app.KeyguardManager::class.java).isDeviceSecure
+      Toggle(s.libraryProtection, vm.libraryProtected, enabled = deviceSecure || vm.libraryProtected) { vm.protectLibrary(!vm.libraryProtected) }
       Panel(label = s.privacyTitle) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
           s.privacyParagraphs.forEach { paragraph ->
@@ -137,6 +141,9 @@ fun DataPrivacyScreen(
       Panel(label = s.backupTitle) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
           Text(s.backupBody, style = MaterialTheme.typography.bodyMedium, color = Limen.colors.ink)
+          Text(s.words("Archive limit: 64 MB compressed, 256 MB restored. Use a record’s backup button for larger libraries.", "Limites : 64 Mo compressés, 256 Mo restaurés. Utilisez la sauvegarde par constat pour les grandes collections.", "Grenzen: 64 MB komprimiert, 256 MB entpackt. Für grosse Sammlungen einzelne Protokolle sichern.", "Limiti: 64 MB compressi, 256 MB ripristinati. Per raccolte grandi usare il backup del singolo verbale.", "Limits: 64 MB cumprimids, 256 MB restabilids. Per grondas collecziuns segirar mintga protocol separadamain."), color = Limen.colors.inkDim)
+          Toggle(s.words("Repair unreadable existing records; preserve damaged files", "Réparer les constats existants illisibles ; conserver les fichiers endommagés", "Unlesbare bestehende Protokolle reparieren; beschädigte Dateien behalten", "Ripara verbali esistenti illeggibili; conserva i file danneggiati", "Reparar protocols existents betg legibels; conservar datotecas donnegiadas"), repairCorrupt) { repairCorrupt = !repairCorrupt }
+          vm.archiveImported?.let { Text("${s.recover}: ${it.repaired} · ${s.toVerify}: ${it.repairable}", color = Limen.colors.ink) }
           Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             SmallKey(s.createBackup, Modifier.weight(1f), enabled = !vm.archiveBusy) {
               archiveAction = ArchiveAction.Export
@@ -178,7 +185,7 @@ fun DataPrivacyScreen(
       onConfirm = { password ->
         when (action) {
           ArchiveAction.Export -> vm.exportArchive(password)
-          ArchiveAction.Import -> pendingRestore?.let { vm.importArchive(it, password) }
+          ArchiveAction.Import -> pendingRestore?.let { vm.importArchive(it, password, repairCorrupt) }
         }
         archiveAction = null
         pendingRestore = null
@@ -188,7 +195,7 @@ fun DataPrivacyScreen(
 }
 
 @Composable
-private fun ArchivePasswordDialog(
+internal fun ArchivePasswordDialog(
   action: ArchiveAction,
   s: Str,
   onDismiss: () -> Unit,
@@ -198,12 +205,13 @@ private fun ArchivePasswordDialog(
   // backup password is the one thing in this app that must not go anywhere near it. The cost
   // is retyping it after a rotation, which is the right side of that trade.
   var password by remember(action) { mutableStateOf("") }
+  var allowPlain by remember(action) { mutableStateOf(false) }
   var confirmation by remember(action) { mutableStateOf("") }
   val isExport = action == ArchiveAction.Export
   // A password is optional both ways: an export without one writes a plain archive, and a
   // restore without one reads exactly that. The only thing that can be wrong here is a
   // confirmation that does not match.
-  val valid = !isExport || password == confirmation
+  val valid = !isExport || password == confirmation && (password.isNotEmpty() || allowPlain)
 
   AlertDialog(
     onDismissRequest = onDismiss,
@@ -225,6 +233,7 @@ private fun ArchivePasswordDialog(
           visualTransformation = PasswordVisualTransformation(),
         )
         if (isExport) {
+          if (password.isEmpty()) Toggle(s.words("Create a readable, unencrypted archive", "Créer une archive lisible, non chiffrée", "Lesbares, unverschlüsseltes Archiv erstellen", "Crea un archivio leggibile, non cifrato", "Crear in archiv legibel, betg criptà"), allowPlain) { allowPlain = !allowPlain }
           OutlinedTextField(
             value = confirmation,
             onValueChange = { confirmation = it },

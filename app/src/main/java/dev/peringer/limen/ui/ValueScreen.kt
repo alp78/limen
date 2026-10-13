@@ -37,15 +37,26 @@ import java.util.Locale
  * the item, state its age and repair cost, then use the tenant share in that defect's record.
  */
 @Composable
-fun WearAssessment(s: Str, modifier: Modifier = Modifier) {
-  var picked by rememberSaveable { mutableStateOf<String?>(null) }
-  var lifespan by rememberSaveable { mutableStateOf("8") }
-  var age by rememberSaveable { mutableStateOf("") }
-  var cost by rememberSaveable { mutableStateOf("") }
+fun WearAssessment(s: Str, vm: LimenViewModel, defectId: String, modifier: Modifier = Modifier) {
+  val saved = vm.working?.details?.estimates?.get(defectId)
+  val estimate = saved ?: dev.peringer.limen.data.ReplacementEstimate(lifeYears = "8")
+  val picked = estimate.basis.takeIf(String::isNotBlank)
+  val lifespan = estimate.lifeYears
+  val age = estimate.ageYears
+  val cost = estimate.replacementChf
   var showTable by rememberSaveable { mutableStateOf(false) }
   val play = rememberTick()
+  val locked = LocalRecordLocked.current
+  fun update(change: (dev.peringer.limen.data.ReplacementEstimate) -> dev.peringer.limen.data.ReplacementEstimate) {
+    vm.edit { p -> p.copy(details = p.details.copy(estimates = p.details.estimates +
+      (defectId to change(p.details.estimates[defectId] ?: estimate).copy(date = java.time.LocalDate.now().toString())))) }
+  }
 
   Column(modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+      if (!locked && saved != null) SmallKey(s.delete) {
+        vm.edit { it.copy(details = it.details.copy(estimates = it.details.estimates - defectId)) }
+      }
+      Text(s.estimateNotice, color = Limen.colors.ink)
       Panel(label = s.faceValue, info = s.tipZeitwert()) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
           // The picked thing, or the way into the table.
@@ -56,7 +67,7 @@ fun WearAssessment(s: Str, modifier: Modifier = Modifier) {
               .clip(RoundedCornerShape(8.dp))
               .background(Limen.colors.input)
               .border(1.5.dp, Limen.colors.actionOutline, RoundedCornerShape(10.dp))
-              .clickable {
+              .clickable(enabled = !locked) {
                 play(Tick.Key)
                 showTable = !showTable
               }
@@ -79,10 +90,9 @@ fun WearAssessment(s: Str, modifier: Modifier = Modifier) {
                   Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(6.dp))
-                    .clickable {
+                    .clickable(enabled = !locked) {
                       play(Tick.Key)
-                      picked = row.key.name
-                      lifespan = row.years.toInt().toString()
+                      update { it.copy(basis = row.key.name, lifeYears = row.years.toInt().toString()) }
                       showTable = false
                     }
                     .padding(horizontal = 8.dp, vertical = 8.dp),
@@ -106,17 +116,16 @@ fun WearAssessment(s: Str, modifier: Modifier = Modifier) {
           }
           Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Field(s.lifespanYears, lifespan, Modifier.weight(1f)) { v ->
-              lifespan = v.take(5)
-              picked = null
+              update { it.copy(lifeYears = v.take(5), basis = "") }
             }
-            Field(s.ageYears, age, Modifier.weight(1f)) { v -> age = v.take(5) }
+            Field(s.ageYears, age, Modifier.weight(1f)) { v -> update { it.copy(ageYears = v.take(5)) } }
           }
           Field(
             s.repairCost,
             cost,
             keyboardType = KeyboardType.Decimal,
             isError = cost.isNotBlank() && swissNumber(cost) == null,
-          ) { v -> cost = v.take(12) }
+          ) { v -> update { it.copy(replacementChf = v.take(16)) } }
         }
       }
 
@@ -128,13 +137,13 @@ fun WearAssessment(s: Str, modifier: Modifier = Modifier) {
         val fraction = Zeitwert.remainingFraction(lifespanV, ageV)
         Panel(label = s.tenantShare) {
           Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            val share = costV?.let { Zeitwert.tenantShare(it, lifespanV, ageV) }
+            val share = costV?.let { Zeitwert.remainingReplacementValue(it, lifespanV, ageV) }
             val zero = (share != null && share == 0.0) || (share == null && fraction == 0.0)
             Text(
               share?.let { "CHF " + String.format(Locale.ROOT, "%.0f", it) }
                 ?: String.format(Locale.ROOT, "%.0f%%", fraction * 100),
               fontFamily = FontFamily.Monospace,
-              fontSize = 54.sp,
+              fontSize = 32.sp,
               color = if (zero) Limen.colors.seal else Limen.colors.ink,
             )
             Text(
@@ -158,7 +167,4 @@ private const val GROUPING_MARKS = "'’"
  * entered the normal way parsed as null. The headline then silently changed unit from francs
  * to a percentage, with nothing on the field to say the figure had been ignored.
  */
-private fun swissNumber(typed: String): Double? = typed
-  .filterNot { it in GROUPING_MARKS || it.isWhitespace() }
-  .replace(',', '.')
-  .toDoubleOrNull()
+private fun swissNumber(typed: String): Double? = nonNegativeNumber(typed)

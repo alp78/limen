@@ -1,0 +1,176 @@
+diff --git a/src/content/legal/limen/de.mdx b/src/content/legal/limen/de.mdx
+index 4cd2e95..8d83645 100644
+--- a/src/content/legal/limen/de.mdx
++++ b/src/content/legal/limen/de.mdx
+@@ -3,12 +3,17 @@ app: limen
+ lang: de
+ title: "Datenschutzerklärung für Limen"
+ description: "Limen zeichnet Wohnungsübergaben auf einem Android-Telefon oder einem iPhone auf. Es wird von Alexis Peringer veröffentlicht."
+-updated: 2026-10-01
++updated: 2026-10-13
+ # Translated from en.mdx. sourceHash tracks the English this came from,
+ # so a changed source is retranslated and an unchanged one is skipped.
+ sourceHash: 8080a521ed2dfb0c
++# Targeted Android 1.2 audit corrections authored by Codex; Romansh native review remains pending.
+ ---
+-Limen zeichnet Wohnungsübergaben auf einem Android-Telefon oder einem iPhone auf. Es wird von Alexis Peringer veröffentlicht. Beide Fassungen zeichnen dasselbe Protokoll auf und erzeugen dasselbe PDF, und diese Erklärung gilt für beide. Wo sich die zwei Plattformen unterscheiden, nennt der Text die jeweilige.
++Limen dokumentiert Wohnungsübergaben auf Android und iPhone. Alexis Peringer veröffentlicht die App. Diese Erklärung gilt für beide Plattformen und benennt Unterschiede zwischen den Versionen.
++
++## Android 1.2
++
++Android 1.2 kann auch Beilagen, individuelle Stellungnahmen der Beteiligten und Nachverfolgungsnotizen speichern. Exportierte PDFs und zugängliche HTML-Kopien bleiben unverändert im privaten Speicher erhalten. Wiederherstellungskopien können entfernte Belege bis zur Löschung des gesamten Protokolls behalten. Exporte in Downloads und an andere Apps weitergegebene Kopien sind gesondert zu löschen. Eine Sicherung kann ein Protokoll oder die Sammlung umfassen und enthält die zugehörigen Belege und aufbewahrten Exporte. Ein unverschlüsseltes Archiv erfordert eine ausdrückliche Auswahl.
+ 
+ ## Die kurze Version
+ 
+@@ -34,7 +39,7 @@ Limen hält seine privaten App-Daten aus den Backups der Plattform heraus. Auf A
+ 
+ ## Netzwerknutzung
+ 
+-Limen nutzt das Netzwerk für einen einzigen Dienst in der App. Nachdem der Benutzer mindestens drei Zeichen in ein Schweizer Adressfeld eingegeben hat, wartet die App kurz und sendet automatisch den eingegebenen Suchtext und gewöhnliche Netzwerk-Metadaten an den Schweizer Bundes-Suchserver von swisstopo unter `https://api3.geo.admin.ch/rest/services/ech/SearchServer`. Dieser Dienst wird unter seinen eigenen Bedingungen und Datenschutzinformationen betrieben. Die Suche sendet keine Protokolldaten, Fotos oder Unterschriften an Peringer. Auf dem iPhone stellt die App diese Anfrage über eine ephemere Sitzung, sodass weder die eingegebene Adresse noch die Antwort in einen gemeinsamen Cache auf der Festplatte geschrieben wird.
++Unter Android 1.2 sind Online-Adressvorschläge freiwillig und zunächst ausgeschaltet. Vor der Aktivierung wird ein Hinweis angezeigt und die Auswahl bestätigt. Nach Aktivierung werden ab drei Zeichen in einem Schweizer Adressfeld der Suchtext und übliche Netzwerkmetadaten an den Bundesdienst swisstopo SearchServer unter `https://api3.geo.admin.ch/rest/services/ech/SearchServer` gesendet. Die manuelle Eingabe funktioniert offline. Frühere Android-Versionen und die iPhone-Version starten Vorschläge automatisch nach der Eingabe. Für swisstopo gelten dessen eigene Bedingungen und Datenschutzinformationen. Protokolle, Fotos und Unterschriften werden nicht an Peringer gesendet. Auf dem iPhone verhindert eine temporäre Netzwerksitzung einen gemeinsamen Festplattencache für Anfrage und Antwort.
+ 
+ Die App enthält auch Links zu unabhängigen Mietkautionsanbietern. Das Öffnen eines Links übergibt die URL an den Browser des Benutzers; der Browser und die Zielseite arbeiten dann unter ihren eigenen Bedingungen. Limen empfängt keine Informationen über den Besuch.
+ 
+diff --git a/src/content/legal/limen/en.mdx b/src/content/legal/limen/en.mdx
+index 31ebe61..fdcbb3b 100644
+--- a/src/content/legal/limen/en.mdx
++++ b/src/content/legal/limen/en.mdx
+@@ -3,9 +3,14 @@ app: limen
+ lang: en
+ title: "Privacy Policy for Limen"
+ description: "Limen records apartment handovers on an Android phone or an iPhone. It is published by Alexis Peringer."
+-updated: 2026-10-01
++updated: 2026-10-13
++# Targeted Android 1.2 audit corrections authored by Codex; Romansh native review remains pending.
+ ---
+-Limen records apartment handovers on an Android phone or an iPhone. It is published by Alexis Peringer. Both versions record the same protocol and produce the same PDF, and this notice covers them both. Where the two platforms differ, the text says which is which.
++Limen records apartment handovers on Android and iPhone. It is published by Alexis Peringer. This notice covers both platforms and identifies the version-specific differences.
++
++## Android 1.2
++
++Android 1.2 can also store supporting documents, individual participant positions and follow-up notes. It retains exact exported PDFs and accessible HTML companions in private storage. Recovery copies can retain removed evidence until the complete record is deleted. Exports in Downloads and copies shared with other apps must be deleted separately. A backup can cover one record or the library and contains the referenced evidence and retained exports. Creating an unencrypted archive requires an explicit choice.
+ 
+ ## The short version
+ 
+@@ -31,7 +36,7 @@ Limen keeps its private app data out of the platform's own backups. On Android i
+ 
+ ## Network use
+ 
+-Limen uses the network for one in-app service. After the user types at least three characters in a Swiss address field, the app waits briefly and automatically sends the typed search text and ordinary network metadata to the Swiss federal swisstopo SearchServer at `https://api3.geo.admin.ch/rest/services/ech/SearchServer`. That service is operated under its own terms and privacy information. The lookup does not send protocol records, photos or signatures to Peringer. On iPhone the app makes that request through an ephemeral session, so neither the typed address nor the reply is written to a shared cache on disk.
++On Android 1.2, online address suggestions are optional and off by default. Before enabling them, the user sees a disclosure and confirms the choice. When enabled, typing at least three characters in a Swiss address field sends the search text and ordinary network metadata to the federal swisstopo SearchServer at `https://api3.geo.admin.ch/rest/services/ech/SearchServer`. Manual entry works offline. Earlier Android versions and the iPhone version start suggestions automatically after typing. Swisstopo operates under its own terms and privacy information. No records, photographs or signatures are sent to Peringer. On iPhone, an ephemeral network session avoids a shared disk cache for the query and reply.
+ 
+ The app also contains links to independent rental-deposit providers. Opening one hands the URL to the user's browser; the browser and destination site then operate under their own terms. Limen does not receive information about the visit.
+ 
+diff --git a/src/content/legal/limen/fr.mdx b/src/content/legal/limen/fr.mdx
+index d07145a..c2d4575 100644
+--- a/src/content/legal/limen/fr.mdx
++++ b/src/content/legal/limen/fr.mdx
+@@ -3,12 +3,17 @@ app: limen
+ lang: fr
+ title: "Politique de confidentialité de Limen"
+ description: "Confidentialité de Limen, avec conservation des constats sur l’appareil, exports, sauvegardes, recherche d’adresses et autorisations sur Android et iPhone."
+-updated: 2026-10-07
++updated: 2026-10-13
+ # Translated from en.mdx. sourceHash tracks the English this came from,
+ # so a changed source is retranslated and an unchanged one is skipped.
+ sourceHash: 8080a521ed2dfb0c
++# Targeted Android 1.2 audit corrections authored by Codex; Romansh native review remains pending.
+ ---
+-Limen permet d’établir des constats d’état des lieux sur Android et iPhone. Alexis Peringer publie les deux versions. Cette politique décrit leur fonctionnement commun et précise les différences entre les deux plateformes.
++Limen permet d’établir des constats d’état des lieux sur Android et iPhone. Alexis Peringer publie les deux versions. Cette politique couvre les deux plateformes et précise les différences propres aux versions.
++
++## Android 1.2
++
++Android 1.2 peut aussi conserver des pièces justificatives, les positions individuelles des participants et des notes de suivi. Les PDF exportés et leurs copies HTML accessibles sont conservés à l’identique dans le stockage privé. Les copies de récupération peuvent garder des preuves retirées jusqu’à la suppression du constat entier. Les exports dans Téléchargements et les copies partagées avec d’autres applications se suppriment séparément. Une sauvegarde peut couvrir un constat ou la collection et contient les preuves référencées ainsi que les exports conservés. La création d’une archive non chiffrée exige un choix explicite.
+ 
+ ## Résumé
+ 
+@@ -41,7 +46,7 @@ Limen exclut ses données privées des sauvegardes automatiques du système. La
+ 
+ ## Utilisation du réseau
+ 
+-La recherche d’adresses suisses est le seul service réseau intégré à Limen. À partir de trois caractères saisis, l’application attend brièvement puis transmet le texte au service SearchServer de swisstopo à l’adresse `https://api3.geo.admin.ch/rest/services/ech/SearchServer`. La requête comporte aussi les informations techniques nécessaires à la connexion. Swisstopo traite ces demandes selon ses propres conditions et informations de confidentialité. Cette recherche ne transmet ni les constats, ni les photographies, ni les signatures au développeur. Sur iPhone, une session réseau temporaire évite l’enregistrement de l’adresse et de la réponse dans un cache partagé sur le disque.
++Sur Android 1.2, les suggestions d’adresses en ligne sont facultatives et désactivées au départ. Une information est présentée avant leur activation, que l’utilisateur confirme. Une fois activées, la saisie d’au moins trois caractères dans un champ d’adresse suisse transmet le texte de recherche et les métadonnées réseau usuelles au service fédéral SearchServer de swisstopo à l’adresse `https://api3.geo.admin.ch/rest/services/ech/SearchServer`. La saisie manuelle fonctionne hors ligne. Les versions Android antérieures et la version iPhone démarrent automatiquement les suggestions après la saisie. Swisstopo applique ses propres conditions et informations de confidentialité. Aucun constat, photographie ou signature n’est transmis à Peringer. Sur iPhone, une session réseau temporaire évite un cache partagé sur disque pour la requête et la réponse.
+ 
+ L’application propose aussi des liens vers des fournisseurs indépendants de garanties de loyer. Lorsque vous ouvrez un lien, Limen transmet l’adresse au navigateur. Le navigateur et le site destinataire appliquent leurs propres conditions de traitement des données. Limen ne reçoit pas d’information sur la visite.
+ 
+diff --git a/src/content/legal/limen/it.mdx b/src/content/legal/limen/it.mdx
+index aa21b56..abf6d6d 100644
+--- a/src/content/legal/limen/it.mdx
++++ b/src/content/legal/limen/it.mdx
+@@ -3,16 +3,21 @@ app: limen
+ lang: it
+ title: "Informativa sulla privacy per Limen"
+ description: "Limen registra le consegne di appartamenti su un telefono Android o un iPhone. È pubblicato da Alexis Peringer."
+-updated: 2026-10-01
++updated: 2026-10-13
+ # Translated from en.mdx. sourceHash tracks the English this came from,
+ # so a changed source is retranslated and an unchanged one is skipped.
+ sourceHash: 8080a521ed2dfb0c
++# Targeted Android 1.2 audit corrections authored by Codex; Romansh native review remains pending.
+ ---
+-Limen registra le consegne di appartamenti su un telefono Android o un iPhone. È pubblicato da Alexis Peringer. Le due versioni registrano lo stesso protocollo e producono lo stesso PDF, e questa informativa vale per entrambe. Dove le due piattaforme differiscono, il testo indica quale.
++Limen documenta le consegne di abitazioni su Android e iPhone. È pubblicato da Alexis Peringer. Questa informativa copre entrambe le piattaforme e indica le differenze tra le versioni.
++
++## Android 1.2
++
++Android 1.2 può conservare anche documenti giustificativi, posizioni individuali dei partecipanti e note di seguito. I PDF esportati e le copie HTML accessibili sono conservati senza modifiche nello spazio privato. Le copie di recupero possono conservare prove rimosse fino alla cancellazione dell’intero verbale. Le esportazioni in Download e le copie condivise con altre app si eliminano separatamente. Un backup può comprendere un verbale o la raccolta e contiene le prove referenziate e le esportazioni conservate. Un archivio non cifrato richiede una scelta esplicita.
+ 
+ ## La versione breve
+ 
+-> Peringer non raccoglie, riceve, vende o condivide i dati personali inseriti in Limen. Non esiste un account Limen, server gestiti dallo sviluppatore, pubblicità, analisi, telemetria o servizi di segnalazione errori. ProtocollI, foto e firme disegnate rimangono nell'archiviazione privata dell'app a meno che l'utente non li esporti, condivida o esegua il backup.
++> Peringer non raccoglie, riceve, vende o condivide i dati personali inseriti in Limen. Non esiste un account Limen, server gestiti dallo sviluppatore, pubblicità, analisi, telemetria o servizi di segnalazione errori. Protocolli, foto e firme disegnate rimangono nell'archiviazione privata dell'app a meno che l'utente non li esporti, condivida o esegua il backup.
+ 
+ La persona o l'organizzazione che utilizza un'installazione di Limen decide perché e come i dati del protocollo vengono registrati ed è il titolare del trattamento per tali dati. Un operatore professionista rimane responsabile di fornire ai partecipanti la propria identità, i dettagli di contatto e qualsiasi ulteriore informazione che il suo trattamento richiede.
+ 
+@@ -34,7 +39,7 @@ Limen tiene i propri dati privati dell'app fuori dai backup della piattaforma. S
+ 
+ ## Utilizzo della rete
+ 
+-Limen usa la rete per un solo servizio in-app. Dopo che l'utente digita almeno tre caratteri in un campo di indirizzo svizzero, l'app attende brevemente e invia automaticamente il testo di ricerca digitato e metadati di rete ordinari al Swiss federal swisstopo SearchServer all'indirizzo `https://api3.geo.admin.ch/rest/services/ech/SearchServer`. Tale servizio è gestito secondo i propri termini e le proprie informazioni sulla privacy. La ricerca non invia registrazioni di protocollo, foto o firme a Peringer. Su iPhone l'app effettua quella richiesta tramite una sessione effimera, così né l'indirizzo digitato né la risposta vengono scritti in una cache condivisa su disco.
++Su Android 1.2 i suggerimenti di indirizzi online sono facoltativi e inizialmente disattivati. Prima dell’attivazione viene mostrata un’informativa e l’utente conferma la scelta. Dopo l’attivazione, digitare almeno tre caratteri in un campo di indirizzo svizzero invia il testo di ricerca e i normali metadati di rete al servizio federale SearchServer di swisstopo all’indirizzo `https://api3.geo.admin.ch/rest/services/ech/SearchServer`. L’inserimento manuale funziona offline. Le versioni Android precedenti e la versione iPhone avviano automaticamente i suggerimenti dopo la digitazione. Swisstopo applica i propri termini e informazioni sulla privacy. Nessun verbale, fotografia o firma è inviato a Peringer. Su iPhone una sessione di rete temporanea evita una cache condivisa su disco per richiesta e risposta.
+ 
+ L'app contiene anche collegamenti a fornitori indipendenti di depositi cauzionali per affitti. L'apertura di uno di essi passa l'URL al browser dell'utente; il browser e il sito di destinazione operano quindi secondo i propri termini. Limen non riceve informazioni sulla visita.
+ 
+diff --git a/src/content/legal/limen/rm.mdx b/src/content/legal/limen/rm.mdx
+index fe89b35..606c2eb 100644
+--- a/src/content/legal/limen/rm.mdx
++++ b/src/content/legal/limen/rm.mdx
+@@ -3,12 +3,17 @@ app: limen
+ lang: rm
+ title: "Politica da protecziun da datas per Limen"
+ description: "Limen registra surdadas d'abitaziuns sin in telefon Android u sin in iPhone. El vegn publitgà da Alexis Peringer."
+-updated: 2026-10-01
++updated: 2026-10-13
+ # Translated from en.mdx. sourceHash tracks the English this came from,
+ # so a changed source is retranslated and an unchanged one is skipped.
+ sourceHash: 8080a521ed2dfb0c
++# Targeted Android 1.2 audit corrections authored by Codex; Romansh native review remains pending.
+ ---
+-Limen registra surdadas d'abitaziuns sin in telefon Android u sin in iPhone. El vegn publitgà da Alexis Peringer. Omaduas versiuns registran il medem protocol e produceschan il medem PDF, e questa politica vala per omaduas. Nua che las duas plattafurmas differenzieschan, inditgescha il text quala.
++Limen documentescha surdadas d’abitaziuns sin Android ed iPhone. Alexis Peringer publitgescha l’app. Questa infurmaziun vala per omaduas plattafurmas ed inditgescha las differenzas tranter las versiuns.
++
++## Android 1.2
++
++Android 1.2 po er conservar documents cumprovants, posiziuns individualas dals participants e notas da seguiment. Ils PDFs exportads e las copias HTML accessiblas restan conservads senza midadas en la memoria privata. Copias da recuperaziun pon conservar cumprovas allontanadas fin a la stizzada da l’entir protocol. Exports en Downloads e copias cundivididas cun autras apps ston vegnir stizzads separadamain. Ina segirezza po cumpigliar in protocol u la collecziun e cuntegna las cumprovas referenziadas ed ils exports conservads. In archiv betg criptà pretenda ina tscherna explicita.
+ 
+ ## La versiun curta
+ 
+@@ -34,7 +39,7 @@ Limen tegna sias datas privatas da l'app ordaifer ils backups da la plattafurma.
+ 
+ ## Diever da la rait
+ 
+-Limen dovra la rait per in sulet servetsch in-app. Cura che l'utilisader scriva almain trais caracters en in champ d'adressa svizzer, spetga l'app in mument e trametta automaticamain il text da tschertga scrit e las metadatas da rait ordinarias al servetsch da tschertga swisstopo SearchServer da la Confederaziun svizra a `https://api3.geo.admin.ch/rest/services/ech/SearchServer`. Quel servetsch funcziunescha tenor sias atgnas cundiziuns e infurmaziuns davart la protecziun da datas. La tschertga na trametta protocols, fotografias ni suttasignaturas a Peringer. Sin l'iPhone fa l'app quella dumonda tras ina sesida efemera, uschè che ni l'adressa scritta ni la resposta vegnan scrittas en in cache cuminaivel sin il disc.
++Sin Android 1.2 èn las propostas d’adressas online facultativas e deactivadas al cumenzament. Avant l’activaziun vegn mussada in’infurmaziun e l’utilisader conferma la tscherna. Suenter l’activaziun trametta l’endataziun d’almain trais segns en in champ d’adressa svizra il text da tschertga e metadatas da rait usitadas al servetsch federal SearchServer da swisstopo sut `https://api3.geo.admin.ch/rest/services/ech/SearchServer`. L’endataziun manuala funcziuna offline. Versiuns Android anteriuras e la versiun iPhone cumenzan automaticamain cun las propostas suenter l’endataziun. Swisstopo applitgescha sias atgnas cundiziuns ed infurmaziuns da protecziun da datas. Nagins protocols, fotografias u suttascripziuns vegnan tramess a Peringer. Sin iPhone evitescha ina sessiun da rait temporara in cache cuminaivel sin disc per dumonda e resposta.
+ 
+ L'app cuntegna er colliaziuns cun furniturs independents da deposits da locaziun. Avrir ina d'ellas surdat l'URL al navigatur dal utilisader; il navigatur ed il site destinaziun funcziuneschan alura tenor lur atgnas cundiziuns. Limen na retschaiva naginas infurmaziuns davart la visita.
+ 
+@@ -50,7 +55,7 @@ Il relasch Android signà declera la permissiun `INTERNET`. El cuntegna er `dev.
+ 
+ iOS n'ha nagin equivalent d'ina permissiun d'internet. Il relasch iPhone declera ina suletta descripziun d'utilisaziun, quella da la camera, ch'è il text che il sistem mussa cura ch'el la dumonda.
+ 
+-Las bibliotecas da cudesch avert utilisadas da la versiun Android funcziuneschan en l'app. La versiun iPhone na cuntegna nagin cudesch da terzas partidas: ella porta cun sai ina copia reducida da las metadatas publitgadas da libphonenumber e las bandieras chantunalas sco files da datas. Nagina da las duas versiuns agiunta reclama, analisas u servetschs da collecziun gestiunads dal sviluppader.
++Las bibliotecas da code avert utilisadas da la versiun Android funcziuneschan en l'app. La versiun iPhone na cuntegna nagin cudesch da terzas partidas: ella porta cun sai ina copia reducida da las metadatas publitgadas da libphonenumber e las bandieras chantunalas sco files da datas. Nagina da las duas versiuns agiunta reclama, analisas u servetschs da collecziun gestiunads dal sviluppader.
+ 
+ ## Uffants
+ 

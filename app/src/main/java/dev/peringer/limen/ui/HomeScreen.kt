@@ -27,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -59,6 +60,11 @@ fun HomeScreen(
   onPage: (HomePage) -> Unit,
   onSeed: (String?) -> Unit,
 ) {
+  var unlocked by remember(page) { mutableStateOf(false) }
+  if (vm.libraryProtected && page != HomePage.Landing && !unlocked) {
+    LibraryUnlock(s, onUnlocked = { unlocked = true }, onBack = { onPage(HomePage.Landing) })
+    return
+  }
   BackHandler(enabled = page != HomePage.Landing) {
     onSeed(null)
     onPage(HomePage.Landing)
@@ -143,7 +149,7 @@ private fun LandingScreen(
       if (compactHeight) Spacer(Modifier.height(18.dp)) else Spacer(Modifier.weight(1f))
       LandingKey(s.startNewSession, onPress = onNewSession)
       Spacer(Modifier.height(10.dp))
-      LandingKey(s.allSessions, enabled = vm.protocols.isNotEmpty(), onPress = onSessions)
+      LandingKey(s.allSessions, enabled = vm.protocols.isNotEmpty() || vm.unreadableRecords.isNotEmpty(), onPress = onSessions)
       Spacer(Modifier.height(10.dp))
       LandingKey(s.dataAndPrivacy, onPress = onDataPrivacy)
       Spacer(Modifier.height(24.dp))
@@ -179,8 +185,14 @@ private fun SessionsScreen(
   onEmpty: () -> Unit,
   onSeedExit: (Protocol) -> Unit,
 ) {
-  LaunchedEffect(vm.protocols.isEmpty()) {
-    if (vm.protocols.isEmpty()) onEmpty()
+  var search by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("") }
+  var filter by androidx.compose.runtime.saveable.rememberSaveable { mutableIntStateOf(0) }
+  val visible = remember(vm.protocols, search, filter) {
+    vm.protocols.filter { p ->
+      (filter == 0 || if (filter == 1) !p.isFinalized() else p.isFinalized()) &&
+        (search.isBlank() || listOf(p.address, p.place, p.handoverDate, SwissDate.display(p.handoverDate),
+          p.parties.joinToString(" ") { it.name + " " + it.representedBy }).any { it.contains(search, ignoreCase = true) })
+    }.sortedWith(compareBy<Protocol> { it.address.lowercase() }.thenByDescending { it.createdEpochMs })
   }
   Box(
     modifier.fillMaxSize().background(Limen.colors.plate),
@@ -202,6 +214,14 @@ private fun SessionsScreen(
       ThemeToggle(vm.darkTheme, s.themeMode, vm::toggleTheme)
     }
     Spacer(Modifier.height(14.dp))
+    Field(s.searchRecords, search) { search = it }
+    PillRow(listOf(0 to s.allRecords,
+      1 to s.words("Drafts", "Brouillons", "Entwürfe", "Bozze", "Sbozs"),
+      2 to s.words("Finalized", "Finalisés", "Abgeschlossen", "Finalizzati", "Finalisads")), filter, dense = true) { filter = it }
+    vm.unreadableRecords.forEach { record ->
+      Text("${s.unreadableRecord}: ${record.id}", color = Limen.colors.dangerOutline)
+      if (record.hasRecovery) SmallKey(s.recover) { vm.recoverRecord(record.id) }
+    }
     if (vm.protocols.isEmpty()) {
       Text(s.sessionsEmpty, style = MaterialTheme.typography.bodyLarge, color = Limen.colors.inkDim)
     } else {
@@ -209,7 +229,7 @@ private fun SessionsScreen(
         Modifier.fillMaxWidth().weight(1f),
         verticalArrangement = Arrangement.spacedBy(8.dp),
       ) {
-        items(vm.protocols, key = { it.id }) { p ->
+        items(visible, key = { it.id }) { p ->
           ProtocolCard(vm, s, p, onSeedExit)
         }
       }
@@ -279,6 +299,8 @@ private fun ProtocolCard(
           .padding(horizontal = 8.dp, vertical = 4.dp),
       )
     }
+    if (p.seedId.isNotBlank()) Text("${s.atEntry}: ${SwissDate.display(p.lastProtocolDate)}", color = Limen.colors.inkDim)
+    if (p.amendedFromId.isNotBlank()) Text("${s.pdfAmends}: LIMEN-${p.amendedFromFingerprint.take(16)}", color = Limen.colors.inkDim)
     Spacer(Modifier.height(8.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
       if (p.kind == Kind.Entry) {

@@ -26,6 +26,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import dev.peringer.limen.data.DepositKind
 import dev.peringer.limen.data.DeliveryMethod
+import dev.peringer.limen.data.*
 import dev.peringer.limen.data.Kind
 import dev.peringer.limen.data.Plane
 import dev.peringer.limen.data.Protocol
@@ -39,7 +40,7 @@ import java.time.format.DateTimeFormatter
 /** The handover record signature. Refusal is a recorded outcome, not a dead end. */
 @Composable
 internal fun SignStep(vm: LimenViewModel, s: Str, p: Protocol) {
-  var padTarget by remember { mutableStateOf<Role?>(null) }
+  var padTarget by remember { mutableStateOf<Party?>(null) }
 
   // A Box, so the pad truly overlays the step instead of queueing below the scroll.
   androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
@@ -47,6 +48,7 @@ internal fun SignStep(vm: LimenViewModel, s: Str, p: Protocol) {
     Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
     verticalArrangement = Arrangement.spacedBy(10.dp),
   ) {
+    DocumentPreviewButton(vm, s, p)
     Panel(label = s.signRecordTitle, info = s.tipRecord()) {
       Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         // Who has to sign at all. This decides the rows below, which is why it sits here
@@ -86,8 +88,8 @@ internal fun SignStep(vm: LimenViewModel, s: Str, p: Protocol) {
           }
         }
         Text(s.reservationBeforeSign, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
-        vm.requiredRecordRoles(p).forEach { role ->
-          SignRow(vm, s, p, role, Plane.Record) { padTarget = role }
+        p.parties.filter { it.role in vm.requiredRecordRoles(p) }.forEach { party ->
+          SignRow(vm, s, p, party, Plane.Record) { padTarget = party }
         }
         Text(s.inkEvidenceNotice, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
       }
@@ -101,7 +103,7 @@ internal fun SignStep(vm: LimenViewModel, s: Str, p: Protocol) {
         if (issues.isNotEmpty()) {
           Text(s.finalizationNeeds, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
           issues.forEach { issue ->
-            Text("• ${s.finalizationIssue(issue)}", style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
+            CompletionAction(vm, s, p, issue)
           }
         }
         if (vm.finalizationError) {
@@ -131,13 +133,13 @@ internal fun SignStep(vm: LimenViewModel, s: Str, p: Protocol) {
     Spacer(Modifier.height(12.dp))
   }
 
-  padTarget?.let { role ->
+  padTarget?.let { party ->
     SignPadOverlay(
-      title = "${s.signRecordTitle} · ${s.role(role)}",
+      title = "${party.signerName()} · ${s.role(party.role)} · ${party.agency}",
       meaning = s.tipRecord().lead,
       s = s,
       onKeep = { bmp ->
-        vm.keepSignature(role, Plane.Record, bmp)
+        vm.keepSignature(party.role, Plane.Record, bmp, party.participantKey())
         padTarget = null
       },
       onCancel = { padTarget = null },
@@ -147,62 +149,36 @@ internal fun SignStep(vm: LimenViewModel, s: Str, p: Protocol) {
 }
 
 @Composable
-private fun SignRow(
-  vm: LimenViewModel,
-  s: Str,
-  p: Protocol,
-  role: Role,
-  plane: Plane,
-  onSign: () -> Unit,
-) {
-  val sig = p.signatures.firstOrNull { it.role == role && it.plane == plane }
+private fun SignRow(vm: LimenViewModel, s: Str, p: Protocol, party: Party, plane: Plane, onSign: () -> Unit) {
+  val sig = p.signatureFor(party, plane)
   val current = sig?.let(p::isCurrent) == true
-  val pendingReservation = p.pendingRecordReservations[role] ?: sig?.reservation.orEmpty()
-  Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-      Column(Modifier.weight(1f)) {
-        Text(s.role(role), style = MaterialTheme.typography.bodyMedium, color = Limen.colors.ink)
-        // The status: the one place besides the case's chip where the seal green appears.
-        val (label, sealed) = when {
-          sig == null -> s.notSigned to false
-          !current -> s.resignRequired to false
-          sig.refused -> s.refusedNote to false
-          else -> s.signed to true
-        }
-        Text(
-          label,
-          style = MaterialTheme.typography.labelSmall,
-          color = if (sealed) Limen.colors.seal else Limen.colors.inkDim,
-        )
-      }
-      if (LocalRecordLocked.current) {
-        // Nothing to offer: the ink is part of what the fingerprint covers.
-      } else if (sig == null || !current) {
-        IconKey(ButtonGlyph.Edit, s.signKey, Modifier.padding(end = 6.dp), onPress = onSign)
-        IconKey(
-          ButtonGlyph.Cancel,
-          s.refusedKey,
-          fillColor = Limen.colors.danger,
-          outlineColor = Limen.colors.dangerOutline,
-          tint = Limen.colors.dangerOutline,
-          tick = Tick.Reject,
-        ) { vm.refuseSignature(role, plane) }
-      } else {
-        IconKey(ButtonGlyph.Clear, s.clearInk, destructive = true) { vm.clearSignature(role, plane) }
-      }
-    }
-    if (!LocalRecordLocked.current && !current) {
-      Field(s.reservationLabel, pendingReservation) { value ->
-        vm.setRecordReservation(role, value)
-      }
-    } else if (sig != null && sig.reservation.isNotBlank()) {
-      Text(
-        "${s.reservationLabel}: ${sig.reservation}",
-        style = MaterialTheme.typography.labelSmall,
-        color = Limen.colors.inkDim,
-      )
+  val reservation = p.details.reservations[party.participantKey()]
+    ?: p.pendingRecordReservations[party.role] ?: sig?.reservation.orEmpty()
+  val locked = LocalRecordLocked.current
+  var clearing by remember { mutableStateOf(false) }
+  Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Text("${s.role(party.role)} · ${party.signerName()}", style = MaterialTheme.typography.bodyMedium, color = Limen.colors.ink)
+    if (party.representedBy.isNotBlank()) Text("${s.representedBy}: ${party.name} · ${party.authority}", color = Limen.colors.inkDim)
+    Text(when {
+      sig == null -> s.notSigned
+      !current -> s.resignRequired
+      sig.outcome == "absent" -> s.absentOutcome
+      sig.outcome == "unable" -> s.unableToDraw
+      sig.refused -> s.refusedNote
+      else -> s.signed
+    }, color = Limen.colors.ink)
+    if (!locked && !current) {
+      Field(s.reservationLabel, reservation, singleLine = false) { vm.setRecordReservation(party.role, it, party.participantKey()) }
+      SmallKey(s.signKey, Modifier.fillMaxWidth(), enabled = party.signerName().isNotBlank(), onPress = onSign)
+      SmallKey(s.refusedKey, Modifier.fillMaxWidth()) { vm.refuseSignature(party.role, plane, party.participantKey()) }
+      SmallKey(s.absentOutcome, Modifier.fillMaxWidth(), enabled = reservation.isNotBlank()) { vm.refuseSignature(party.role, plane, party.participantKey(), "absent") }
+      SmallKey(s.unableToDraw, Modifier.fillMaxWidth(), enabled = reservation.isNotBlank()) { vm.refuseSignature(party.role, plane, party.participantKey(), "unable") }
+    } else {
+      if (sig?.reservation?.isNotBlank() == true) Text("${s.reservationLabel}: ${sig.reservation}", color = Limen.colors.ink)
+      if (!locked) SmallKey(s.clearInk) { clearing = true }
     }
   }
+  if (clearing) ConfirmDialog(s, s.clearInk, onConfirm = { vm.clearSignature(party.role, plane, party.participantKey()); clearing = false }, onDismiss = { clearing = false })
 }
 
 /**
@@ -247,7 +223,7 @@ internal fun ExportStep(vm: LimenViewModel, s: Str, p: Protocol) {
         )
         if (p.amendedFromId.isNotBlank()) {
           Text(
-            "${s.pdfAmends}: ${p.amendedFromId}",
+            "${s.pdfAmends}: ${p.amendedFromFingerprint.takeIf(String::isNotBlank)?.let { "LIMEN-${it.take(16)}" } ?: p.amendedFromId}",
             style = MaterialTheme.typography.labelSmall,
             color = Limen.colors.inkDim,
           )
@@ -256,15 +232,28 @@ internal fun ExportStep(vm: LimenViewModel, s: Str, p: Protocol) {
     }
 
     Panel(label = s.pdfLanguage) {
+      Column {
+      Text(s.translationNotice, color = Limen.colors.inkDim)
       PillRow(
         Lang.entries.map { it to it.name.uppercase() },
         vm.pdfLang ?: vm.lang,
         dense = true,
         onSelect = vm::selectPdfLang,
       )
+      }
     }
+    p.exportHistory.asReversed().forEach { copy ->
+      SmallKey(copy.name, Modifier.fillMaxWidth()) { vm.selectExport(copy) }
+    }
+    vm.exported?.companionUri?.let { uri ->
+      SmallKey(s.accessibleCopy, Modifier.fillMaxWidth()) {
+        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW).setDataAndType(uri, "text/html").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)) }
+          .onFailure { Toast.makeText(context, s.openFileFailed, Toast.LENGTH_LONG).show() }
+      }
+    }
+    RecordBackupButton(vm, s, p)
 
-    val deliveryNeedsExport = p.deliveryMetadataEpochMs > p.exportedEpochMs
+    val deliveryNeedsExport = if (p.exportHistory.isEmpty()) p.deliveryMetadataEpochMs > p.exportedEpochMs else p.deliveryRevision != p.exportHistory.last().deliveryRevision
     if (deliveryNeedsExport) {
       Panel(label = s.deliveryChanged, warning = true) {
         Text(
@@ -333,6 +322,7 @@ internal fun ExportStep(vm: LimenViewModel, s: Str, p: Protocol) {
             DepositKind.BankAccount -> s.releaseBank
             DepositKind.Insurance -> s.releaseInsurance
             DepositKind.None -> ""
+              DepositKind.Unknown -> s.toVerify
           },
           style = MaterialTheme.typography.bodyMedium,
           color = Limen.colors.ink,
@@ -372,24 +362,23 @@ internal fun ExportStep(vm: LimenViewModel, s: Str, p: Protocol) {
 
 @Composable
 private fun CopyDeliveryPanel(vm: LimenViewModel, s: Str, p: Protocol) {
-  var tenantDetail by rememberSaveable(p.id) { mutableStateOf("") }
-  var landlordDetail by rememberSaveable(p.id) { mutableStateOf("") }
   Panel(label = s.copyDelivery) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
       Text(s.deliverySelfDeclared, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
-      listOf(Role.Tenant, Role.Landlord).forEach { role ->
-        val receipt = p.deliveryReceipts.firstOrNull { it.role == role }
+      p.parties.filter { it.role in listOf(Role.Tenant, Role.Landlord) }.forEach { party ->
+        val role = party.role
+        var detail by rememberSaveable(p.id, party.participantKey()) { mutableStateOf("") }
+        val receipt = p.deliveryReceipts.firstOrNull { it.role == role && (it.participantId == party.participantKey() || it.participantId.isBlank() && party.id.isBlank()) }
         Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-          Text(s.role(role), style = MaterialTheme.typography.bodyMedium, color = Limen.colors.ink)
+          Text("${s.role(role)} · ${party.name}", style = MaterialTheme.typography.bodyMedium, color = Limen.colors.ink)
           if (receipt == null) {
             Text(s.recordCopyFor, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
-            val detail = if (role == Role.Tenant) tenantDetail else landlordDetail
             Field(
               s.deliveryDetail,
               detail,
               editableWhenLocked = true,
             ) { value ->
-              if (role == Role.Tenant) tenantDetail = value else landlordDetail = value
+              detail = value
             }
             androidx.compose.foundation.layout.FlowRow(
               horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -400,7 +389,7 @@ private fun CopyDeliveryPanel(vm: LimenViewModel, s: Str, p: Protocol) {
                   s.deliveryMethod(method),
                   dim = false,
                   enabled = method != DeliveryMethod.Other || detail.isNotBlank(),
-                ) { vm.recordDelivery(role, method, detail) }
+                ) { vm.recordDelivery(role, method, detail, party.participantKey()) }
               }
             }
           } else {
@@ -411,7 +400,7 @@ private fun CopyDeliveryPanel(vm: LimenViewModel, s: Str, p: Protocol) {
                 color = Limen.colors.seal,
                 modifier = Modifier.weight(1f),
               )
-              IconKey(ButtonGlyph.Clear, s.clearDelivery, destructive = true) { vm.clearDelivery(role) }
+              IconKey(ButtonGlyph.Clear, s.clearDelivery, destructive = true) { vm.clearDelivery(role, receipt.participantId) }
             }
             if (receipt.note.isNotBlank()) {
               Text(receipt.note, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)

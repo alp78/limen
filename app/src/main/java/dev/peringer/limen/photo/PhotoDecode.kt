@@ -16,7 +16,7 @@ import java.io.File
 object PhotoDecode {
 
   /** True when the file decodes at all, which is what the annex's two passes must agree on. */
-  fun readable(file: File): Boolean = bounds(file) != null
+  fun readable(file: File): Boolean = sampled(file, 256)?.let { it.recycle(); true } ?: false
 
   /**
    * The photograph at roughly [targetWidth], turned upright. Sampling happens during the
@@ -24,9 +24,9 @@ object PhotoDecode {
    * memory: three of those at once is the allocation an inspector's phone actually refuses.
    */
   fun sampled(file: File, targetWidth: Int): Bitmap? {
-    val (width, _) = bounds(file) ?: return null
+    val (width, height) = bounds(file) ?: return null
     if (targetWidth <= 0) return null
-    val sample = (width / targetWidth).coerceAtLeast(1)
+    val sample = (maxOf(width, height) / targetWidth).coerceAtLeast(1)
     val bitmap = runCatching {
       BitmapFactory.decodeFile(
         file.absolutePath,
@@ -46,16 +46,17 @@ object PhotoDecode {
 
   private fun upright(bitmap: Bitmap, file: File): Bitmap {
     val exif = runCatching { ExifInterface(file.absolutePath) }.getOrNull() ?: return bitmap
-    val rotation = when (
-      exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
-    ) {
-      ExifInterface.ORIENTATION_ROTATE_90 -> 90f
-      ExifInterface.ORIENTATION_ROTATE_180 -> 180f
-      ExifInterface.ORIENTATION_ROTATE_270 -> 270f
-      else -> 0f
+    val matrix = Matrix()
+    when (exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)) {
+      ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> matrix.setScale(-1f, 1f)
+      ExifInterface.ORIENTATION_ROTATE_180 -> matrix.setRotate(180f)
+      ExifInterface.ORIENTATION_FLIP_VERTICAL -> matrix.setScale(1f, -1f)
+      ExifInterface.ORIENTATION_TRANSPOSE -> { matrix.setRotate(90f); matrix.postScale(-1f, 1f) }
+      ExifInterface.ORIENTATION_ROTATE_90 -> matrix.setRotate(90f)
+      ExifInterface.ORIENTATION_TRANSVERSE -> { matrix.setRotate(270f); matrix.postScale(-1f, 1f) }
+      ExifInterface.ORIENTATION_ROTATE_270 -> matrix.setRotate(270f)
+      else -> return bitmap
     }
-    if (rotation == 0f) return bitmap
-    val matrix = Matrix().apply { postRotate(rotation) }
     val rotated = runCatching {
       Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
     }.getOrNull() ?: return bitmap

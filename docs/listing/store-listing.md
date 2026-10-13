@@ -1,347 +1,153 @@
 # Limen store listing
 
-Ready to paste into the Play Console. Character limits are Play's and are counted here against the text inside the fenced blocks.
+Draft copy for Android 1.2.0, 13 October 2026. No listing has been submitted. App name is `Limen` (5/30). These revisions are model-authored; Romansh requires native review.
 
----
-
-## App name
-
-`Limen`
-
-(5 / 30)
-
----
-
-## Short description
-
-```
-Swiss handover protocol: defects, photos, signatures, PDF. Stays on your phone.
-```
-
-(79 / 80)
-
----
-
-## Full description
-
-```
-Limen records the handover of a Swiss apartment, from the first meter reading to a signed PDF both parties take away.
-
-It is one document, not two apps. A handover is one session on one phone: whoever holds it picks their side at the start, and both parties sign that same record.
-
-WHAT IT RECORDS
-
-Rooms hold defects, and only defects. There is no grid of undamaged surfaces to tick, because a handover protocol is a record of what is wrong, not an inventory of what is fine. Every room still carries an "inspected" mark, because "checked and clean" and "never opened" are different facts and the paper should say which.
-
-Each finding takes a description, photographs, who is charged, a repair deadline, an estimate, and the other party's stated position. At an exit protocol the tenant can dispute a finding, call it normal wear, or say it was already there at entry, without the app treating any of it as an admission.
-
-Supplied appliances and furniture are rows rather than checkboxes, so two fridges are two facts, each with its own photograph and its own defect.
-
-THE PAPERWORK
-
-Address, parties, contract, deposit, meter readings and keys. Optional sections are added only when the handover has them, so a record never asks for a deposit it does not involve.
-
-A cantonal overlay covers the rules that differ across Switzerland, including the Vaud RULV framework and the initial rent form, with the year of the snapshot stated on screen.
-
-SIGNING AND EXPORT
-
-Both parties sign on the phone, or refuse and say why, with any reservation recorded next to the signature. A finalized record is sealed: it can be amended by a new linked record, never quietly edited. The export is a plain A4 PDF with the photographs as a numbered annex.
-
-PRIVACY
-
-There is no account, no sign-in, no advertising, no analytics and no crash reporting. Protocols, photographs and signatures stay in the app's private storage until you export, share or back them up.
-
-Limen uses the internet for one thing: when you type a Swiss address, the typed text is sent to the federal swisstopo address service for suggestions. Nothing else leaves the phone, and no handover data is ever sent to the developer.
-
-Photographs come from the system camera or the system picker, so the app asks for no camera and no storage permission. Android cloud backup and device-to-device transfer are switched off for its data.
-
-Backups are yours to make: a single archive of every record, its photographs and its signature ink, with a password if you choose to set one. Limen cannot recover that password.
-
-FIVE LANGUAGES
-
-English, French, German, Italian and Romansh, in the app and in the exported PDF, which can be produced in a different language from the one you are working in.
-
-Limen is a structured handover tool. It is not legal advice and does not replace current official guidance.
-```
-
-(2874 / 4000)
-
----
-
-# Localized listings
-
-Play has no Swiss variants, so the four other languages upload as `de-DE`, `fr-FR`, `it-IT` and `rm`. The wording follows `app/src/main/java/dev/peringer/limen/ui/Strings.kt` rather than translating the English freely, so the listing and the app name the same things the same way: `Mängel` and not `Schäden`, `état des lieux` and not `rapport`, `verbale` and not `rapporto`.
-
-The Romansh below has not been read by a native speaker. It ships because you chose to publish all five at once, and it should go through the Apertus review afterwards and be corrected in place.
-
----
-
-## French (fr-FR)
+## English (en-US)
 
 ### Short description
 
 ```
-État des lieux suisse: défauts, photos, signatures, PDF. Reste sur le mobile.
+Swiss handovers with photos, party positions, signatures and A4 documents.
 ```
 
-(77 / 80)
+(74/80)
 
 ### Full description
 
 ```
-Limen consigne l'état des lieux d'un appartement suisse, du premier relevé des compteurs au PDF signé que chaque partie emporte.
+Limen documents residential property handovers in Switzerland on one phone.
 
-C'est un seul document, pas deux applications. Un état des lieux tient dans une seule session sur un seul téléphone : la personne qui le tient choisit son côté au début, et les deux parties signent ce même constat.
+Prepare an entry or exit, identify the contractual landlord, tenants and representatives, then inspect rooms in the order that suits the visit. Rename rooms, add overview photographs and precise findings, and record each side’s position without treating a disagreement as an admission. Explain areas that could not be inspected.
 
-CE QUE LE CONSTAT CONTIENT
+Record keys, cards and remotes, meter identifiers and readings, the actual transfer date, and supporting documents. Saved entry records remain available during an exit inspection.
 
-Les pièces portent des défauts, et seulement des défauts. Il n'y a pas de grille de surfaces intactes à cocher, parce qu'un état des lieux consigne ce qui ne va pas, pas l'inventaire de ce qui va bien. Chaque pièce garde néanmoins une marque « contrôlée », parce que « contrôlée et propre » et « jamais ouverte » sont deux faits différents et que le papier doit dire lequel.
+Read the complete document before signing. Each participant has an individual reservation and outcome. Finalized records are preserved; corrections create linked amendments. Export an A4 PDF and an accessible HTML companion, keep the exact copies in the record history and record delivery separately.
 
-Chaque constatation reçoit une description, des photos, l'imputation des frais, un délai de réparation, une estimation et la position déclarée de l'autre partie. Lors d'un état des lieux de sortie, le locataire peut contester une constatation, invoquer l'usure normale ou indiquer qu'elle existait déjà à l'entrée, sans que l'application traite cela comme un aveu.
+Dated Swiss guidance includes all 26 cantons, 2026 initial-rent-form duties, local conditions in Neuchâtel and Vaud, and deposit checks in Fribourg, Geneva and Ticino. Official sources are linked. The app records unresolved checks and does not provide legal certification.
 
-Les appareils et le mobilier fournis sont des lignes et non des cases: deux réfrigérateurs sont deux faits, chacun avec sa photo et son propre défaut.
+No account, advertising or analytics. Records stay in private app storage. Online address suggestions are optional and off by default; enabling them sends typed searches to swisstopo. Exported files are outside private storage. Backups are encrypted with a password, or explicitly chosen as readable archives.
 
-LE DOSSIER
-
-Adresse, parties, contrat, garantie de loyer, relevé des compteurs et clés. Les rubriques facultatives n'apparaissent que si la remise les comporte, de sorte qu'un constat ne demande jamais une garantie qui n'existe pas.
-
-Une couche cantonale couvre les règles qui diffèrent d'un canton à l'autre, dont le cadre RULV vaudois et la formule officielle du loyer initial, avec l'année du référentiel indiquée à l'écran.
-
-SIGNATURE ET EXPORT
-
-Les deux parties signent sur le téléphone, ou refusent en indiquant pourquoi, toute réserve étant consignée à côté de la signature. Un constat finalisé est scellé: il peut être complété par un avenant lié, jamais modifié en silence. L'export est un PDF A4 ordinaire avec les photos en annexe numérotée.
-
-CONFIDENTIALITÉ
-
-Pas de compte, pas d'identification, pas de publicité, pas d'analytique, pas de rapport de plantage. Les constats, les photos et les signatures restent dans le stockage privé de l'application jusqu'à ce que vous les exportiez, les partagiez ou les sauvegardiez.
-
-Limen utilise internet pour une seule chose: quand vous saisissez une adresse suisse, le texte saisi est envoyé au service fédéral d'adresses swisstopo pour obtenir des suggestions. Rien d'autre ne quitte le téléphone, et aucune donnée d'état des lieux n'est jamais transmise au développeur.
-
-Les photos proviennent de l'appareil photo du système ou du sélecteur du système, si bien que l'application ne demande ni autorisation d'appareil photo ni autorisation de stockage. La sauvegarde cloud d'Android et le transfert d'appareil à appareil sont désactivés pour ses données.
-
-Les sauvegardes vous appartiennent: une archive unique de tous les constats, de leurs photos et de l'encre des signatures, avec un mot de passe si vous choisissez d'en définir un. Limen ne peut pas récupérer ce mot de passe.
-
-CINQ LANGUES
-
-Français, allemand, italien, romanche et anglais, dans l'application et dans le PDF exporté, qui peut être produit dans une autre langue que celle dans laquelle vous travaillez.
-
-Limen est un outil structuré d'état des lieux. Il ne constitue pas un conseil juridique et ne remplace pas les directives officielles en vigueur.
+Interface and document labels are available in French, English, German, Italian and Romansh. Entered statements retain their original language.
 ```
 
-(3420 / 4000)
+(1618/4000)
 
----
-
-## German (de-DE)
+## Français (fr-FR)
 
 ### Short description
 
 ```
-Schweizer Übergabeprotokoll: Mängel, Fotos, Unterschriften, PDF. Bleibt lokal.
+États des lieux suisses, photos, réserves, signatures et documents A4.
 ```
 
-(78 / 80)
+(70/80)
 
 ### Full description
 
 ```
-Limen hält die Übergabe einer Schweizer Wohnung fest, vom ersten Zählerstand bis zum unterschriebenen PDF, das beide Parteien mitnehmen.
+Limen documente les états des lieux de logements en Suisse sur un seul téléphone.
 
-Es ist ein Dokument, nicht zwei Apps. Eine Übergabe ist eine einzige Sitzung auf einem einzigen Telefon: Wer es hält, wählt zu Beginn die eigene Seite, und beide Parteien unterschreiben dasselbe Protokoll.
+Préparez une entrée ou une sortie, identifiez le bailleur contractuel, les locataires et leurs représentants, puis inspectez les pièces dans l’ordre adapté à la visite. Nommez les pièces, ajoutez des photos d’ensemble et des constats précis. Consignez chaque position et les zones non inspectées avec leur motif.
 
-WAS DAS PROTOKOLL FESTHÄLT
+Relevez les clés, badges, télécommandes, identifiants et valeurs des compteurs, ainsi que la date de remise effective. Joignez les pièces justificatives. Le constat d’entrée sauvegardé reste consultable lors de la sortie.
 
-Räume tragen Mängel, und nur Mängel. Es gibt kein Raster unbeschädigter Flächen zum Abhaken, denn ein Übergabeprotokoll hält fest, was nicht stimmt, und nicht das Inventar dessen, was in Ordnung ist. Jeder Raum trägt trotzdem eine Marke "geprüft", denn "geprüft und sauber" und "nie geöffnet" sind zwei verschiedene Tatsachen, und das Papier soll sagen, welche gilt.
+Relisez le document complet avant les signatures. Chaque participant dispose de sa réserve et de son résultat individuel. Un constat finalisé est conservé ; une correction crée un avenant lié. Exportez un PDF A4 et une copie HTML accessible, retrouvez les exemplaires exacts dans l’historique et consignez leur remise séparément.
 
-Jede Feststellung erhält eine Beschreibung, Fotos, die Kostenzuordnung, eine Frist zur Behebung, eine Schätzung und die erklärte Position der Gegenseite. Beim Auszugsprotokoll kann die Mieterschaft eine Feststellung bestreiten, normale Abnützung geltend machen oder festhalten, dass der Mangel beim Einzug schon bestand, ohne dass die App das als Anerkennung behandelt.
+Les indications suisses datées couvrent les 26 cantons, les obligations de formule du loyer initial en 2026, les conditions locales de Neuchâtel et Vaud et les contrôles de garantie à Fribourg, Genève et au Tessin. Les sources officielles sont accessibles. Les points non résolus restent visibles, sans certification juridique.
 
-Mitvermietete Geräte und Möbel sind Zeilen und keine Kästchen: zwei Kühlschränke sind zwei Tatsachen, jede mit eigenem Foto und eigenem Mangel.
+Sans compte, publicité ni analyse d’utilisation. Les constats restent dans le stockage privé. Les suggestions d’adresses sont facultatives et désactivées au départ ; leur activation transmet les recherches saisies à swisstopo. Les fichiers exportés quittent le stockage privé. Une sauvegarde est chiffrée avec un mot de passe ou créée explicitement comme archive lisible.
 
-DIE UNTERLAGEN
-
-Adresse, Parteien, Vertrag, Mietzinsdepot, Zählerstände und Schlüssel. Fakultative Abschnitte erscheinen nur, wenn die Übergabe sie hat, damit ein Protokoll nie nach einem Depot fragt, das es nicht gibt.
-
-Eine kantonale Ergänzung deckt die Regeln ab, die sich innerhalb der Schweiz unterscheiden, darunter das Waadtländer RULV und das amtliche Anfangsmietzinsformular, mit dem Jahr des Regelstands auf dem Bildschirm.
-
-UNTERSCHRIFT UND EXPORT
-
-Beide Parteien unterschreiben auf dem Telefon oder verweigern die Unterschrift mit Begründung, wobei jeder Vorbehalt neben der Unterschrift festgehalten wird. Ein abgeschlossenes Protokoll ist versiegelt: es kann durch einen verknüpften Nachtrag ergänzt, aber nie stillschweigend geändert werden. Der Export ist ein schlichtes A4-PDF mit den Fotos als nummerierter Anhang.
-
-DATENSCHUTZ
-
-Kein Konto, keine Anmeldung, keine Werbung, keine Analyse, keine Absturzberichte. Protokolle, Fotos und Unterschriften bleiben im privaten Speicher der App, bis Sie sie exportieren, teilen oder sichern.
-
-Limen nutzt das Internet für eine einzige Sache: Wenn Sie eine Schweizer Adresse eingeben, wird der eingegebene Text an den eidgenössischen Adressdienst swisstopo geschickt, der Vorschläge zurückgibt. Sonst verlässt nichts das Telefon, und Protokolldaten gehen nie an den Entwickler.
-
-Fotos kommen von der System-Kamera oder aus der System-Auswahl, weshalb die App weder eine Kamera- noch eine Speicherberechtigung verlangt. Android-Cloud-Sicherung und Gerät-zu-Gerät-Übertragung sind für ihre Daten abgeschaltet.
-
-Sicherungen gehören Ihnen: ein einziges Archiv aller Protokolle, ihrer Fotos und der Unterschriftstinte, mit einem Passwort, wenn Sie eines setzen wollen. Limen kann dieses Passwort nicht wiederherstellen.
-
-FÜNF SPRACHEN
-
-Deutsch, Französisch, Italienisch, Rätoromanisch und Englisch, in der App und im exportierten PDF, das in einer anderen Sprache erstellt werden kann als der, in der Sie arbeiten.
-
-Limen ist ein strukturiertes Übergabewerkzeug. Es ist keine Rechtsberatung und ersetzt die geltenden amtlichen Vorgaben nicht.
+Interface et rubriques en français, anglais, allemand, italien et romanche. Les déclarations saisies gardent leur langue d’origine.
 ```
 
-(3318 / 4000)
+(1784/4000)
 
----
-
-## Italian (it-IT)
+## Deutsch (de-DE)
 
 ### Short description
 
 ```
-Verbale di consegna svizzero: difetti, foto, firme, PDF. Resta sul telefono.
+Schweizer Wohnungsübergaben mit Fotos, Vorbehalten, Unterschriften und A4.
 ```
 
-(76 / 80)
+(74/80)
 
 ### Full description
 
 ```
-Limen registra la consegna di un appartamento svizzero, dalla prima lettura dei contatori al PDF firmato che entrambe le parti portano via.
+Limen dokumentiert Wohnungsübergaben in der Schweiz auf einem Telefon.
 
-È un solo documento, non due applicazioni. Una riconsegna è un'unica sessione su un solo telefono: chi lo tiene sceglie la propria parte all'inizio, e le due parti firmano lo stesso verbale.
+Einzug oder Auszug vorbereiten, vertragliche Vermieterschaft, Mietparteien und Vertretungen erfassen und Räume in passender Reihenfolge prüfen. Räume benennen, Übersichtsfotos und genaue Feststellungen ergänzen und unterschiedliche Standpunkte festhalten. Nicht geprüfte Bereiche mit Begründung dokumentieren.
 
-COSA REGISTRA
+Schlüssel, Karten, Fernbedienungen, Zählerkennzeichnungen und Messwerte sowie die tatsächliche Übergabe erfassen. Beilagen hinzufügen und beim Auszug auf das gespeicherte Einzugsprotokoll zugreifen.
 
-I locali contengono difetti, e soltanto difetti. Non c'è una griglia di superfici intatte da spuntare, perché un verbale di consegna registra ciò che non va, non l'inventario di ciò che va bene. Ogni locale porta comunque un contrassegno "controllato", perché "controllato e pulito" e "mai aperto" sono due fatti diversi e la carta deve dire quale.
+Vor der Unterschrift das vollständige Dokument lesen. Jede Person erhält einen eigenen Vorbehalt und ein eigenes Ergebnis. Abgeschlossene Protokolle bleiben erhalten; Korrekturen erzeugen verknüpfte Nachträge. A4-PDF und zugängliche HTML-Kopie exportieren, genaue Exemplare im Verlauf wiederfinden und ihre Zustellung gesondert erfassen.
 
-Ogni constatazione riceve una descrizione, fotografie, l'imputazione dei costi, un termine di riparazione, una stima e la posizione dichiarata dell'altra parte. In un verbale di riconsegna il conduttore può contestare una constatazione, invocare l'usura normale o indicare che esisteva già alla consegna, senza che l'applicazione lo tratti come un'ammissione.
+Datierte Schweizer Hinweise umfassen alle 26 Kantone, die Formularpflicht beim Anfangsmietzins 2026, örtliche Bedingungen in Neuenburg und Waadt sowie Depotprüfungen in Freiburg, Genf und Tessin. Amtliche Quellen sind verlinkt. Offene Fragen bleiben sichtbar; die App erteilt keine rechtliche Zertifizierung.
 
-Elettrodomestici e arredi forniti sono righe e non caselle: due frigoriferi sono due fatti, ciascuno con la propria foto e il proprio difetto.
+Kein Konto, keine Werbung und keine Nutzungsanalyse. Protokolle bleiben im privaten Speicher. Online-Adressvorschläge sind freiwillig und zunächst ausgeschaltet; nach Aktivierung gehen eingegebene Suchtexte an swisstopo. Exportierte Dateien liegen ausserhalb des privaten Speichers. Sicherungen werden mit Passwort verschlüsselt oder ausdrücklich als lesbares Archiv erstellt.
 
-I DOCUMENTI
-
-Indirizzo, parti, contratto, deposito di garanzia, letture dei contatori e chiavi. Le sezioni facoltative compaiono solo se la consegna le prevede, così un verbale non chiede mai un deposito che non esiste.
-
-Un livello cantonale copre le regole che cambiano da un cantone all'altro, fra cui il quadro RULV vodese e il modulo ufficiale della pigione iniziale, con l'anno del riferimento indicato sullo schermo.
-
-FIRMA ED ESPORTAZIONE
-
-Entrambe le parti firmano sul telefono, oppure rifiutano indicando il motivo, e ogni riserva è registrata accanto alla firma. Un verbale finalizzato è sigillato: può essere completato da un'integrazione collegata, mai modificato in silenzio. L'esportazione è un semplice PDF A4 con le fotografie in allegato numerato.
-
-PRIVACY
-
-Nessun account, nessuna registrazione, nessuna pubblicità, nessuna analisi, nessuna segnalazione di arresti anomali. Verbali, fotografie e firme restano nell'archivio privato dell'applicazione finché non li esportate, condividete o salvate.
-
-Limen usa internet per una cosa sola: quando digitate un indirizzo svizzero, il testo digitato è inviato al servizio federale di indirizzi swisstopo per ottenere suggerimenti. Nient'altro lascia il telefono, e nessun dato del verbale è mai trasmesso allo sviluppatore.
-
-Le fotografie provengono dalla fotocamera di sistema o dal selettore di sistema, quindi l'applicazione non chiede né autorizzazione alla fotocamera né allo spazio di archiviazione. Il backup cloud di Android e il trasferimento da dispositivo a dispositivo sono disattivati per i suoi dati.
-
-I backup sono vostri: un unico archivio di tutti i verbali, delle loro fotografie e dell'inchiostro delle firme, con una password se scegliete di impostarla. Limen non può recuperare quella password.
-
-CINQUE LINGUE
-
-Italiano, francese, tedesco, romancio e inglese, nell'applicazione e nel PDF esportato, che può essere prodotto in una lingua diversa da quella in cui lavorate.
-
-Limen è uno strumento strutturato per la consegna. Non è una consulenza legale e non sostituisce le direttive ufficiali in vigore.
+Oberfläche und Dokumentrubriken auf Französisch, Englisch, Deutsch, Italienisch und Rätoromanisch. Erfasste Aussagen bleiben in ihrer Originalsprache.
 ```
 
-(3295 / 4000)
+(1760/4000)
 
----
-
-## Romansh (rm)
+## Italiano (it-IT)
 
 ### Short description
 
 ```
-Protocol da surdada svizzer: mancanzas, fotos, suttascripziuns, PDF.
+Consegne di abitazioni svizzere con foto, riserve, firme e documenti A4.
 ```
 
-(68 / 80)
+(72/80)
 
 ### Full description
 
 ```
-Limen registrescha la surdada d'ina abitaziun svizra, da l'emprima posiziun dals contaturs enfin al PDF suttascrit che omaduas partidas prendan cun sai.
+Limen documenta le consegne e riconsegne di abitazioni in Svizzera su un telefono.
 
-Igl è in sulet document, betg duas applicaziuns. Ina surdada è ina suletta sesida sin in sulet telefon: tgi che al tegna tscherna sia vart al cumenzament, ed omaduas varts suttascrivan il medem protocol.
+Preparate l’entrata o l’uscita, identificate il locatore contrattuale, i conduttori e i rappresentanti, poi ispezionate i locali nell’ordine adatto alla visita. Denominate i locali, aggiungete fotografie d’insieme e rilievi precisi e registrate le diverse posizioni. Indicate i locali non ispezionati e il motivo.
 
-TGE CHE VEGN REGISTRÀ
+Registrate chiavi, badge, telecomandi, identificativi e letture dei contatori e la consegna effettiva. Allegate documenti giustificativi e consultate il verbale d’entrata salvato durante la riconsegna.
 
-Ils locals cuntegnan mancanzas, e mo mancanzas. I na dat nagina glista da surfatschas intactas per marcar, perquai ch'in protocol da surdada registrescha quai che n'è betg en urden, betg l'inventari da quai ch'è en urden. Mintga local porta tuttina ina marca "controllà", perquai che "controllà e net" e "mai avert" èn dus fatgs differents e la charta duai dir tge che vala.
+Leggete l’intero documento prima delle firme. Ogni partecipante ha una riserva e un esito individuali. I verbali finalizzati sono conservati; le correzioni creano integrazioni collegate. Esportate un PDF A4 e una copia HTML accessibile, ritrovate gli esemplari esatti nella cronologia e registrate separatamente la loro consegna.
 
-Mintga constataziun retscheiva ina descripziun, fotos, l'attribuziun dals custs, in termin da reparaziun, ina stima e la posiziun declerada da l'autra partida. Tar in protocol da sortida po il locatari contestar ina constataziun, far valair l'isanza normala u inditgar ch'ella existiva gia tar l'entrada, senza che l'applicaziun tractia quai sco ina renconuschientscha.
+Le indicazioni svizzere datate comprendono tutti i 26 cantoni, gli obblighi del modulo di pigione iniziale nel 2026, le condizioni locali di Neuchâtel e Vaud e i controlli delle garanzie a Friburgo, Ginevra e in Ticino. Le fonti ufficiali sono collegate. I punti irrisolti restano visibili, senza certificazione giuridica.
 
-Apparats e mobigliar furnids èn lingias e betg chaschettas: dus frigorifers èn dus fatgs, mintgin cun sia atgna foto e sia atgna mancanza.
+Nessun account, pubblicità o analisi dell’utilizzo. I verbali restano nello spazio privato. I suggerimenti di indirizzi sono facoltativi e inizialmente disattivati; attivandoli, le ricerche digitate vengono inviate a swisstopo. I file esportati escono dallo spazio privato. Il backup è cifrato con password o creato esplicitamente come archivio leggibile.
 
-ILS DOCUMENTS
-
-Adressa, partidas, contract, deposit da locaziun, posiziuns dals contaturs e clavs. Las secziuns facultativas cumparan mo sche la surdada las prevesa, uschia ch'in protocol na dumonda mai in deposit che n'exista betg.
-
-In cumplement chantunal cuvra las reglas che divergeschan en Svizra, tranter auter il rom RULV vadais ed il formular uffizial da la fit iniziala, cun l'onn dal stadi da reglas inditgà sin il visur.
-
-SUTTASCRIPZIUN ED EXPORT
-
-Omaduas partidas suttascrivan sin il telefon, u refusan cun inditgar il motiv, e mintga resalva vegn registrada dasperas la suttascripziun. In protocol finalisà è sigillà: el po vegnir cumplettà cun in supplement collià, mai midà en silenzi. L'export è in PDF A4 simpel cun las fotos sco agiunta numerada.
-
-PROTECZIUN DA DATAS
-
-Nagin conto, nagina annunzia, nagina reclama, nagina analisa, nagins rapports da collaps. Protocols, fotos e suttascripziuns restan en la memoria privata da l'applicaziun enfin che Vus als exportais, parttis u segirais.
-
-Limen dovra l'internet per ina suletta chaussa: cur che Vus endatais ina adressa svizra, vegn il text endatà tramess al servetsch federal d'adressas swisstopo per proposals. Nagut auter bandunescha il telefon, e naginas datas dal protocol vegnan mai tramessas al svilupader.
-
-Las fotos vegnan da la camera dal sistem u dal tschernider dal sistem, uschia che l'applicaziun na dumonda ni ina permissiun da camera ni ina da memoria. La segirezza en la nivla d'Android ed il transferiment d'apparat ad apparat èn deactivads per sias datas.
-
-Las segirezzas appartegnan a Vus: in sulet archiv da tut ils protocols, da lur fotos e da l'inchiaster da las suttascripziuns, cun in pled-clav sche Vus vulais definir in. Limen na po betg restabilir quest pled-clav.
-
-TSCHUNC LINGUAS
-
-Rumantsch, tudestg, franzos, talian ed englais, en l'applicaziun ed en il PDF exportà, che po vegnir producì en autra lingua che quella en la quala Vus lavurais.
-
-Limen è in utensil structurà per la surdada. El n'è nagin cussegl giuridic e na remplazza betg las directivas uffizialas en vigur.
+Interfaccia e rubriche in francese, inglese, tedesco, italiano e romancio. Le dichiarazioni inserite conservano la lingua originale.
 ```
 
-(3330 / 4000)
+(1746/4000)
 
----
+## Rumantsch (rm)
 
-## Category and tags
+### Short description
 
-- **Category:** Business
-- **Tags:** documents, property, inspection, PDF, Switzerland
+```
+Surdadas d’abitaziuns svizras cun fotos, resalvas, suttascripziuns ed A4.
+```
 
-## Content rating
+(73/80)
 
-Business tool with no user-generated public content, no ads, no purchases. Expect Everyone / PEGI 3. The questionnaire answers are all "no": no violence, no sexual content, no profanity, no controlled substances, no gambling, no user-to-user communication, no location sharing.
+### Full description
 
-## Contact and links
+```
+Limen documentescha surdadas d’abitaziuns en Svizra sin in telefon.
 
-- **Privacy policy:** <https://peringer.ch/legal/limen/privacy/>
-- **Support email:** aperinger@proton.me
+Preparai l’entrada u la sortida, registrai il locatur contractual, ils locataris ed ils represchentants e controllai las stanzas en l’urden adattà. Numai las stanzas, agiuntai fotos generalas e constataziuns precisas e registrai las differentas posiziuns. Inditgai las parts betg inspectadas e lur motiv.
 
-## Graphics
+Registrai clavs, badges, telecomandas, identificaziuns e lecturas dals quintaders e la surdada effectiva. Agiuntai documents cumprovants e consultai il protocol d’entrada memorisà tar la sortida.
 
-All of these are in `docs/listing/graphics/` and are ready to upload. `play_push.py` reads this layout directly, so a file added here reaches Play without the manifest below being edited twice.
+Legiai l’entir document avant da suttascriver. Mintga participant ha in’atgna resalva ed in agen resultat. Protocols finalisads restan conservads; correcturas creeschan supplements colliads. Exportai in PDF A4 ed ina copia HTML accessibla e registrai la surdada da las copias separadamain.
 
-| Asset | File | State |
-|---|---|---|
-| App icon | `play-icon-512.png` | 512 x 512, 32-bit RGBA, 140 KB. The supplied seal on the launcher's plaster ground, so the store icon and the home-screen icon are the same mark |
-| Feature graphic | `play-feature-1024x500-<locale>.png` | Five, 1024 x 500, one per listing language. The seal, the wordmark and one line, in the app's navy, bone and bronze, set in Roboto because the app renders in `FontFamily.SansSerif`. The line is the opening phrase of that language's short description, so the graphic and the listing name the app the same way. One type size across all five, the largest that fits the longest line |
-| Phone screenshots | `phone/<locale>/phone-01` to `phone-08` | Forty, 1080 x 2424, eight per listing language, captured on the Pixel 10 from the release build of the RULV fix, which is the code `versionCode 4` ships and differs from it only in the version number |
-| Tablet screenshots | `tablet/<locale>/tablet-01` to `tablet-08` | Forty, 1200 x 1920, eight per listing language, captured on the Galaxy Tab Active 3 at API 33 and uploaded to both the seven-inch and the ten-inch slot |
+Las indicaziuns svizras datadas cumpiglian ils 26 chantuns, las obligaziuns per il formular da la fit iniziala 2026, las cundiziuns localas a Neuchâtel ed en il Vad e controllas da garanzia a Friburg, Genevra ed en il Tessin. Las funtaunas uffizialas èn colliadas. Dumondas avertas restan visiblas; l’app na dat nagina certificaziun giuridica.
 
-Each language carries its own canton, town, names and rent, because a German screenshot showing a Lausanne address reads as the French one with the words swapped. Vaud for French, Bern for German, Ticino for Italian, Graubünden for Romansh, Zug for English.
+Nagin conto, nagina reclama e naginas analisas d’utilisaziun. Ils protocols restan en la memoria privata. Las propostas d’adressas online èn facultativas e deactivadas al cumenzament; suenter l’activaziun vegnan las tschertgas endatadas tramessas a swisstopo. Datotecas exportadas èn ordaifer la memoria privata. Segirezzas èn criptadas cun pled-clav u vegnan creadas explicitamain sco archivs legibels.
 
-The eight screenshots, in upload order:
+Interfatscha e rubricas en franzos, englais, tudestg, talian e rumantsch. Las decleraziuns endatadas restan en lur lingua originala.
+```
 
-1. `phone-01-home.png`, the app's face and the two ways into a record
-2. `phone-02-rooms.png`, the rooms, each carrying its own inspected mark
-3. `phone-03-defect-editor.png`, recording one defect with its photographs and the tenant's stated position
-4. `phone-04-canton-overlay.png`, the canton overlay with its legal basis and dated period
-5. `phone-05-review.png`, the whole protocol before signing
-6. `phone-06-signature.png`, signing on the device
-7. `phone-07-finalized.png`, the sealed record with its evidence fingerprint and the five PDF languages
-8. `phone-08-exported.png`, the exported PDF and the delivery record
-
-The walk that produces them photographs four screens before anything has been entered, and those four are deliberately not here: an empty form with a "still missing" list of eight items is honest as a process strip on peringer.ch and useless on a listing.
-
-The feature graphic is a plain composition of assets that already exist, not an identity round. Replace it if the visual identity is ever revisited.
-
-**On the aspect ratio.** These are 1080 x 2424, which is the Pixel 10's own shape and taller than the 9:16 the Play documentation names. Settled on 7 September 2026: all eight uploaded through the Play Developer API without complaint, so the documented ratio is a guide rather than a limit. If a future upload is ever refused, pad rather than crop, so nothing is lost from the frame.
-
-**The one shot not taken.** A defect carrying a photograph. The app takes photographs through the system camera, and an honest store screenshot needs a real one of a real mark on a real wall, which is thirty seconds with the phone and cannot be manufactured here. `phone-04` shows the defect editor with its camera and gallery controls instead.
+(1745/4000)

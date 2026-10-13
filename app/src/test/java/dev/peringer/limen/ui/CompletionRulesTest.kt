@@ -59,6 +59,7 @@ class CompletionRulesTest {
         )
       },
       ruleSetId = LEGAL_RULE_SET_ID,
+      notes = mapOf(LegalRequirement.InitialRentForm to "Official form reviewed against the lease"),
     ),
     parties = listOf(Party(Role.Tenant, "Tenant"), Party(Role.Landlord, company.ifBlank { "Landlord" })),
     rooms = listOf(Room("r1", RoomKind.Room, inspected = true)),
@@ -152,7 +153,7 @@ class CompletionRulesTest {
   }
 
   @Test
-  fun removingTheKeysCardRemovesTheKeyRuleWithIt() {
+  fun removingTheKeysCardRequiresAnExplicitScopeReason() {
     // The rule used to be the one component check that was not gated on the card. Removing
     // Keys took the only control that can record an outcome off the screen and left the
     // record permanently unfinalizable, with nothing anywhere to answer the complaint.
@@ -162,7 +163,8 @@ class CompletionRulesTest {
       keys = emptyList(),
       keyTransfer = KeyTransferStatus.NotRecorded,
     )
-    assertTrue(issues(withoutKeys).isEmpty())
+    assertTrue(FinalizationIssue.Keys in issues(withoutKeys))
+    assertTrue(issues(withoutKeys.copy(details = dev.peringer.limen.data.RecordDetails(scopeNotes = mapOf("Keys" to "Keys returned separately to the agency")))).isEmpty())
   }
 
   @Test

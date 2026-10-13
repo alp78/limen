@@ -49,7 +49,9 @@ fun DateField(
   val locked = LocalRecordLocked.current
   // Keyed on the stored value: an accepted date, the picker, and a record opened fresh all
   // arrive through it, while a half-typed date leaves it alone and so survives typing.
-  var text by remember(stored) { mutableStateOf(SwissDate.display(stored)) }
+  val text = SwissDate.display(stored)
+  var lastValid by androidx.compose.runtime.saveable.rememberSaveable(label) { mutableStateOf(stored.takeIf { SwissDate.parse(it) != null }.orEmpty()) }
+  androidx.compose.runtime.LaunchedEffect(stored) { if (SwissDate.parse(stored) != null) lastValid = stored }
   var picking by remember { mutableStateOf(false) }
   var focused by remember { mutableStateOf(false) }
   val digits = text.filter(Char::isDigit).length
@@ -75,14 +77,12 @@ fun DateField(
     trailing = calendar,
     onFocusChanged = { focused = it },
   ) { raw ->
-    text = SwissDate.mask(raw)
+    val text = SwissDate.mask(raw)
     val iso = SwissDate.toStored(text)
-    when {
-      iso != null -> onChange(iso)
-      // Emptying the field is an answer too; a half-typed one is not yet.
-      text.isEmpty() -> onChange("")
-    }
+    // Retain an unfinished/invalid edit in the draft; never silently export the old date.
+    onChange(iso ?: text)
   }
+  if (!locked && impossible && lastValid.isNotBlank()) SmallKey(s.words("Restore last valid date", "Rétablir la dernière date valide", "Letztes gültiges Datum übernehmen", "Ripristina l’ultima data valida", "Restabilir l’ultima data valaivla")) { onChange(lastValid) }
 
   if (picking) {
     val start = SwissDate.parse(stored) ?: LocalDate.now()
@@ -129,7 +129,9 @@ fun TimeField(
   onChange: (String) -> Unit,
 ) {
   val locked = LocalRecordLocked.current
-  var text by remember(stored) { mutableStateOf(stored) }
+  val text = stored
+  var lastValid by androidx.compose.runtime.saveable.rememberSaveable(label) { mutableStateOf(stored.takeIf { SwissDate.toStoredTime(it) != null }.orEmpty()) }
+  androidx.compose.runtime.LaunchedEffect(stored) { if (SwissDate.toStoredTime(stored) != null) lastValid = stored }
   var picking by remember { mutableStateOf(false) }
   var focused by remember { mutableStateOf(false) }
   val digits = text.filter(Char::isDigit).length
@@ -151,13 +153,11 @@ fun TimeField(
     trailing = dial,
     onFocusChanged = { focused = it },
   ) { raw ->
-    text = SwissDate.maskTime(raw)
+    val text = SwissDate.maskTime(raw)
     val value = SwissDate.toStoredTime(text)
-    when {
-      value != null -> onChange(value)
-      text.isEmpty() -> onChange("")
-    }
+    onChange(value ?: text)
   }
+  if (!locked && impossible && lastValid.isNotBlank()) SmallKey(s.words("Restore last valid time", "Rétablir la dernière heure valide", "Letzte gültige Uhrzeit übernehmen", "Ripristina l’ultima ora valida", "Restabilir l’ultima ura valaivla")) { onChange(lastValid) }
 
   if (picking) {
     val existing = stored.split(':')
@@ -199,8 +199,8 @@ fun DateAndTimeRow(
   onDate: (String) -> Unit,
   onTime: (String) -> Unit,
 ) {
-  Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-    DateField(dateLabel, date, s, Modifier.weight(1.5f), onDate)
-    TimeField(timeLabel, time, s, Modifier.weight(1f), onTime)
+  Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    DateField(dateLabel, date, s, Modifier.fillMaxWidth(), onDate)
+    TimeField(timeLabel, time, s, Modifier.fillMaxWidth(), onTime)
   }
 }

@@ -6,6 +6,52 @@ Paste each block into the matching language on the release, or let `play_push.py
 
 ---
 
+## versionCode 5, versionName 1.2.0 (prepared, not uploaded)
+
+13 October 2026. Romansh native review remains pending. RULV means the Vaud rental rules, not rent-control periods. The federal BWO document is an overview of cantonal form duties, not a federal initial-rent form. Older notes below are historical.
+
+### en-US
+
+```
+Full document preview, A4 PDF and accessible HTML copies. Multiple tenants and named representatives, individual reservations and outcomes. Improved large-text layouts, room photos, entry comparison, meters, keys and attachments. Fixes preserve disputed claims and delivery receipts, validate dates and images, and add recovery tools. Dated cantonal checks and optional online address suggestions.
+```
+
+(397/500)
+
+### fr-FR
+
+```
+Aperçu complet, PDF A4 et copie HTML accessible. Plusieurs locataires et représentants nommés, réserves et résultats individuels. Meilleure lisibilité en grands caractères, photos d’ensemble, comparaison entrée-sortie, compteurs, clés et pièces jointes. Corrections des prétentions contestées, reçus de remise, dates et images. Récupération des dossiers, contrôles cantonaux datés et recherche d’adresses facultative.
+```
+
+(417/500)
+
+### de-DE
+
+```
+Vollständige Vorschau, A4-PDF und zugängliche HTML-Kopie. Mehrere Mietparteien und benannte Vertretungen mit eigenen Vorbehalten und Ergebnissen. Verbesserte grosse Schrift, Raumfotos, Einzugsvergleich, Zähler, Schlüssel und Beilagen. Korrekturen bei bestrittenen Ansprüchen, Zustellbelegen, Datumswerten und Bildern. Wiederherstellung, datierte kantonale Prüfungen und freiwillige Adresssuche.
+```
+
+(394/500)
+
+### it-IT
+
+```
+Anteprima completa, PDF A4 e copia HTML accessibile. Più conduttori e rappresentanti nominati, riserve ed esiti individuali. Migliorati caratteri grandi, foto d’insieme, confronto con l’entrata, contatori, chiavi e allegati. Correzioni per pretese contestate, ricevute, date e immagini. Recupero dei verbali, controlli cantonali datati e ricerca indirizzi facoltativa.
+```
+
+(368/500)
+
+### rm
+
+```
+Prevista cumpletta, PDF A4 e copia HTML accessibla. Plirs locataris e represchentants numnads cun atgnas resalvas e resultats. Meglra legibladad cun scrittira gronda, fotos generalas, cumparegliaziun cun l’entrada, quintaders, clavs e documents. Correcturas per pretensiuns contestadas, quittanzas, datas e maletgs. Recuperaziun, controllas chantunalas datadas e tschertga d’adressas facultativa.
+```
+
+(396/500)
+
+---
+
 ## versionCode 4, versionName 1.1.2
 
 One change since the first closed test. `versionCode 3` shipped with the exported protocol naming the Vaud RULV in every canton, which stated something untrue about the legal basis of a Bern, Ticino or Graubünden record.

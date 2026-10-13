@@ -100,7 +100,8 @@ class LegalOverlayTest {
       LegalCheckStatus.MissingOrDisputed,
     )
     assertFalse(overlay.isComplete(disputed))
-    assertTrue(overlay.isComplete(disputed.copy(note = "Lease gives a different appointment.")))
+    assertFalse(overlay.isComplete(disputed.copy(note = "An unrelated general note.")))
+    assertTrue(overlay.isComplete(disputed.copy(notes = mapOf(LegalRequirement.LeaseAndLocalTiming to "Lease gives a different appointment."))))
     assertTrue(
       overlay.isComplete(
         LegalOverlayRecord().withStatus(

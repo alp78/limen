@@ -27,6 +27,8 @@ import dev.peringer.limen.data.Kind
 import dev.peringer.limen.data.Protocol
 import dev.peringer.limen.data.Role
 import dev.peringer.limen.data.TenantResponse
+import dev.peringer.limen.data.participantKey
+import dev.peringer.limen.data.TenantPosition
 import dev.peringer.limen.theme.Limen
 
 /**
@@ -79,6 +81,7 @@ fun DefectEditor(vm: LimenViewModel, s: Str, p: Protocol, defectId: String) {
 
       if (!locked || d.photos.isNotEmpty()) Panel(label = s.photos) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+          if (vm.evidenceError.isNotBlank()) Text("${s.finalizationIssue(FinalizationIssue.Evidence)}: ${vm.evidenceError}", color = Limen.colors.dangerOutline)
           if (!locked) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             IconKey(ButtonGlyph.Camera, s.photo, Modifier.weight(1f), onPress = intake.takePhoto)
             IconKey(ButtonGlyph.Gallery, s.gallery, Modifier.weight(1f), onPress = intake.pickPhoto)
@@ -108,17 +111,26 @@ fun DefectEditor(vm: LimenViewModel, s: Str, p: Protocol, defectId: String) {
               vm.updateDefect(defectId) {
                 it.copy(
                   tenantResponse = response,
-                  chargedToTenant = if (response == TenantResponse.NormalWear) false else it.chargedToTenant,
                 )
               }
             }
             Field(s.tenantComment, d.tenantComment, singleLine = false) { value ->
               vm.updateDefect(defectId) { it.copy(tenantComment = value) }
             }
+            if (p.parties.count { it.role == Role.Tenant } > 1) p.parties.filter { it.role == Role.Tenant }.forEach { party ->
+              val position = d.participantPositions[party.participantKey()] ?: TenantPosition()
+              Text(party.name, color = Limen.colors.ink)
+              PillRow(TenantResponse.entries.map { it to s.tenantResponse(it) }, position.response, dense = true, enabled = !locked) { response ->
+                vm.updateDefect(defectId) { it.copy(participantPositions = it.participantPositions + (party.participantKey() to position.copy(response = response))) }
+              }
+              Field("${s.tenantComment} · ${party.name}", position.comment, singleLine = false) { comment ->
+                vm.updateDefect(defectId) { it.copy(participantPositions = it.participantPositions + (party.participantKey() to position.copy(comment = comment))) }
+              }
+            }
           }
         }
 
-        if (d.tenantResponse != TenantResponse.NormalWear) Panel(label = s.chargedToTenant, info = s.tipCharged()) {
+        Panel(label = s.chargedToTenant, info = s.tipCharged()) {
           Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Toggle(s.chargedToTenant, d.chargedToTenant, Modifier.fillMaxWidth(), enabled = !locked) {
               vm.updateDefect(defectId) { it.copy(chargedToTenant = !it.chargedToTenant) }
@@ -134,11 +146,11 @@ fun DefectEditor(vm: LimenViewModel, s: Str, p: Protocol, defectId: String) {
               dense = true,
               enabled = !locked,
             ) { f -> vm.updateDefect(defectId) { it.copy(fixBy = f) } }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-              DateField(s.fixDeadline, d.fixDeadline, s, Modifier.weight(1f)) { v ->
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+              DateField(s.fixDeadline, d.fixDeadline, s, Modifier.fillMaxWidth()) { v ->
                 vm.updateDefect(defectId) { it.copy(fixDeadline = v) }
               }
-              Field(s.costNote, d.costNote, Modifier.weight(1.4f)) { v ->
+              Field(s.costNote, d.costNote, Modifier.fillMaxWidth()) { v ->
                 vm.updateDefect(defectId) { it.copy(costNote = v) }
               }
             }
@@ -147,13 +159,17 @@ fun DefectEditor(vm: LimenViewModel, s: Str, p: Protocol, defectId: String) {
             }
           }
         }
-        if (d.chargedToTenant) WearAssessment(s)
+        if (d.chargedToTenant || p.details.estimates.containsKey(defectId)) WearAssessment(s, vm, defectId)
       }
 
       if (p.kind == Kind.Entry) {
         Panel(label = s.reservationLabel) {
+          Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
           Field(s.reservationLabel, d.reservation) { value ->
             vm.updateDefect(defectId) { it.copy(reservation = value) }
+          }
+          PillRow(FixBy.entries.map { it to when (it) { FixBy.Open -> s.fixOpen; FixBy.Tenant -> s.role(Role.Tenant); FixBy.Landlord -> s.role(Role.Landlord) } }, d.fixBy, enabled = !locked) { value -> vm.updateDefect(defectId) { it.copy(fixBy = value) } }
+          DateField(s.fixDeadline, d.fixDeadline, s) { value -> vm.updateDefect(defectId) { it.copy(fixDeadline = value) } }
           }
         }
       }

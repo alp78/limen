@@ -48,6 +48,8 @@ val hasLimenSigning = listOf("storeFile", "storePassword", "keyAlias", "keyPassw
 android {
     namespace = "dev.peringer.limen"
     compileSdk = 36
+    // All five in-app languages and Android picker translations must work offline.
+    bundle { language { enableSplit = false } }
     defaultConfig {
         applicationId = "dev.peringer.limen"
         // 29 because the finished protocol is written to MediaStore.Downloads, which arrived
@@ -60,8 +62,8 @@ android {
         // (This comment used to say 1.1.1 was pinned by the published privacy page stating the
         // version its permission claims were checked against. None of the five published
         // notices names a version, so nothing was holding the name back.)
-        versionCode = 4
-        versionName = "1.1.2"
+        versionCode = 5
+        versionName = "1.2.0"
         // Without this the androidTest sources compile and never run: AGP falls back to
         // the deprecated platform runner, which cannot execute an @RunWith(AndroidJUnit4)
         // class, and the suite reports green having done nothing.

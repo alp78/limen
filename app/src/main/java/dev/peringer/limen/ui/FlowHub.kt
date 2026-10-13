@@ -20,6 +20,9 @@ import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
@@ -45,6 +48,7 @@ internal fun HubStep(vm: LimenViewModel, s: Str, p: Protocol) {
   // Keyed on the record: the check stats every photograph and every signature on disk, and
   // it was rerun by a theme toggle, a language change and every undo notice besides.
   val issues = remember(p) { vm.completionIssues(p) }
+  var showAllIssues by remember(p.id) { mutableStateOf(false) }
 
   Column(
     Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
@@ -102,13 +106,10 @@ internal fun HubStep(vm: LimenViewModel, s: Str, p: Protocol) {
     if (issues.isNotEmpty()) {
       Panel(label = s.stillMissing, warning = true) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-          issues.forEach { issue ->
-            Text(
-              "· ${s.finalizationIssue(issue)}",
-              style = MaterialTheme.typography.bodyMedium,
-              color = Limen.colors.ink,
-            )
+          (if (showAllIssues) issues else issues.take(1)).forEach { issue ->
+            CompletionAction(vm, s, p, issue)
           }
+          if (issues.size > 1) SmallKey(s.words("Show remaining checks", "Afficher les contrôles restants", "Weitere Prüfungen anzeigen", "Mostra i controlli restanti", "Mussar las controllas restantas") + " (${issues.size})") { showAllIssues = !showAllIssues }
         }
       }
     }

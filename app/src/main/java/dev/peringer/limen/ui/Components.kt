@@ -60,6 +60,7 @@ import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.state.ToggleableState
@@ -139,7 +140,7 @@ val LocalRecordLocked = staticCompositionLocalOf { false }
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun InfoTip(tip: Tip, target: androidx.compose.ui.unit.Dp = 40.dp) {
+fun InfoTip(tip: Tip, target: androidx.compose.ui.unit.Dp = 48.dp) {
   val state = rememberTooltipState(isPersistent = true)
   val scope = rememberCoroutineScope()
   val play = rememberTick()
@@ -258,7 +259,7 @@ fun Panel(
       .padding(16.dp)
   ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-      Text(label, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
+      Text(label, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim, modifier = Modifier.weight(1f).semantics { heading() })
       if (info != null) {
         Spacer(Modifier.width(2.dp))
         InfoTip(info)
@@ -477,7 +478,6 @@ fun BigKey(
       fontSize = 17.sp,
       letterSpacing = 0.8.sp,
       textAlign = TextAlign.Center,
-      maxLines = 1,
       color = when {
         active && enabled -> Limen.colors.onInk
         !enabled -> Limen.colors.disabledInk
@@ -505,7 +505,6 @@ fun SmallKey(
       fontSize = 13.sp,
       letterSpacing = 0.4.sp,
       textAlign = TextAlign.Center,
-      maxLines = 1,
       color = if (enabled) Limen.colors.ink else Limen.colors.disabledInk,
       modifier = Modifier.padding(horizontal = 14.dp, vertical = 13.dp),
     )
@@ -522,7 +521,7 @@ fun Chip(
   tick: Tick = Tick.Key,
   enabled: Boolean = true,
   destructive: Boolean = false,
-  selectionState: Boolean? = null,
+  selectionState: Boolean? = active,
   onPress: () -> Unit,
 ) {
   val destructiveFill = if (destructive) {
@@ -545,7 +544,6 @@ fun Chip(
       fontSize = 12.sp,
       letterSpacing = 0.3.sp,
       textAlign = TextAlign.Center,
-      maxLines = 1,
       color = when {
         destructive && active -> Limen.colors.onInk
         destructive -> Limen.colors.dangerOutline
@@ -657,10 +655,13 @@ fun Field(
   editableWhenLocked: Boolean = false,
   onChange: (String) -> Unit,
 ) {
+  Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+  Text(label, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
   androidx.compose.material3.OutlinedTextField(
     value = value,
     onValueChange = onChange,
-    modifier = modifier.fillMaxWidth().onFocusChanged { onFocusChanged?.invoke(it.isFocused) },
+    modifier = Modifier.fillMaxWidth().onFocusChanged { onFocusChanged?.invoke(it.isFocused) }
+      .semantics { contentDescription = label },
     shape = RoundedCornerShape(10.dp),
     singleLine = singleLine,
     isError = isError,
@@ -669,7 +670,6 @@ fun Field(
     readOnly = LocalRecordLocked.current && !editableWhenLocked,
     trailingIcon = trailing,
     keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-    label = { Text(label, style = MaterialTheme.typography.labelSmall) },
     placeholder = hint?.let { { Text(it, style = MaterialTheme.typography.bodyMedium, color = Limen.colors.inkDim) } },
     textStyle = MaterialTheme.typography.bodyMedium.copy(color = Limen.colors.ink),
     colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
@@ -684,15 +684,16 @@ fun Field(
       disabledTextColor = Limen.colors.disabledInk,
     ),
   )
+  }
 }
 
 /** A count with its two keys: keys are counted, never typed, at the door. */
 @Composable
-fun Stepper(count: Int, s: Str, onChange: (Int) -> Unit) {
+fun Stepper(count: Int, s: Str, label: String = s.keysLabel, onChange: (Int) -> Unit) {
   Row(verticalAlignment = Alignment.CenterVertically) {
     IconKey(
       glyph = ButtonGlyph.Remove,
-      contentDescription = s.decrease,
+      contentDescription = "${s.decrease} · $label",
       enabled = count > 0,
       onPress = { if (count > 0) onChange(count - 1) },
     )
@@ -703,7 +704,7 @@ fun Stepper(count: Int, s: Str, onChange: (Int) -> Unit) {
       color = Limen.colors.ink,
       modifier = Modifier.padding(horizontal = 14.dp),
     )
-    IconKey(ButtonGlyph.Add, s.increase) { onChange(count + 1) }
+    IconKey(ButtonGlyph.Add, "${s.increase} · $label", enabled = count < 9999) { onChange(count + 1) }
   }
 }
 
@@ -736,7 +737,6 @@ fun Toggle(
         fontWeight = FontWeight.Medium,
         fontSize = 12.sp,
         letterSpacing = 0.2.sp,
-        maxLines = 1,
         color = Limen.colors.ink,
         modifier = Modifier.weight(1f),
       )

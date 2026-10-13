@@ -1,0 +1,49 @@
+{
+  "version": "1.2.0",
+  "versionCode": 5,
+  "unitTests": 100,
+  "unitFailures": 0,
+  "unitErrors": 0,
+  "releaseLintErrors": 0,
+  "releaseLintWarnings": 22,
+  "sourceFiles": 93,
+  "sourceSha256": "e68718dce2db94a2266242f2e1ee52ac86338b538a06e33507797e7347454d17",
+  "apkSha256": "3f29230b4f2bb12b8a267cbd489d57835cbd9e993c49a2a91eadf71cf4811795",
+  "aabSha256": "7ce02ff708b35e084b2fc16438c9ea22502164be7eabbd6f9b3bb9b69ebe97dd",
+  "signerSha256": "bd11a58669405d6a3bb58aa4055b654e22cd670105c3e3c19ab189c2e2b509d3",
+  "signer": "Configured non-debug production upload key; matches the installed Pixel APK. Play registration unverified.",
+  "pixel": {
+    "model": "Pixel 10",
+    "api": 37,
+    "serial": "adb-65150DLCR001R3-KVXECY._adb-tls-connect._tcp",
+    "regressionTests": 16,
+    "fontScales": [
+      1.0,
+      1.15,
+      1.5,
+      2.0
+    ],
+    "languages": [
+      "Fr",
+      "En",
+      "De",
+      "It",
+      "Rm"
+    ]
+  },
+  "pixelReleaseInstalled": true,
+  "pixelInstallMode": "adb install -r, matched signer; no production uninstall or data clear",
+  "pixelReleaseVersion": "1.2.0 (5)",
+  "pixelReleaseSmoke": [
+    "cold launch",
+    "new-handover screen",
+    "privacy screen",
+    "no AndroidRuntime error in inspected process log"
+  ],
+  "pixelFontScaleRestored": 1.15,
+  "testPackagesRemoved": true,
+  "privacySourcesUpdated": 5,
+  "websitePublished": false,
+  "pixelReleaseColdLaunchMs": 131,
+  "pixelRegressionFailures": 0
+}

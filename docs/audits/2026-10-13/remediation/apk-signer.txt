@@ -1,0 +1,4 @@
+Signer #1 certificate DN: CN=Alexis Peringer, O=PERINGER, L=Lausanne, C=CH
+Signer #1 certificate SHA-256 digest: bd11a58669405d6a3bb58aa4055b654e22cd670105c3e3c19ab189c2e2b509d3
+Signer #1 certificate SHA-1 digest: 762a2de9289f7cc6425e57d1ff2c7ee46efa3c6d
+Signer #1 certificate MD5 digest: c2ca0ffc77eaebce49569fcae7af76bf

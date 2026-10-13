@@ -1,0 +1,74 @@
+
+C:\Users\aperi\DEV\ANDROID\apps\limen>if "Windows_NT" == "Windows_NT" setlocal
+
+C:\Users\aperi\DEV\ANDROID\apps\limen>set DIRNAME=C:\Users\aperi\DEV\ANDROID\apps\limen\ 
+
+C:\Users\aperi\DEV\ANDROID\apps\limen>if "C:\Users\aperi\DEV\ANDROID\apps\limen\" == "" set DIRNAME=. 
+
+C:\Users\aperi\DEV\ANDROID\apps\limen>set APP_BASE_NAME=gradlew 
+
+C:\Users\aperi\DEV\ANDROID\apps\limen>set APP_HOME=C:\Users\aperi\DEV\ANDROID\apps\limen\ 
+
+C:\Users\aperi\DEV\ANDROID\apps\limen>set DEFAULT_JVM_OPTS= 
+
+C:\Users\aperi\DEV\ANDROID\apps\limen>if defined JAVA_HOME goto findJavaFromJavaHome 
+
+C:\Users\aperi\DEV\ANDROID\apps\limen>set JAVA_HOME=C:\Program Files\Eclipse Adoptium\jdk-21.0.11.10-hotspot 
+
+C:\Users\aperi\DEV\ANDROID\apps\limen>set JAVA_EXE=C:\Program Files\Eclipse Adoptium\jdk-21.0.11.10-hotspot/bin/java.exe 
+
+C:\Users\aperi\DEV\ANDROID\apps\limen>if exist "C:\Program Files\Eclipse Adoptium\jdk-21.0.11.10-hotspot/bin/java.exe" goto init 
+
+C:\Users\aperi\DEV\ANDROID\apps\limen>if not "Windows_NT" == "Windows_NT" goto win9xME_args 
+
+C:\Users\aperi\DEV\ANDROID\apps\limen>set CMD_LINE_ARGS= 
+
+C:\Users\aperi\DEV\ANDROID\apps\limen>set _SKIP=2 
+
+C:\Users\aperi\DEV\ANDROID\apps\limen>if "x--offline" == "x" goto execute 
+
+C:\Users\aperi\DEV\ANDROID\apps\limen>set CMD_LINE_ARGS=--offline :app:testDebugUnitTest :app:noEmDash --rerun-tasks 
+
+C:\Users\aperi\DEV\ANDROID\apps\limen>set CLASSPATH=C:\Users\aperi\DEV\ANDROID\apps\limen\\gradle\wrapper\gradle-wrapper.jar 
+
+C:\Users\aperi\DEV\ANDROID\apps\limen>"C:\Program Files\Eclipse Adoptium\jdk-21.0.11.10-hotspot/bin/java.exe"    "-Dorg.gradle.appname=gradlew" -classpath "C:\Users\aperi\DEV\ANDROID\apps\limen\\gradle\wrapper\gradle-wrapper.jar" org.gradle.wrapper.GradleWrapperMain --offline :app:testDebugUnitTest :app:noEmDash --rerun-tasks 
+Calculating task graph as no cached configuration is available for tasks: :app:testDebugUnitTest :app:noEmDash
+> Task :app:copyNotice
+> Task :app:preBuild
+> Task :app:preDebugBuild
+> Task :app:preDebugUnitTestBuild
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:mapDebugSourceSetPaths
+> Task :app:extractDeepLinksDebug
+> Task :app:generateDebugResources
+> Task :app:processDebugNavigationResources
+> Task :app:checkDebugAarMetadata
+> Task :app:javaPreCompileDebug
+> Task :app:javaPreCompileDebugUnitTest
+> Task :app:noEmDash
+> Task :app:compileDebugNavigationResources
+> Task :app:processDebugMainManifest
+> Task :app:processDebugManifest
+> Task :app:processDebugManifestForPackage
+> Task :app:packageDebugResources
+> Task :app:parseDebugLocalResources
+> Task :app:generateDebugRFile
+> Task :app:mergeDebugResources
+> Task :app:processDebugResources
+> Task :app:compileDebugKotlin
+> Task :app:compileDebugJavaWithJavac NO-SOURCE
+> Task :app:processDebugJavaRes
+> Task :app:bundleDebugClassesToCompileJar
+> Task :app:bundleDebugClassesToRuntimeJar
+> Task :app:compileDebugUnitTestKotlin
+> Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :app:processDebugUnitTestJavaRes
+> Task :app:testDebugUnitTest
+
+BUILD SUCCESSFUL in 15s
+26 actionable tasks: 26 executed
+Configuration cache entry stored.
+
+C:\Users\aperi\DEV\ANDROID\apps\limen>if "0" == "0" goto mainEnd 
+
+C:\Users\aperi\DEV\ANDROID\apps\limen>if "Windows_NT" == "Windows_NT" endlocal

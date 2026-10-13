@@ -24,6 +24,9 @@ object ProtocolIntegrity {
       deliveryReceipts = emptyList(),
       deliveryMetadataEpochMs = 0,
       exportedEpochMs = 0,
+      deliveryRevision = 0,
+      exportHistory = emptyList(),
+      saveSequence = 0,
     )
     digest.update(json.encodeToString(Protocol.serializer(), canonical).toByteArray(Charsets.UTF_8))
 
@@ -76,12 +79,10 @@ object ProtocolIntegrity {
     photoDir: File,
     signatureDir: File,
   ): List<Pair<String, File>> =
-    protocol.defects
-      .flatMap { defect -> defect.photoFiles().map { name -> "photo/$name" to resolvedFile(photoDir, name) } }
-      .plus(
-        protocol.objects
-          .flatMap { entry -> entry.photoFiles().map { name -> "photo/$name" to resolvedFile(photoDir, name) } }
-      )
+    protocol.allPhotoFiles().map { name -> "photo/$name" to resolvedFile(photoDir, name) }
+      .plus(protocol.details.attachments.filter { it.file.isNotBlank() }.map {
+        "document/${it.file}" to resolvedFile(photoDir, it.file)
+      })
       .plus(
         protocol.signatures
           .filter { it.file.isNotBlank() }

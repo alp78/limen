@@ -1,13 +1,21 @@
 # Limen, release runbook for Google Play
 
-Everything checked below was checked against the repository and the built artefact on 10 September 2026, at `versionCode 4` / `versionName 1.1.2`. Redo the checks after any commit that changes the app.
+The historical checks below were checked against the repository and the built artefact on 10 September 2026, at `versionCode 4` / `versionName 1.1.2`. Redo the checks after any commit that changes the app.
+
+## Android 1.2.0 handoff, 13 October 2026
+
+This release implements the audit remediation. Consult [the implementation ledger](../audits/2026-10-13/IMPLEMENTATION.md) for the actual build, test and signer results. It is not an upload or a claim of Play approval. The configured upload-key SHA-256 and the installed Pixel app both use `bd11a58669405d6a3bb58aa4055b654e22cd670105c3e3c19ab189c2e2b509d3`. Play Console registration of this key remains unverified; older recorded certificate digests must not override direct certificate verification.
+
+The Pixel is a physical device containing user records. Install the matching-signer APK with `adb -s <serial> install -r <apk>` to preserve those records. Do not use the deploy script’s uninstall step on that phone. The audit tests use the separate `.uitest` package.
+
+The legal snapshot, policy source updates and all five listings are prepared. Native Romansh review, Swiss tenancy review, privacy-page publication, refreshed store graphics and the live Console declarations are external release checks. Historic graphics and wording below do not describe the 1.2.0 interface.
 
 ## What is verified
 
 | Check | Result |
 |---|---|
 | `applicationId` | `dev.peringer.limen` |
-| `minSdk` / `targetSdk` | 29 / 36, above Play's floor of 35 for new apps |
+| `minSdk` / `targetSdk` | 29 / 36, current Play target floor 36 as of 31 August 2026 |
 | Release signing | 4096-bit RSA, SHA384withRSA, `CN=Alexis Peringer, O=PERINGER, L=Lausanne, C=CH`, valid to 20 January 2054 |
 | Upload keystore | `C:/Users/aperi/keys/limen-peringer-upload.jks`, alias `limen-upload`, outside the repo and matched by the `*.jks` ignore rule besides |
 | APK signature | v2 scheme, `apksigner verify` passes |
@@ -75,7 +83,7 @@ Neither blocks submission. Both were found by walking a whole exit protocol on t
 
 ~~**The review screen labels a phone number as an email.**~~ Fixed in `618ecab`, which split the controller row so the phone number carries its own label. The PDF was never affected, because [`PdfExport.kt:401`](../../app/src/main/java/dev/peringer/limen/data/PdfExport.kt#L401) adds the same values without that label.
 
-**Editing after signing discards the ink without warning.** Signatures carry the `contentRevision` they signed, `isCurrent` compares it against the record's, and any `edit()` bumps that number, so a single character typed into the dossier silently returns both parties to `Not signed`. The integrity rule is right and should not change: ink attests to a specific version of the content, and keeping it across an edit would be the real defect. What is missing is the warning. Two people sign at the door, someone corrects a typo in the bank name, and the app quietly needs both signatures again with nothing said. A confirmation before the edit, naming what will be lost, would cost one dialog.
+**Historical issue, fixed in 1.2.0. Editing after signing previously invalidated ink without warning.** Signatures carry the `contentRevision` they signed, `isCurrent` compares it against the record's, and any `edit()` bumps that number, so a single character typed into the dossier silently returns both parties to `Not signed`. The integrity rule is right and should not change: ink attests to a specific version of the content, and keeping it across an edit would be the real defect. What is missing is the warning. Two people sign at the door, someone corrects a typo in the bank name, and the app quietly needs both signatures again with nothing said. A confirmation before the edit, naming what will be lost, would cost one dialog.
 
 ## The maintenance commitment publication creates
 

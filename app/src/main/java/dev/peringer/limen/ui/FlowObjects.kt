@@ -199,6 +199,8 @@ private fun ObjectRow(vm: LimenViewModel, s: Str, p: Protocol, entry: ObjectEntr
       .padding(1.dp),
     verticalArrangement = Arrangement.spacedBy(6.dp),
   ) {
+    if (!entry.inspected) ScopeReason(vm, s, p, entry.id)
+    vm.entryBaseline?.let { baseline -> BaselinePanel(vm, s, baseline, objectId = entry.id) }
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
       Column(Modifier.weight(1f)) {
         Text(

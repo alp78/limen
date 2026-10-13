@@ -97,27 +97,24 @@ data class SwissAddressCandidate(
 }
 
 fun SessionIdentity.hasRequiredFields(): Boolean =
-  firstName.trim().length >= 2 && firstName.any(Char::isLetter) &&
-    lastName.trim().length >= 2 && lastName.any(Char::isLetter) &&
-    street.isNotBlank() && flatNumber.isNotBlank() && postalCode.isNotBlank() && city.isNotBlank() &&
+  fullName.any(Char::isLetter) &&
     addressCountry in CountryDirectory.addressRegions &&
-    (if (usesSwissAddress) {
-      addressCountry == "CH" && postalCode.matches(Regex("\\d{4}"))
-    } else {
-      addressCountry != "CH"
-    }) &&
-    InternationalPhone.isValid(phone, phoneRegion)
+    (postalCode.isBlank() || !usesSwissAddress || postalCode.matches(Regex("\\d{4}"))) &&
+    (phone.isBlank() || InternationalPhone.isValid(phone, phoneRegion))
 
 /**
  * A small, cancellable client for swisstopo's official building-address search. The query is
  * intentionally sent only after three characters and never written to disk outside the protocol.
  */
 object SwissAddressLookup {
+  data class Result(val matches: List<SwissAddressCandidate> = emptyList(), val failed: Boolean = false)
   private const val endpoint = "https://api3.geo.admin.ch/rest/services/ech/SearchServer"
   private val addressLabel = Regex("^(.+?)\\s+(\\d+[\\p{L}\\-/]*)\\s+(\\d{4})\\s+(.+)$")
 
-  suspend fun search(query: String): List<SwissAddressCandidate> = withContext(Dispatchers.IO) {
-    if (query.trim().length < 3) return@withContext emptyList()
+  suspend fun search(query: String): List<SwissAddressCandidate> = searchResult(query).matches
+
+  suspend fun searchResult(query: String): Result = withContext(Dispatchers.IO) {
+    if (query.trim().length < 3) return@withContext Result()
     runCatching {
       val encoded = URLEncoder.encode(query.trim(), StandardCharsets.UTF_8.toString())
       val url = URL("$endpoint?searchText=$encoded&type=locations&origins=address")
@@ -125,11 +122,23 @@ object SwissAddressLookup {
         connectTimeout = 4_000
         readTimeout = 4_000
         requestMethod = "GET"
+        useCaches = false
       }
-      connection.inputStream.bufferedReader().use { reader ->
-        parse(reader.readText())
-      }.also { connection.disconnect() }
-    }.getOrDefault(emptyList())
+      try {
+        val body = connection.inputStream.use { input ->
+          val bytes = java.io.ByteArrayOutputStream()
+          val buffer = ByteArray(8192)
+          while (true) {
+            val count = input.read(buffer)
+            if (count < 0) break
+            require(bytes.size() + count <= 1024 * 1024)
+            bytes.write(buffer, 0, count)
+          }
+          bytes.toString(Charsets.UTF_8.name())
+        }
+        Result(parse(body))
+      } finally { connection.disconnect() }
+    }.getOrElse { Result(failed = true) }
   }
 
   internal fun parse(body: String): List<SwissAddressCandidate> {

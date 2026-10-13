@@ -15,6 +15,8 @@ data class ArchiveImportResult(
   val imported: Int,
   val skippedExisting: Int,
   val rejected: Int,
+  val repairable: Int = 0,
+  val repaired: Int = 0,
 )
 
 /** Versioned, local-only backup of protocol JSON and its original evidence files. */
@@ -23,28 +25,45 @@ internal object ArchiveIO {
   private const val MARKER = "LIMEN_ARCHIVE\nversion=1\n"
   private const val MAX_ENTRIES = 20_000
   private const val STAGE_PREFIX = ".archive-import-"
-  private const val MAX_UNPACKED_BYTES = 2L * 1024L * 1024L * 1024L
+  private const val MAX_UNPACKED_BYTES = 256L * 1024L * 1024L
 
   private val json = Json { ignoreUnknownKeys = true }
 
-  fun export(root: File, output: OutputStream) {
-    ZipOutputStream(output.buffered()).use { zip ->
+  fun export(root: File, output: OutputStream, protocolIds: Set<String>? = null) {
+    val bounded = object : OutputStream() {
+      var bytes = 0L
+      override fun write(value: Int) { require(++bytes <= 64L * 1024 * 1024) { "Archive exceeds 64 MB" }; output.write(value) }
+      override fun write(buffer: ByteArray, offset: Int, length: Int) {
+        bytes += length; require(bytes <= 64L * 1024 * 1024) { "Archive exceeds 64 MB; use scoped backups" }; output.write(buffer, offset, length)
+      }
+      override fun flush() = output.flush()
+    }
+    ZipOutputStream(bounded.buffered()).use { zip ->
       put(zip, MANIFEST, MARKER.toByteArray(Charsets.UTF_8))
-      listOf("protocols", "photos", "signatures").forEach { folder ->
-        val base = File(root, folder)
-        base.walkTopDown()
-          .filter { it.isFile && it.canonicalPath.startsWith(base.canonicalPath + File.separator) }
-          .sortedBy { it.relativeTo(base).invariantSeparatorsPath }
-          .forEach { file ->
-            val relative = file.relativeTo(base).invariantSeparatorsPath
-            val entryName = "$folder/$relative"
-            if (isAllowed(entryName)) put(zip, entryName, file)
-          }
+      var unpacked = MARKER.length.toLong()
+      var entries = 1
+      fun putChecked(name: String, file: File) {
+        unpacked += file.length(); entries++
+        require(unpacked <= MAX_UNPACKED_BYTES && entries <= MAX_ENTRIES) { "Archive exceeds restore limits; use scoped backups" }
+        put(zip, name, file)
+      }
+      val catalogue = Store(root).catalogue()
+      require(catalogue.unreadable.none { protocolIds == null || it.id in protocolIds }) { "Recover unreadable records before exporting" }
+      catalogue.records.filter { protocolIds == null || it.id in protocolIds }.forEach { p ->
+        require(safe(p.id))
+        require(ProtocolIntegrity.missingEvidence(p, File(root, "photos/${p.id}"), File(root, "signatures/${p.id}")).isEmpty())
+        putChecked("protocols/${p.id}.json", File(root, "protocols/${p.id}.json"))
+        val photos = (p.allPhotoFiles() + p.details.attachments.map { it.file }).filter(String::isNotBlank).distinct()
+        photos.forEach { name -> require(safe(name)); putChecked("photos/${p.id}/$name", File(root, "photos/${p.id}/$name")) }
+        p.signatures.map { it.file }.filter(String::isNotBlank).distinct().forEach { name ->
+          require(safe(name)); putChecked("signatures/${p.id}/$name", File(root, "signatures/${p.id}/$name"))
+        }
+        File(root, "exports/${p.id}").listFiles()?.filter { it.isFile && safe(it.name) }?.forEach { file -> putChecked("exports/${p.id}/${file.name}", file) }
       }
     }
   }
 
-  fun import(root: File, input: InputStream): ArchiveImportResult {
+  fun import(root: File, input: InputStream, repairCorrupt: Boolean = false): ArchiveImportResult {
     root.mkdirs()
     // A restore killed part way through leaves its stage behind, and nothing else ever swept
     // them: on a phone that has lost the app mid-import twice, two unpacked copies of the
@@ -56,7 +75,7 @@ internal object ArchiveIO {
     try {
       unpack(stage, input)
       require(File(stage, MANIFEST).readText() == MARKER) { "Not a Limen archive" }
-      return installValidated(root, stage)
+      return installValidated(root, stage, repairCorrupt)
     } finally {
       stage.deleteRecursively()
     }
@@ -92,11 +111,15 @@ internal object ArchiveIO {
         target.parentFile?.mkdirs()
         target.outputStream().buffered().use { out ->
           val buffer = ByteArray(32 * 1024)
+          var entryBytes = 0L
           while (true) {
             val read = zip.read(buffer)
             if (read <= 0) break
             bytes += read
+            entryBytes += read
+            require(entryBytes <= if (name.startsWith("protocols/")) 8L * 1024 * 1024 else 64L * 1024 * 1024) { "Archive entry is too large" }
             require(bytes <= MAX_UNPACKED_BYTES) { "Archive is too large" }
+            require(stage.usableSpace > read + 1024 * 1024) { "Insufficient free storage" }
             out.write(buffer, 0, read)
           }
         }
@@ -114,7 +137,7 @@ internal object ArchiveIO {
     if (parts.size !in 2..3) return false
     return when (parts.first()) {
       "protocols" -> parts.size == 2 && parts[1].endsWith(".json") && safe(parts[1])
-      "photos", "signatures" -> parts.size == 3 && safe(parts[1]) && safe(parts[2])
+      "photos", "signatures", "exports" -> parts.size == 3 && safe(parts[1]) && safe(parts[2])
       else -> false
     }
   }
@@ -123,13 +146,15 @@ internal object ArchiveIO {
     segment.length in 1..200 && segment != "." && segment != ".." &&
       segment.matches(Regex("[A-Za-z0-9._-]+"))
 
-  private fun installValidated(root: File, stage: File): ArchiveImportResult {
+  private fun installValidated(root: File, stage: File, repairCorrupt: Boolean): ArchiveImportResult {
     val stagedProtocols = File(stage, "protocols").listFiles { file -> file.extension == "json" }
       ?.sortedBy { it.name }
       .orEmpty()
     var imported = 0
     var skipped = 0
     var rejected = 0
+    var repairable = 0
+    var repaired = 0
 
     stagedProtocols.forEach { sourceJson ->
       val protocol = runCatching {
@@ -141,11 +166,6 @@ internal object ArchiveIO {
       }
 
       val targetJson = File(File(root, "protocols"), sourceJson.name)
-      if (targetJson.exists()) {
-        skipped++
-        return@forEach
-      }
-
       val stagedPhotos = File(File(stage, "photos"), protocol.id)
       val stagedInk = File(File(stage, "signatures"), protocol.id)
       if (!validEvidence(protocol, stagedPhotos, stagedInk)) {
@@ -155,7 +175,31 @@ internal object ArchiveIO {
 
       val targetPhotos = File(File(root, "photos"), protocol.id)
       val targetInk = File(File(root, "signatures"), protocol.id)
-      if (targetPhotos.exists() || targetInk.exists()) {
+      var quarantine: File? = null
+      if (targetJson.exists()) {
+        val old = runCatching { json.decodeFromString<Protocol>(targetJson.readText()) }.getOrNull()
+        val healthy = old?.let { validEvidence(it, targetPhotos, targetInk) } == true
+        if (healthy || !repairCorrupt) {
+          if (!healthy) repairable++
+          skipped++
+          return@forEach
+        }
+        quarantine = File(root, "recovery/${protocol.id}-${System.nanoTime()}").apply { mkdirs() }
+        val moved = mutableListOf<Pair<File, File>>()
+        val preserved = runCatching {
+          listOf(targetJson, targetPhotos, targetInk, File(root, "exports/${protocol.id}")).filter { it.exists() }.forEach { oldFile ->
+            val name = if (oldFile == targetJson) oldFile.name else oldFile.parentFile!!.name
+            val retained = File(quarantine, name)
+            Files.move(oldFile.toPath(), retained.toPath())
+            moved += oldFile to retained
+          }
+        }
+        if (preserved.isFailure) {
+          moved.asReversed().forEach { (original, retained) -> Files.move(retained.toPath(), original.toPath()) }
+          rejected++
+          return@forEach
+        }
+      } else if (targetPhotos.exists() || targetInk.exists() || File(root, "exports/${protocol.id}").exists()) {
         rejected++
         return@forEach
       }
@@ -163,29 +207,37 @@ internal object ArchiveIO {
       val installed = runCatching {
         installDirectory(stagedPhotos, targetPhotos)
         installDirectory(stagedInk, targetInk)
+        installDirectory(File(stage, "exports/${protocol.id}"), File(root, "exports/${protocol.id}"))
         atomicCopy(sourceJson, targetJson)
       }
       if (installed.isSuccess) {
         imported++
+        if (quarantine != null) repaired++
       } else {
         targetJson.delete()
         targetPhotos.deleteRecursively()
         targetInk.deleteRecursively()
+        File(root, "exports/${protocol.id}").deleteRecursively()
+        quarantine?.let { q ->
+          mapOf(targetJson to File(q, targetJson.name), targetPhotos to File(q, "photos"), targetInk to File(q, "signatures"),
+            File(root, "exports/${protocol.id}") to File(q, "exports")).forEach { (target, saved) ->
+            if (saved.exists()) Files.move(saved.toPath(), target.toPath())
+          }
+        }
         rejected++
       }
     }
-    return ArchiveImportResult(imported, skipped, rejected)
+    return ArchiveImportResult(imported, skipped, rejected, repairable, repaired)
   }
 
   private fun validEvidence(protocol: Protocol, photos: File, ink: File): Boolean {
-    val referencedNames = protocol.defects.flatMap { it.photoFiles() } +
-      protocol.objects.flatMap { it.photoFiles() } +
+    val referencedNames = protocol.allPhotoFiles() + protocol.details.attachments.map { it.file }.filter(String::isNotBlank) +
       protocol.signatures.map { it.file }.filter { it.isNotBlank() }
     if (referencedNames.any { !safe(it) }) return false
     if (ProtocolIntegrity.missingEvidence(protocol, photos, ink).isNotEmpty()) return false
     if (protocol.isFinalized() && !ProtocolIntegrity.matches(protocol, photos, ink)) return false
-    val describedPhotos = protocol.defects.flatMap { it.photoEvidence } +
-      protocol.objects.flatMap { it.photoEvidence }
+    if (protocol.details.attachments.any { it.file.isNotBlank() && runCatching { ProtocolIntegrity.fileHash(File(photos, it.file)) != it.sha256 }.getOrDefault(true) }) return false
+    val describedPhotos = protocol.allPhotoEvidence()
     return describedPhotos.all { evidence ->
       evidence.sha256.isBlank() || runCatching {
         ProtocolIntegrity.fileHash(File(photos, evidence.file)).equals(evidence.sha256, ignoreCase = true)
