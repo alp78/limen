@@ -8,6 +8,10 @@ This release implements the audit remediation. Consult [the implementation ledge
 
 The bundle, SHA-256 `3c311a2f63859b49a82db3dd220713b4ff14c054f6ac9449e1af12eaa9184952`, its R8 mapping and the five release notes went to the closed-testing track on 13 October 2026 through the Play Developer API, as a completed release replacing versionCode 4. Play accepted the bundle signed with the upload key `bd11a58669405d6a3bb58aa4055b654e22cd670105c3e3c19ab189c2e2b509d3`, which is the registration check; the installed Pixel app uses the same key.
 
+## Android 1.2.1 (versionCode 6), 15 October 2026
+
+The owner's review of 1.2.0 on the phone rejected its forms: a mid-page button reading a whole sentence, a bottom key naming the session kind, instruction text under fields, a switch and a disclosure for the swisstopo lookup, a data-controller block and a participant notice on the handover form, and a library card cut to "Adresse pas encore". Every control of that kind went: buttons carry an icon and one or two words at the bottom of their form, the lookup runs whenever the phone is online and the field stays free to type otherwise, the hub lists missing data as plain lines under a small label, and a draft's card offers FINALISER. The five privacy notices and the five app pages on peringer.ch were put back to describing an automatic lookup the same day. Bundle SHA-256 `b63a824497d59194d40fb8188d6baefcef997c45fa944945acf23fa8c0c8a7e8`, 102 unit tests, release lint 0 errors, installed on the Pixel 10 over 1.2.0 with its records kept.
+
 The Pixel is a physical device containing user records. Install the matching-signer APK with `adb -s <serial> install -r <apk>` to preserve those records. Do not use the deploy script’s uninstall step on that phone. The audit tests use the separate `.uitest` package.
 
 The legal snapshot, policy source updates and all five listings are prepared. Native Romansh review, Swiss tenancy review, privacy-page publication, refreshed store graphics and the live Console declarations are external release checks. Historic graphics and wording below do not describe the 1.2.0 interface.

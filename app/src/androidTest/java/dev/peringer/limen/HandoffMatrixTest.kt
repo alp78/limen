@@ -105,7 +105,7 @@ class HandoffMatrixTest {
     compose.onNodeWithText("Privacy information").assertExists()
     compose.onNodeWithText("Responsible data controller").assertExists()
     compose.onNodeWithText("Backup and restore").assertExists()
-    compose.onNodeWithText("CREATE BACKUP").performScrollTo().performClick()
+    compose.onNodeWithText("BACK UP").performScrollTo().performClick()
     compose.onNodeWithText("Protect backup").assertIsDisplayed()
     compose.onNodeWithText("CANCEL").performClick()
     compose.onNodeWithContentDescription("BACK").performClick()

@@ -1,5 +1,6 @@
 package dev.peringer.limen.ui
 
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -90,6 +91,7 @@ fun HomeScreen(
         onSeed(null)
         onPage(if (fromSessions) HomePage.Sessions else HomePage.Landing)
       },
+      onSaved = { onSeed(null); onPage(HomePage.Sessions) },
     )
     HomePage.Sessions -> SessionsScreen(
       modifier = modifier,
@@ -267,6 +269,7 @@ private fun ProtocolCard(
           p.address.ifBlank { s.noAddress },
           style = MaterialTheme.typography.titleMedium,
           maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
           color = Limen.colors.ink,
         )
         Text(
@@ -304,12 +307,9 @@ private fun ProtocolCard(
     Spacer(Modifier.height(8.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
       if (p.kind == Kind.Entry) {
-        val canCreateExit = p.isFinalized()
-        Chip(
-          if (canCreateExit) s.exitFromThis else s.finalizeEntryFirst,
-          dim = !canCreateExit,
-          enabled = canCreateExit,
-        ) { onSeedExit(p) }
+        // A draft offers its own finalization; a finalized entry offers the exit seeded from it.
+        if (p.isFinalized()) Chip(s.exitFromThis, dim = false) { onSeedExit(p) }
+        else Chip(s.finalizeEntryFirst, dim = false) { vm.openProtocol(p.id); vm.goTo(FlowStep.Sign) }
       }
       Spacer(Modifier.weight(1f))
       Chip(

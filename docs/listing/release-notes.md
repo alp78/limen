@@ -6,6 +6,52 @@ Paste each block into the matching language on the release, or let `play_push.py
 
 ---
 
+## versionCode 6, versionName 1.2.1
+
+15 October 2026. The forms of 1.2.0 carried sentence-long buttons, instruction text under fields, a switch for the address lookup and a data-controller block, all removed on the owner's review. Romansh native review remains pending.
+
+### en-US
+
+```
+Simpler forms. Buttons are an icon and a word at the bottom of each form, instruction text is gone, and the address lookup runs by itself whenever the phone is online, with free typing when it is offline or nothing matches. The data-controller block and the participant notice no longer appear on the handover form.
+```
+
+(318/500)
+
+### fr-FR
+
+```
+Formulaires simplifiés. Les boutons sont une icône et un mot au bas de chaque formulaire, les textes d’instruction ont disparu, et la recherche d’adresse se lance d’elle-même dès que le téléphone est en ligne, la saisie libre restant possible hors ligne ou sans correspondance. Le bloc du responsable du traitement et l’information aux participants ne figurent plus sur le formulaire d’état des lieux.
+```
+
+(396/500)
+
+### de-DE
+
+```
+Einfachere Formulare. Schaltflächen sind ein Symbol und ein Wort am Ende jedes Formulars, Anleitungstexte sind weg, und die Adresssuche läuft von selbst, sobald das Telefon online ist; offline oder ohne Treffer bleibt die freie Eingabe. Der Block zur verantwortlichen Stelle und der Hinweis für Beteiligte erscheinen nicht mehr im Übergabeformular.
+```
+
+(343/500)
+
+### it-IT
+
+```
+Moduli più semplici. I pulsanti sono un’icona e una parola in fondo a ogni modulo, i testi di istruzione sono spariti e la ricerca dell’indirizzo parte da sola appena il telefono è online, con inserimento libero se è offline o nulla corrisponde. Il blocco del titolare del trattamento e l’informativa per i partecipanti non compaiono più nel modulo di consegna.
+```
+
+(347/500)
+
+### rm
+
+```
+Formulars pli simpels. Ils buttuns èn in simbol ed in pled a la fin da mintga formular, ils texts d’instrucziun èn davent, e la tschertga d’adressas cumenza da sasezza cur che il telefon è online; offline u senza correspundenza resta l’endataziun libra. Il bloc dal post responsabel e l’infurmaziun per participants na cumparan betg pli en il formular da surdada.
+```
+
+(350/500)
+
+---
+
 ## versionCode 5, versionName 1.2.0
 
 Uploaded to the closed-testing track on 13 October 2026 through the Play Developer API, as a completed release with these five notes, replacing versionCode 4. Romansh native review remains pending. RULV means the Vaud rental rules, not rent-control periods. The federal BWO document is an overview of cantonal form duties, not a federal initial-rent form. Older notes below are historical.

@@ -77,6 +77,7 @@ class Str(val lang: Lang) {
   val entry = pick("Entry", "Entrée", "Einzug", "Consegna", "Entrada")
   val exit = pick("Exit", "Sortie", "Auszug", "Riconsegna", "Sortida")
   val draft = pick("Draft", "Brouillon", "Entwurf", "Bozza", "Sboz")
+  val validate = pick("Validate", "Valider", "Bestätigen", "Conferma", "Confermar")
   val signed = pick("Signed", "Signé", "Unterzeichnet", "Firmato", "Suttascrit")
   val finalized = pick("Finalized", "Finalisé", "Abgeschlossen", "Finalizzato", "Finalisà")
   val awaitingSignatures = pick(
@@ -156,20 +157,7 @@ class Str(val lang: Lang) {
     "Prima oggetto e cantone",
     "Emprim object e chantun",
   )
-  val objectPreflightBody = pick(
-    "Confirm the handed-over object's address, canton, date and legal overlay before the walk.",
-    "Vérifiez l’adresse du logement, son canton, la date de l’état des lieux et les règles applicables avant la visite.",
-    "Bestätigen Sie vor dem Rundgang Adresse, Kanton, Datum und Rechtszusatz des Übergabeobjekts.",
-    "Prima del giro confermate indirizzo, cantone, data e livello giuridico dell'oggetto consegnato.",
-    "Confermai avant il gir adressa, chantun, data e cumplement giuridic da l'object surdà.",
-  )
-  val completeObjectAndCanton = pick(
-    "COMPLETE OBJECT AND CANTON",
-    "COMPLÉTER LE LOGEMENT ET LE CANTON",
-    "OBJEKT UND KANTON ERGÄNZEN",
-    "COMPLETA OGGETTO E CANTONE",
-    "CUMPLETTAR OBJECT E CHANTUN",
-  )
+  val completeObjectAndCanton = pick("COMPLETE", "COMPLÉTER", "ERGÄNZEN", "COMPLETA", "CUMPLETTAR")
   // Readouts name the thing and then count it, the way an instrument's dial is labelled.
   // That also sidesteps five languages' plural rules, which "1 rooms" was getting wrong.
   private val countRooms = pick("ROOMS", "PIÈCES", "RÄUME", "LOCALI", "LOCALS")
@@ -181,7 +169,7 @@ class Str(val lang: Lang) {
   fun countObjects(n: Int) = "$countObjects $n"
   fun countComponents(n: Int) = "$countComponents $n"
   val nothingYet = pick("Nothing recorded yet", "Rien de consigné", "Noch nichts erfasst", "Ancora nulla", "Anc nagut registrà")
-  val stillMissing = pick("Still missing", "Informations à compléter", "Noch offen", "Ancora mancante", "Anc mancant")
+  val stillMissing = pick("Missing data", "Données manquantes", "Fehlende Angaben", "Dati mancanti", "Datas mancantas")
 
   // Setup.
   val protocolKind = pick("Protocol", "État des lieux", "Protokoll", "Verbale", "Protocol")
@@ -424,13 +412,6 @@ class Str(val lang: Lang) {
   val actorLandlordPrivate = pick("Landlord", "Bailleur", "Vermieter/in", "Locatore/trice", "Locatur/a")
   val actorAgency = pick("Agency", "Régie", "Verwaltung", "Amministrazione", "Administraziun")
   val companyName = pick("Agency name", "Nom de la régie", "Name der Verwaltung", "Nome dell'amministrazione", "Num da l'administraziun")
-  val agencyRoleExplanation = pick(
-    "Enter the contractual landlord separately in the dossier. The agency, attending representative and mandate have their own fields.",
-    "Indiquez séparément le bailleur contractuel dans le dossier. La régie, le représentant présent et son mandat ont leurs propres champs.",
-    "Die vertragliche Vermieterschaft im Dossier gesondert erfassen. Verwaltung, anwesende Vertretung und Vollmacht haben eigene Felder.",
-    "Indicate separatamente il locatore contrattuale nel dossier. Amministrazione, rappresentante presente e mandato hanno campi propri.",
-    "Inditgai separadamain il locatur contractual en il dossier. Administraziun, represchentant preschent e mandat han agens champs.",
-  )
   val email = pick("Email", "E-mail", "E-Mail", "E-mail", "E-mail")
   val tenantExitAddressHint = pick(
     "Your new address: the deposit letter and the final service-charge statement will be sent there.",
@@ -600,8 +581,8 @@ class Str(val lang: Lang) {
   val roomInspected = pick("ROOM INSPECTED", "PIÈCE CONTRÔLÉE", "RAUM GEPRÜFT", "LOCALE CONTROLLATO", "LOCAL CONTROLLÀ")
   val notInspected = pick("Not inspected", "Non contrôlé", "Nicht geprüft", "Non controllato", "Betg controllà")
   val inspectedNoDefects = pick("Inspected, no defect recorded", "Contrôle effectué, aucun défaut consigné", "Geprüft, kein Mangel erfasst", "Controllato, nessun difetto registrato", "Controllà, nagina mancanza registrada")
-  val clearRoom = pick("CLEAR ROOM", "EFFACER LES CONSTATS DE LA PIÈCE", "RAUM LEEREN", "SVUOTA IL LOCALE", "SVIDAR IL LOCAL")
-  val removeRoom = pick("REMOVE ROOM", "RETIRER LA PIÈCE", "RAUM ENTFERNEN", "RIMUOVI IL LOCALE", "ALLONTANAR IL LOCAL")
+  val clearRoom = pick("CLEAR FINDINGS", "EFFACER LES CONSTATS", "BEFUNDE LÖSCHEN", "CANCELLA RILIEVI", "STIZZAR CONSTATAZIUNS")
+  val removeRoom = pick("REMOVE ROOM", "RETIRER LA PIÈCE", "RAUM ENTFERNEN", "RIMUOVI LOCALE", "ALLONTANAR LOCAL")
   val chooseRoomsPresent = pick(
     "Rooms present",
     "Pièces présentes",
@@ -795,12 +776,10 @@ class Str(val lang: Lang) {
 
 
   // The case's cards and the flow's frame.
-  val exitFromThis = pick("EXIT FROM THIS", "SORTIE DEPUIS CELUI-CI", "AUSZUG DARAUS", "RICONSEGNA DA QUESTO", "SORTIDA DA QUEST")
-  val finalizeEntryFirst = pick(
-    "FINALIZE ENTRY FIRST", "FINALISER L'ENTRÉE D'ABORD", "EINZUG ZUERST ABSCHLIESSEN", "FINALIZZARE PRIMA L'ENTRATA", "FINALISAR L'ENTRADA L'EMPRIM",
-  )
+  val exitFromThis = pick("EXIT", "SORTIE", "AUSZUG", "RICONSEGNA", "SORTIDA")
+  val finalizeEntryFirst = pick("FINALIZE", "FINALISER", "ABSCHLIESSEN", "FINALIZZA", "FINALISAR")
   val sure = pick("SURE?", "SÛR ?", "SICHER?", "SICURO?", "SEGIR?")
-  val noAddress = pick("Address not yet entered", "Adresse pas encore saisie", "Adresse noch nicht erfasst", "Indirizzo non ancora inserito", "Adressa anc betg endatada")
+  val noAddress = pick("No address", "Sans adresse", "Ohne Adresse", "Senza indirizzo", "Senza adressa")
   val infoDeposit = pick(
     "A blocked bank account preserves the deposited capital. Guarantee insurance replaces that cash deposit with a recurring, normally non-refundable premium. Prices and conditions change, so compare current terms directly with the bank or insurer.",
     "Le compte bloqué conserve le capital déposé. L'assurance de garantie remplace ce dépôt en espèces par une prime périodique, généralement non remboursable. Les prix et conditions changent : vérifiez les conditions actuelles auprès de la banque ou de l'assureur.",
@@ -1442,7 +1421,13 @@ class Str(val lang: Lang) {
       "Verbali, foto e firme disegnate restano nello spazio privato dell'app. Limen non dispone di un account o server gestito dallo sviluppatore e non gli invia dati del verbale.",
       "Protocols, fotos e suttascripziuns dissegnadas restan en la memoria privata da l'app. Limen n'ha nagin conto u server dal sviluppader e na trametta naginas datas dal protocol al sviluppader.",
     ),
-    lookupDisclosure,
+    pick(
+      "When you request an official Swiss address suggestion, the typed search text and ordinary network metadata go to the federal swisstopo service. Opening provider links sends data under that website's own terms.",
+      "Lorsque vous demandez une suggestion d'adresse suisse officielle, le texte saisi et les métadonnées réseau usuelles sont transmis au service fédéral swisstopo. L'ouverture d'un lien de prestataire relève des conditions de ce site.",
+      "Bei einer amtlichen Schweizer Adresssuche gehen der eingegebene Suchtext und übliche Netzwerkdaten an den Bundesdienst swisstopo. Für geöffnete Anbieterlinks gelten die Bedingungen der jeweiligen Website.",
+      "Quando richiedete un suggerimento ufficiale per un indirizzo svizzero, il testo digitato e i normali metadati di rete sono inviati al servizio federale swisstopo. Ai link dei fornitori si applicano le condizioni del relativo sito.",
+      "Tar ina dumonda d'ina adressa svizra uffiziala vegnan il text endatà e metadatas da rait usitadas tramess al servetsch federal swisstopo. Per links da purschiders valan lur atgnas cundiziuns.",
+    ),
     pick("Exported PDFs, HTML copies and backups are readable outside private app storage. A backup is encrypted only when you set a password; an explicitly chosen archive without a password is unencrypted.", "Les PDF, copies HTML et sauvegardes exportés sont lisibles hors du stockage privé de l’app. Une sauvegarde est chiffrée uniquement avec un mot de passe ; l’archive sans mot de passe, choisie explicitement, ne l’est pas.", "Exportierte PDFs, HTML-Kopien und Sicherungen sind ausserhalb des privaten App-Speichers lesbar. Nur mit Passwort wird eine Sicherung verschlüsselt; ein ausdrücklich gewähltes Archiv ohne Passwort bleibt unverschlüsselt.", "PDF, copie HTML e backup esportati sono leggibili fuori dallo spazio privato dell’app. Il backup è cifrato solo con una password; l’archivio senza password, scelto esplicitamente, non è cifrato.", "PDFs, copias HTML e segirezzas exportadas èn legiblas ordaifer la memoria privata da l’app. Ina segirezza è criptada mo cun pled-clav; in archiv senza pled-clav, tschernì explicitamain, n’è betg criptà."),
     pick(
       "Records remain until you delete them or remove app data. Use the device lock, keep copies only as long as needed, and direct access, correction or deletion requests to the person or organisation operating this installation.",
@@ -1504,7 +1489,7 @@ class Str(val lang: Lang) {
     "L'avviso manca in questa build.",
     "L'avis manca en questa versiun.",
   )
-  val createBackup = pick("CREATE BACKUP", "CRÉER LA SAUVEGARDE", "SICHERUNG ERSTELLEN", "CREA BACKUP", "CREAR SEGIREZZA")
+  val createBackup = pick("BACK UP", "SAUVEGARDER", "SICHERN", "SALVA", "SEGIRAR")
   val restoreBackup = pick("RESTORE", "RESTAURER", "WIEDERHERSTELLEN", "RIPRISTINA", "RESTAURAR")
   val protectBackup = pick("Protect backup", "Protéger la sauvegarde", "Sicherung schützen", "Proteggi backup", "Proteger la segirezza")
   val unlockBackup = pick("Unlock backup", "Déverrouiller la sauvegarde", "Sicherung entsperren", "Sblocca backup", "Debloccar la segirezza")
@@ -1577,11 +1562,11 @@ class Str(val lang: Lang) {
   val countryNoMatches = pick("No matching country", "Aucun pays correspondant", "Kein passendes Land", "Nessun paese corrispondente", "Nagin pajais adattà")
   val phoneNumber = pick("Phone number", "Numéro de téléphone", "Telefonnummer", "Numero di telefono", "Numer da telefon")
   val addressLookupHint = pick(
-    "Enter the address manually, or enable optional swisstopo suggestions.",
-    "Saisissez l’adresse manuellement ou activez les suggestions facultatives de swisstopo.",
-    "Adresse manuell eingeben oder optionale swisstopo-Vorschläge aktivieren.",
-    "Inserite l’indirizzo manualmente o attivate i suggerimenti facoltativi di swisstopo.",
-    "Endatai l’adressa manualmain u activai las propostas facultativas da swisstopo.",
+    "Type an address, then choose its official suggestion.",
+    "Saisissez une adresse, puis choisissez la suggestion officielle.",
+    "Adresse eingeben und den offiziellen Vorschlag wählen.",
+    "Inserite un indirizzo, poi scegliete il suggerimento ufficiale.",
+    "Endatai ina adressa e tschernai il recumandament uffizial.",
   )
   val addressSearching = pick("Searching official addresses...", "Recherche d'adresses officielles...", "Offizielle Adressen werden gesucht...", "Ricerca di indirizzi ufficiali...", "Tschertgar adressas uffizialas...")
   val addressVerified = pick("Official address selected", "Adresse officielle sélectionnée", "Offizielle Adresse ausgewählt", "Indirizzo ufficiale selezionato", "Adressa uffiziala tschernida")

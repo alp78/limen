@@ -151,7 +151,6 @@ internal fun DossierStep(vm: LimenViewModel, s: Str, p: Protocol) {
     }
     item(key = "parties") {
       Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        ParticipantNotice(vm, s, p)
         PartiesCard(vm, s, p)
       }
     }
@@ -249,7 +248,6 @@ private fun CardHeader(s: Str, onRemove: () -> Unit) {
 
 @Composable
 private fun ObjectCard(vm: LimenViewModel, s: Str, p: Protocol) {
-  AddressPrivacyChoice(vm, s)
   var searching by remember(p.id) { mutableStateOf(false) }
   var lookupFailed by remember(p.id) { mutableStateOf(false) }
   var matches by remember(p.id) { mutableStateOf(emptyList<SwissAddressCandidate>()) }
@@ -260,8 +258,8 @@ private fun ObjectCard(vm: LimenViewModel, s: Str, p: Protocol) {
   val anyFocus = focused.isNotEmpty()
   val query = listOf(p.address, p.place).filter { it.isNotBlank() }.joinToString(" ")
 
-  LaunchedEffect(vm.onlineAddresses, p.id, query, anyFocus, verified) {
-    if (!vm.onlineAddresses || !anyFocus || verified || query.trim().length < 3) {
+  LaunchedEffect(p.id, query, anyFocus, verified) {
+    if (!anyFocus || verified || query.trim().length < 3) {
       matches = emptyList()
       searching = false
       return@LaunchedEffect
@@ -273,7 +271,7 @@ private fun ObjectCard(vm: LimenViewModel, s: Str, p: Protocol) {
     lookupFailed = result.failed
     searching = false
   }
-  if (lookupFailed && vm.onlineAddresses) Text(s.lookupFailed, color = Limen.colors.inkDim)
+  if (lookupFailed) Text(s.lookupFailed, color = Limen.colors.inkDim)
 
   fun setFocused(field: String, isFocused: Boolean) {
     focused = if (isFocused) focused + field else focused - field

@@ -314,14 +314,17 @@ private fun RoomDetail(vm: LimenViewModel, s: Str, p: Protocol, room: Room) {
     }
 
     if (!locked) {
-      SmallKey(s.roomActions, Modifier.fillMaxWidth()) { actionsOpen = !actionsOpen }
-      if (actionsOpen) {
-        SmallKey(s.moveUp, Modifier.fillMaxWidth()) { vm.moveRoom(room.id, -1) }
-        SmallKey(s.moveDown, Modifier.fillMaxWidth()) { vm.moveRoom(room.id, 1) }
-        SmallKey(s.clearRoom, Modifier.fillMaxWidth()) { confirmingClear = true }
-        SmallKey(s.removeRoom, Modifier.fillMaxWidth()) { confirmingRemove = true }
+      Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        IconKey(ButtonGlyph.More, s.roomActions) { actionsOpen = !actionsOpen }
+        if (actionsOpen) {
+          IconKey(ButtonGlyph.Up, s.moveUp) { vm.moveRoom(room.id, -1) }
+          IconKey(ButtonGlyph.Down, s.moveDown) { vm.moveRoom(room.id, 1) }
+          IconKey(ButtonGlyph.Clear, s.clearRoom, destructive = true) { confirmingClear = true }
+          IconKey(ButtonGlyph.Delete, s.removeRoom, destructive = true) { confirmingRemove = true }
+        }
+        Spacer(Modifier.weight(1f))
+        ActionKey(ButtonGlyph.Next, s.nextRoom, active = true) { vm.nextRoom(room.id) }
       }
-      BigKey(s.nextRoom, active = true, Modifier.fillMaxWidth()) { vm.nextRoom(room.id) }
     }
     Spacer(Modifier.height(12.dp))
   }

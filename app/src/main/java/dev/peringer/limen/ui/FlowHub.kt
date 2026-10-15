@@ -65,19 +65,7 @@ internal fun HubStep(vm: LimenViewModel, s: Str, p: Protocol) {
     if (objectIssues.isNotEmpty() && !p.isFinalized()) {
       Panel(label = s.objectPreflight, warning = true) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-          Row(
-            Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-          ) {
-            p.objectCanton?.let { CantonFlag(it, contentDescription = s.canton(it), size = 30.dp) }
-            Text(
-              s.objectPreflightBody,
-              style = MaterialTheme.typography.bodyMedium,
-              color = Limen.colors.ink,
-              modifier = Modifier.weight(1f),
-            )
-          }
+          p.objectCanton?.let { CantonFlag(it, contentDescription = s.canton(it), size = 30.dp) }
           SmallKey(s.completeObjectAndCanton, Modifier.fillMaxWidth()) { vm.goTo(FlowStep.Dossier) }
         }
       }
@@ -109,7 +97,7 @@ internal fun HubStep(vm: LimenViewModel, s: Str, p: Protocol) {
           (if (showAllIssues) issues else issues.take(1)).forEach { issue ->
             CompletionAction(vm, s, p, issue)
           }
-          if (issues.size > 1) SmallKey(s.words("Show remaining checks", "Afficher les contrôles restants", "Weitere Prüfungen anzeigen", "Mostra i controlli restanti", "Mussar las controllas restantas") + " (${issues.size})") { showAllIssues = !showAllIssues }
+          if (issues.size > 1) SmallKey(s.words("Show all", "Tout afficher", "Alle anzeigen", "Mostra tutto", "Mussar tut") + " (${issues.size})") { showAllIssues = !showAllIssues }
         }
       }
     }

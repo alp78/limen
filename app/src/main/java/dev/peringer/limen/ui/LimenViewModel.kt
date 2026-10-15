@@ -164,17 +164,11 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     kotlinx.serialization.json.Json.decodeFromString<SessionIdentity>(prefs.getString("profileIdentity", "") ?: "")
   }.getOrDefault(SessionIdentity()))
     private set
-  var onlineAddresses by mutableStateOf(prefs.getBoolean("onlineAddresses", false))
-    private set
   var libraryProtected by mutableStateOf(prefs.getBoolean("libraryProtected", false))
     private set
   fun protectLibrary(enabled: Boolean) {
     libraryProtected = enabled
     prefs.edit().putBoolean("libraryProtected", enabled).apply()
-  }
-  fun chooseOnlineAddresses(enabled: Boolean) {
-    onlineAddresses = enabled
-    prefs.edit().putBoolean("onlineAddresses", enabled).apply()
   }
   private fun saveProfile(identity: SessionIdentity) {
     profileIdentity = identity

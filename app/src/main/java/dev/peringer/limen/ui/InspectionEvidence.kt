@@ -49,7 +49,7 @@ internal fun BaselinePanel(vm: LimenViewModel, s: Str, baseline: Protocol, roomI
           defect.photoFiles().forEachIndexed { i, name -> SmallKey("${s.photos} ${i + 1}") { viewing = name } }
         }
         baseline.details.roomPhotos[roomId].orEmpty().forEachIndexed { i, evidence ->
-          SmallKey("${s.overviewPhotos} ${i + 1}") { viewing = evidence.file }
+          SmallKey("${s.photo} ${i + 1}") { viewing = evidence.file }
         }
       }
     }

@@ -82,7 +82,7 @@ fun DateField(
     // Retain an unfinished/invalid edit in the draft; never silently export the old date.
     onChange(iso ?: text)
   }
-  if (!locked && impossible && lastValid.isNotBlank()) SmallKey(s.words("Restore last valid date", "Rétablir la dernière date valide", "Letztes gültiges Datum übernehmen", "Ripristina l’ultima data valida", "Restabilir l’ultima data valaivla")) { onChange(lastValid) }
+  if (!locked && impossible && lastValid.isNotBlank()) IconKey(ButtonGlyph.Undo, s.words("Restore last valid date", "Rétablir la dernière date valide", "Letztes gültiges Datum übernehmen", "Ripristina l’ultima data valida", "Restabilir l’ultima data valaivla")) { onChange(lastValid) }
 
   if (picking) {
     val start = SwissDate.parse(stored) ?: LocalDate.now()
@@ -157,7 +157,7 @@ fun TimeField(
     val value = SwissDate.toStoredTime(text)
     onChange(value ?: text)
   }
-  if (!locked && impossible && lastValid.isNotBlank()) SmallKey(s.words("Restore last valid time", "Rétablir la dernière heure valide", "Letzte gültige Uhrzeit übernehmen", "Ripristina l’ultima ora valida", "Restabilir l’ultima ura valaivla")) { onChange(lastValid) }
+  if (!locked && impossible && lastValid.isNotBlank()) IconKey(ButtonGlyph.Undo, s.words("Restore last valid time", "Rétablir la dernière heure valide", "Letzte gültige Uhrzeit übernehmen", "Ripristina l’ultima ora valida", "Restabilir l’ultima ura valaivla")) { onChange(lastValid) }
 
   if (picking) {
     val existing = stored.split(':')

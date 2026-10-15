@@ -13,7 +13,7 @@ import java.util.UUID
 
 @Composable
 internal fun ScopeReason(vm: LimenViewModel, s: Str, p: Protocol, id: String) {
-  Field(s.scopeReason, p.details.scopeNotes[id].orEmpty(), singleLine = false) { text ->
+  Field(s.reason, p.details.scopeNotes[id].orEmpty(), singleLine = false) { text ->
     vm.edit { it.copy(details = it.details.copy(scopeNotes = if (text.isBlank()) it.details.scopeNotes - id else it.details.scopeNotes + (id to text))) }
   }
 }
@@ -51,7 +51,7 @@ internal fun MeterReadings(vm: LimenViewModel, s: Str, p: Protocol) {
           Field(s.unit, r.unit) { v -> update { it.copy(unit = v) } }
           DateAndTimeRow(s.handoverDate, r.date, s.handoverTime, r.time, s,
             { v -> update { it.copy(date = v) } }, { v -> update { it.copy(time = v) } })
-          Field(s.scopeReason, r.note, singleLine = false) { v -> update { it.copy(note = v) } }
+          Field(s.reason, r.note, singleLine = false) { v -> update { it.copy(note = v) } }
           val intake = rememberPhotoIntake(s) { file, source -> vm.attachOverview(r.id, file, source, meter = true) }
           if (!LocalRecordLocked.current) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             SmallKey(s.photo, onPress = intake.takePhoto)
@@ -64,7 +64,7 @@ internal fun MeterReadings(vm: LimenViewModel, s: Str, p: Protocol) {
         }
       }
     }
-    if (!LocalRecordLocked.current) SmallKey("+ ${s.meters}", Modifier.fillMaxWidth()) {
+    if (!LocalRecordLocked.current) IconKey(ButtonGlyph.Add, "${s.add} · ${s.meters}") {
       vm.edit { it.copy(details = it.details.copy(readings = it.details.readings + MeterReading(UUID.randomUUID().toString(), date = it.handoverDate, time = it.handoverTime))) }
     }
     ScopeReason(vm, s, p, DossierCard.Meters.name)
@@ -87,7 +87,7 @@ internal fun AccessDevices(vm: LimenViewModel, s: Str, p: Protocol) {
         }
       }
     }
-    if (!LocalRecordLocked.current) SmallKey("+ ${s.accessDevices}", Modifier.fillMaxWidth()) {
+    if (!LocalRecordLocked.current) IconKey(ButtonGlyph.Add, "${s.add} · ${s.accessDevices}") {
       vm.edit { it.copy(details = it.details.copy(accessDevices = it.details.accessDevices + AccessDevice(UUID.randomUUID().toString()))) }
     }
   }
@@ -117,7 +117,7 @@ internal fun DocumentsPanel(vm: LimenViewModel, s: Str, p: Protocol) {
           SmallKey(s.delete) { vm.edit { it.copy(details = it.details.copy(attachments = it.details.attachments.filterNot { old -> old.id == a.id })) } }
         }
       }
-      if (!LocalRecordLocked.current) SmallKey("+ ${s.attachments}", Modifier.fillMaxWidth()) {
+      if (!LocalRecordLocked.current) IconKey(ButtonGlyph.Add, "${s.add} · ${s.attachments}") {
         vm.edit { it.copy(details = it.details.copy(attachments = it.details.attachments + SupportingDocument(UUID.randomUUID().toString()))) }
       }
     }
@@ -139,7 +139,7 @@ internal fun FollowUpPanel(vm: LimenViewModel, s: Str, p: Protocol) {
         Toggle(s.done, f.done, enabled = !LocalRecordLocked.current) { update { it.copy(done = !it.done) } }
         if (!LocalRecordLocked.current) SmallKey(s.delete) { vm.edit { it.copy(details = it.details.copy(followUps = it.details.followUps.filterNot { old -> old.id == f.id })) } }
       }
-      if (!LocalRecordLocked.current) SmallKey("+ ${s.followUps}", Modifier.fillMaxWidth()) {
+      if (!LocalRecordLocked.current) IconKey(ButtonGlyph.Add, "${s.add} · ${s.followUps}") {
         vm.edit { it.copy(details = it.details.copy(followUps = it.details.followUps + FollowUp(UUID.randomUUID().toString()))) }
       }
     }

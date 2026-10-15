@@ -1,5 +1,9 @@
 package dev.peringer.limen.ui
 
+import androidx.compose.material.icons.outlined.ArrowDownward
+import androidx.compose.material.icons.outlined.ArrowUpward
+import androidx.compose.material.icons.outlined.MoreHoriz
+import androidx.compose.material.icons.automirrored.outlined.Undo
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.LinearOutSlowInEasing
@@ -86,6 +90,7 @@ import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
@@ -394,7 +399,7 @@ private fun Color.shaded(amount: Float): Color = Color.Black.copy(alpha = amount
 /** Universal controls use the familiar Material icon instead of repeating a text label. */
 enum class ButtonGlyph {
   Add, Remove, Delete, Edit, Camera, Gallery, Back, Next, Confirm, Cancel, Clear, Share, Open,
-  Calendar, Clock,
+  Calendar, Clock, Save, Undo, More, Up, Down,
 }
 
 fun ButtonGlyph.vector(): ImageVector = when (this) {
@@ -413,6 +418,11 @@ fun ButtonGlyph.vector(): ImageVector = when (this) {
   ButtonGlyph.Open -> Icons.AutoMirrored.Outlined.OpenInNew
   ButtonGlyph.Calendar -> Icons.Outlined.CalendarMonth
   ButtonGlyph.Clock -> Icons.Outlined.Schedule
+  ButtonGlyph.Save -> Icons.Outlined.Save
+  ButtonGlyph.Undo -> Icons.AutoMirrored.Outlined.Undo
+  ButtonGlyph.More -> Icons.Outlined.MoreHoriz
+  ButtonGlyph.Up -> Icons.Outlined.ArrowUpward
+  ButtonGlyph.Down -> Icons.Outlined.ArrowDownward
 }
 
 @Composable
@@ -485,6 +495,33 @@ fun BigKey(
       },
       modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
     )
+  }
+}
+
+/** A bottom-row action: a glyph and one word, filled when it is the primary one. */
+@Composable
+fun ActionKey(
+  glyph: ButtonGlyph,
+  label: String,
+  active: Boolean,
+  modifier: Modifier = Modifier,
+  enabled: Boolean = true,
+  onPress: () -> Unit,
+) {
+  val ink = when {
+    active && enabled -> Limen.colors.onInk
+    !enabled -> Limen.colors.disabledInk
+    else -> Limen.colors.ink
+  }
+  KeySurface(modifier, active = active && enabled, enabled = enabled, shape = RoundedCornerShape(12.dp), onPress = onPress) {
+    Row(
+      Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+      horizontalArrangement = Arrangement.spacedBy(8.dp),
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      Icon(glyph.vector(), contentDescription = null, modifier = Modifier.size(20.dp), tint = ink)
+      Text(label, fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = ink)
+    }
   }
 }
 

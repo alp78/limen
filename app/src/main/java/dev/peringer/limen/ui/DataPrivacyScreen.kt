@@ -87,7 +87,6 @@ fun DataPrivacyScreen(
       Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()),
       verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-      AddressPrivacyChoice(vm, s)
       val deviceSecure = LocalContext.current.getSystemService(android.app.KeyguardManager::class.java).isDeviceSecure
       Toggle(s.libraryProtection, vm.libraryProtected, enabled = deviceSecure || vm.libraryProtected) { vm.protectLibrary(!vm.libraryProtected) }
       Panel(label = s.privacyTitle) {
@@ -141,8 +140,7 @@ fun DataPrivacyScreen(
       Panel(label = s.backupTitle) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
           Text(s.backupBody, style = MaterialTheme.typography.bodyMedium, color = Limen.colors.ink)
-          Text(s.words("Archive limit: 64 MB compressed, 256 MB restored. Use a record’s backup button for larger libraries.", "Limites : 64 Mo compressés, 256 Mo restaurés. Utilisez la sauvegarde par constat pour les grandes collections.", "Grenzen: 64 MB komprimiert, 256 MB entpackt. Für grosse Sammlungen einzelne Protokolle sichern.", "Limiti: 64 MB compressi, 256 MB ripristinati. Per raccolte grandi usare il backup del singolo verbale.", "Limits: 64 MB cumprimids, 256 MB restabilids. Per grondas collecziuns segirar mintga protocol separadamain."), color = Limen.colors.inkDim)
-          Toggle(s.words("Repair unreadable existing records; preserve damaged files", "Réparer les constats existants illisibles ; conserver les fichiers endommagés", "Unlesbare bestehende Protokolle reparieren; beschädigte Dateien behalten", "Ripara verbali esistenti illeggibili; conserva i file danneggiati", "Reparar protocols existents betg legibels; conservar datotecas donnegiadas"), repairCorrupt) { repairCorrupt = !repairCorrupt }
+          Toggle(s.words("Repair unreadable records", "Réparer les constats illisibles", "Unlesbare Protokolle reparieren", "Ripara i verbali illeggibili", "Reparar protocols illegibels"), repairCorrupt) { repairCorrupt = !repairCorrupt }
           vm.archiveImported?.let { Text("${s.recover}: ${it.repaired} · ${s.toVerify}: ${it.repairable}", color = Limen.colors.ink) }
           Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             SmallKey(s.createBackup, Modifier.weight(1f), enabled = !vm.archiveBusy) {

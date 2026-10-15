@@ -171,7 +171,7 @@ class RemediationDeviceTest {
     compose.onNodeWithText(s.startNewSession).performClick()
     fill(s.firstName, "Audit")
     fill(s.lastName, "Tenant")
-    compose.onNodeWithText("Start a draft with these details").performScrollTo().performClick()
+    compose.onNodeWithText(s.validate).performScrollTo().performClick()
     compose.onNodeWithText("DOSSIER").performScrollTo().performClick()
     fill(s.address, "Auditstrasse 1")
     fill(s.place, "5000 Aarau")

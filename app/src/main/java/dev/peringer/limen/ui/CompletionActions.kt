@@ -1,5 +1,11 @@
 package dev.peringer.limen.ui
 
+import dev.peringer.limen.theme.Limen
+import androidx.compose.ui.unit.dp
+import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.clickable
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,7 +29,10 @@ internal fun CompletionAction(vm: LimenViewModel, s: Str, p: Protocol, issue: Fi
     }.joinToString()
     else -> ""
   }
-  SmallKey(s.finalizationIssue(issue) + if (details.isBlank()) "" else " · $details", Modifier.fillMaxWidth()) {
-    vm.navigateIssue(issue)
-  }
+  Text(
+    s.finalizationIssue(issue) + if (details.isBlank()) "" else " · $details",
+    style = MaterialTheme.typography.bodyMedium,
+    color = Limen.colors.ink,
+    modifier = Modifier.fillMaxWidth().clickable { vm.navigateIssue(issue) }.padding(vertical = 6.dp),
+  )
 }

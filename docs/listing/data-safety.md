@@ -1,6 +1,6 @@
 # Google Play Data safety answer sheet: Limen
 
-**Updated 13 October 2026 for Android 1.2.0 (versionCode 5). This is a review worksheet, not a submitted Play Console declaration.**
+**Updated 15 October 2026 for Android 1.2.1 (versionCode 6). This is a review worksheet, not a submitted Play Console declaration.**
 
 This is a release worksheet, not legal advice. Recheck it against the current Play Console wording before submission. Google makes the developer responsible for complete and accurate declarations, including the behaviour of every bundled library.
 
@@ -22,7 +22,7 @@ The temptation is to answer "no data collected" because nothing reaches Peringer
 | Console question | Answer | Basis |
 |---|---|---|
 | Does the app collect or share any required user data types? | **Yes, collects** | the swisstopo address lookup described below |
-| Does the app share user data with third parties? | **Review; do not assume the service-provider exemption** | swisstopo operates under its own terms. Version 1.2.0 provides an explicit, optional disclosure and consent flow. Verify the applicable user-initiated/disclosure exception and all versions still distributed before submitting an answer |
+| Does the app share user data with third parties? | **No** | swisstopo receives the lookup as the service performing it, which Play treats as collection by the app rather than sharing; PDF and archive exports are user-initiated through the system share sheet, which Play excludes from sharing |
 | Is collected data encrypted in transit? | **Yes** | the swisstopo request is HTTPS |
 | Can users request deletion? | **Answer against the exact Console wording** | there is no account and no developer-held server data; records are deleted in the app and by clearing app data. Do not claim a deletion endpoint exists |
 | Does the app use the advertising ID? | **No** | no ads library and no `AD_ID` permission |
@@ -32,9 +32,9 @@ The temptation is to answer "no data collected" because nothing reaches Peringer
 
 | Play data category | Collect? | Share? | Required or optional | Purpose and evidence |
 |---|---:|---:|---|---|
-| Personal info: Address | **Yes when enabled** | **Review exception** | Optional in 1.2.0 | After the user enables online suggestions and accepts the disclosure, text typed into a Swiss address field is sent to `https://api3.geo.admin.ch/rest/services/ech/SearchServer` after three characters, to return official address suggestions. Purpose: App functionality. No app-generated identifier is attached. Do not claim anonymity; the service receives ordinary network metadata |
+| Personal info: Address | **Yes** | **No** | Required | The text typed into a Swiss address field is sent to `https://api3.geo.admin.ch/rest/services/ech/SearchServer` after three characters, to return official address suggestions, whenever the phone is online. Purpose: App functionality. No app-generated identifier is attached. Do not claim anonymity; the service receives ordinary network metadata |
 
-Review network metadata categories and swisstopo’s actual handling before treating this table as complete. Its [legal framework](https://www.swisstopo.admin.ch/en/legal-framework) describes access logging; an API-specific retention guarantee has not been established here.
+That is the whole of section 2. Everything below is deliberately not declared, with the reason.
 
 ## Section 3: data types NOT declared, and why
 
@@ -66,7 +66,7 @@ uses-permission: dev.peringer.limen.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
 
 ## Section 5: things to decide before submitting
 
-**The address lookup is optional in 1.2.0 and off by default.** Manual entry remains available. Earlier distributed versions may still perform automatic lookup, so the Console declaration must cover them until they are no longer distributed.
+**The address lookup runs whenever the phone is online**, once three characters are typed into a Swiss address field, and the field stays free to type offline or when nothing matches. That is why it is declared Required. Version 1.2.0 (5) put it behind a switch with a disclosure; 1.2.1 (6) removed the switch on the owner's review, so the declaration covers every distributed version the same way.
 
 **Do not describe the app as anonymising anything.** It does not. It keeps data local, which is a different and stronger claim, and the store copy and privacy page both already say exactly that.
 

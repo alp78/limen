@@ -62,6 +62,7 @@ fun NewSessionScreen(
   s: Str,
   entryToSeed: Protocol? = null,
   onBack: () -> Unit,
+  onSaved: () -> Unit = onBack,
 ) {
   val savedName = vm.profileName.trim()
   var firstName by rememberSaveable { mutableStateOf(savedName.substringBefore(' ', savedName)) }
@@ -122,8 +123,8 @@ fun NewSessionScreen(
 
   val addressFieldsFocused = focusedAddressFields.isNotEmpty()
 
-  LaunchedEffect(vm.onlineAddresses, usesSwissAddress, addressQuery, addressVerified, addressFieldsFocused) {
-    if (!vm.onlineAddresses || !usesSwissAddress || !addressFieldsFocused || addressVerified || addressQuery.trim().length < 3) {
+  LaunchedEffect(usesSwissAddress, addressQuery, addressVerified, addressFieldsFocused) {
+    if (!usesSwissAddress || !addressFieldsFocused || addressVerified || addressQuery.trim().length < 3) {
       addressMatches = emptyList()
       addressSearching = false
       return@LaunchedEffect
@@ -196,8 +197,6 @@ fun NewSessionScreen(
         color = Limen.colors.ink,
       )
       if (vm.saveState == "failed") Text(s.saveFailed, color = Limen.colors.dangerOutline)
-      Text(s.words("Only your name is required to start a draft; contact details are optional.", "Seul votre nom est requis pour démarrer ; les coordonnées sont facultatives.", "Für einen Entwurf genügt Ihr Name; Kontaktdaten sind freiwillig.", "Per iniziare basta il nome; i recapiti sono facoltativi.", "Per cumenzar basta il num; las datas da contact èn facultativas."), color = Limen.colors.inkDim)
-      AddressPrivacyChoice(vm, s)
       Panel(label = s.userType) {
         EqualChoiceRow(
           options = listOf(
@@ -227,19 +226,9 @@ fun NewSessionScreen(
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
           if (actor == Actor.Agency) {
             Field(s.companyName, company) { company = it }
-            Text(
-              s.agencyRoleExplanation,
-              style = MaterialTheme.typography.bodySmall,
-              color = Limen.colors.inkDim,
-            )
           }
           Field(s.firstName, firstName) { firstName = it }
           Field(s.lastName, lastName) { lastName = it }
-          val controller = vm.controllerIdentity
-          Text("${s.controllerTitle}: " + if (controller.isBlank()) listOf(identity.company, identity.fullName).filter(String::isNotBlank).joinToString(" · ") else listOf(controller.organisation, controller.contactName).filter(String::isNotBlank).joinToString(" · "), color = Limen.colors.inkDim)
-          SmallKey(s.words("Start a draft with these details", "Démarrer un brouillon avec ces informations", "Entwurf mit diesen Angaben starten", "Inizia una bozza con questi dati", "Cumenzar in sboz cun questas indicaziuns"), Modifier.fillMaxWidth(), enabled = canStart) {
-            entryToSeed?.let { vm.seedExitFrom(it, role, identity) } ?: vm.startNewSession(role, identity, sessionKind)
-          }
           Text(s.identityAddress, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
           Text(s.addressType, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
           EqualChoiceRow(
@@ -266,7 +255,7 @@ fun NewSessionScreen(
           if (usesSwissAddress && addressFieldsFocused && addressSearching) {
             Text(s.addressSearching, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
           }
-          if (lookupFailed && vm.onlineAddresses) Text(s.lookupFailed, color = Limen.colors.inkDim)
+          if (lookupFailed) Text(s.lookupFailed, color = Limen.colors.inkDim)
           if (usesSwissAddress && addressFieldsFocused) AddressMatches(addressMatches, ::selectAddress)
           if (usesSwissAddress && addressVerified) {
             Text(
@@ -278,7 +267,6 @@ fun NewSessionScreen(
           Field(
             s.street,
             street,
-            hint = if (usesSwissAddress) s.addressLookupHint else null,
             onFocusChanged = { setAddressFieldFocused("street", it) },
           ) {
             changeAddress { street = it }
@@ -338,20 +326,18 @@ fun NewSessionScreen(
         }
       }
       Spacer(Modifier.height(4.dp))
-      Panel(label = s.controllerTitle) {
-        val controller = vm.controllerIdentity
-        Text(if (controller.isBlank()) listOf(identity.company, identity.fullName, identity.phone).filter(String::isNotBlank).joinToString(" · ")
-          else listOf(controller.organisation, controller.contactName, controller.email, controller.phone).filter(String::isNotBlank).joinToString(" · "), color = Limen.colors.ink)
-        Text(s.words("Check these controller details before starting. Professional details can be changed under Data and privacy.", "Vérifiez ce responsable avant de commencer. Les coordonnées professionnelles se modifient dans Données et confidentialité.", "Verantwortliche Stelle vor dem Start prüfen. Geschäftliche Angaben lassen sich unter Daten und Datenschutz ändern.", "Verificare il titolare prima di iniziare. I dati professionali si modificano in Dati e privacy.", "Controllar il post responsabel avant da cumenzar. Midadas èn pussaivlas sut Datas e protecziun da datas."), color = Limen.colors.inkDim)
-      }
-      BigKey(
-        "${s.startNewSession} · ${(if (sessionKind == Kind.Entry) s.entry else s.exit).uppercase()}",
-        active = true,
-        modifier = Modifier.fillMaxWidth(),
-        enabled = canStart,
-      ) {
+      val start = {
         entryToSeed?.let { vm.seedExitFrom(it, role, identity) }
           ?: vm.startNewSession(role, identity, sessionKind)
+      }
+      // Save keeps the draft in the library and returns to it; Validate opens the record.
+      Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        ActionKey(ButtonGlyph.Save, s.draft, active = false, Modifier.weight(1f), enabled = canStart) {
+          start()
+          vm.closeFlow()
+          onSaved()
+        }
+        ActionKey(ButtonGlyph.Confirm, s.validate, active = true, Modifier.weight(1f), enabled = canStart, onPress = start)
       }
       Spacer(Modifier.height(20.dp))
     }
