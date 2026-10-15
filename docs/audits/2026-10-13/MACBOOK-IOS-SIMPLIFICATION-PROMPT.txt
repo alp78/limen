@@ -1,0 +1,51 @@
+Apply the Limen Android 1.2.1 and 1.2.2 simplification to the iPhone app on this Mac
+
+This is an implementation request. On 15 October 2026 the owner reviewed Android 1.2.0 on the phone and rejected the forms the audit remediation had produced. Two Android releases followed the same day, 1.2.1 (versionCode 6) and 1.2.2 (versionCode 7), and both are on the Play closed-testing track. Make the Swift app behave the same way, then verify it in the simulator and on the connected iPhone. Continue through implementation and verification rather than stopping at a plan.
+
+This prompt comes after MACBOOK-IOS-PARITY-PROMPT.txt in the same folder. If that parity work has already been done on the Swift side, this is a removal pass over what it added. If it has not, fold these rules into it so the rejected controls are never built on iOS at all. Either way the Android reference is the head of main after the commit titled "Strip the sentence-long buttons, instruction text, lookup switch and controller block from the forms, put one-word keys at the bottom of each, and open the record from a hub door", not eb5c038. Check the Android head before reading anything.
+
+1. The rules, which apply to every screen of the app
+
+- A button is an icon and one or two words: Brouillon, Valider, Sauvegarder, Suivant. The screen's title says what is being validated; the button never repeats it, and it never names the session kind.
+- The primary and the secondary action sit together at the bottom of their form, never in the middle of the page.
+- No instructional copy under or above a field, no explanatory sentence under a screen title, and no text behind an info button that says what the screen is for. A label or a placeholder names the field.
+- No switch for a behaviour that can simply happen. The swisstopo lookup runs whenever the phone is online and the field stays free to type when it is offline or nothing matches. The iPhone app never had the switch; make sure the parity work did not add one, and remove any disclosure sheet or consent step around the lookup.
+- A disabled control that explains why it is disabled is not a control. Replace it with the action the person can take, or remove it.
+
+2. The screens, exactly as Android now does them
+
+New session form. Only the role, the kind, the identity fields, the address fields and the phone remain, with the title at the top. At the bottom, one row with two keys: Brouillon with a save icon, outlined, which creates the record, saves it and returns to the records list; and Valider with a check icon, filled, which creates the record and opens it. Both are disabled until the name is in. Gone: the mid-form "Démarrer un brouillon avec ces informations", the bottom "Nouvel état des lieux · Entrée", the line "Seul votre nom est requis pour démarrer", the "Responsable du traitement" line and block with its "Vérifiez ce responsable avant de commencer", the "Facultatif : les adresses saisies sont envoyées à swisstopo" disclosure and its switch, the helper under the street field, and the agency explanation under the company field. The lookup-failed line is a status, "Recherche d'adresse indisponible.", not an instruction.
+
+Dossier. The address card has no switch and no disclosure; the lookup behaves as above. The participant notice panel, with its share button and its "Information remise avant de recueillir les données" toggle, is gone. The field "Non inspecté / indisponible / non applicable : préciser le motif" is labelled "Motif". The add keys for meters, keys and badges, documents and follow-ups are plus-icon buttons whose accessible name is "Ajouter · <section>". "Joindre un document" is "Joindre". The dossier has no key at its foot any more.
+
+Hub. The object card keeps its canton flag and one key, COMPLÉTER; its sentence "Vérifiez l'adresse du logement, son canton…" is gone. The panel "Informations à compléter" is "Données manquantes", a small label, and each missing item is a plain tappable line of body text, not a key; "Afficher les contrôles restants (n)" is "Tout afficher (n)". The bottom key "RELIRE LE CONSTAT" is gone. In its place a third door, CONSTAT, sits beside INSPECTION and DOSSIER, same shape, check icon, lead "Relecture, signatures et export", readout the signature state (Non signé, En attente de signatures, Finalisé), opening the review or, once the record is locked, the export.
+
+Masthead. The info button that showed a sentence per step ("Deux moitiés, dans l'ordre qui vous convient…", "Parcourez le logement…", "Les documents autour de la remise…", "Vérifiez qui doit signer…" and the review and export ones) is gone with its texts.
+
+Inspection. The room picker has no sentence above the room chips. On a room's detail the actions are one row: an icon button opening the room actions, then, when open, up, down, clear findings and remove room as icon buttons, the two destructive ones red and still behind their confirmation, and at the right end the primary key Pièce suivante with a forward icon. The labels, where they still appear as accessible names or in confirmations, are "Effacer les constats" and "Retirer la pièce".
+
+Signature step. The line "Saisissez toute réserve avant de signer…" is gone. "Impossible de tracer : papier / représentant" is "Signature impossible". "Copie HTML accessible" is "Copie HTML". The review button "Aperçu complet du document" is "Aperçu".
+
+Records list. A record without an address is titled "Sans adresse", and a long address ellipsizes on one line instead of being cut. On a draft entry the chip reads FINALISER and opens the record at the signature step; on a finalized entry it reads SORTIE and seeds the exit. An unreadable record's recovery key reads "Récupérer".
+
+Settings, data and privacy. No lookup switch. The archive-limit sentence is gone. The repair toggle reads "Réparer les constats illisibles". The backup key reads SAUVEGARDER. The controller panel with its fields stays, as it did in 1.1.2.
+
+Date and time fields. The "Rétablir la dernière date valide" and "…heure valide" keys are undo icon buttons with that text as their accessible name.
+
+Legal panel. "Trouver l'autorité de conciliation compétente" is "Autorité de conciliation".
+
+3. The strings
+
+The Swift strings are generated from the Android Strings.kt and RecordStrings.kt. Regenerate against the reference head rather than editing the generated Swift by hand, then fix every call site the regeneration breaks; the compiler will list them. Removed on Android: stepLead, tipStep, hubClose, objectPreflightBody, chooseRoomsPresentBody, reservationBeforeSign, agencyRoleExplanation, onlineLookup, lookupDisclosure, and the inline words of the draft button, the controller lines and the "only your name" line. Added: validate, stepRecord, hubRecordLead, reason. Changed to one or two words: noAddress, exitFromThis, finalizeEntryFirst, stillMissing, completeObjectAndCanton, createBackup, clearRoom, removeRoom, recover, addDocument, nextRoom, unableToDraw, accessibleCopy, preview, conciliation, lookupFailed. addressLookupHint is back to its 1.1.2 text and feeds only the info tip on the dossier's object panel. The privacy paragraph about swisstopo is back to the 1.1.2 wording, automatic lookup, in all five languages; the published notices at peringer.ch/legal/limen/privacy/ say the same since 15 October.
+
+4. Data and records
+
+Nothing in the record format changes. details.participantNoticeShown stays in the model, unread by the UI. The onlineAddresses preference is removed on Android; remove its iOS equivalent if one was added, and make sure no record or preference migration is needed. Existing records, signatures, fingerprints and archives must open unchanged; run the legacy fixtures and the crypto interoperability tests as they are.
+
+5. Verification before the handoff
+
+- Build with warnings as errors where the project already does so, run every kit and app test, and run the UI tests in the simulator.
+- On the connected iPhone, in French: the new-session form top and bottom, Brouillon returning to the list with the draft present, Valider opening the hub, the hub with its three doors and the Données manquantes panel, the room picker, a room's action row, the signature step, the records list with FINALISER and SORTIE. Keep the screenshots beside the handoff.
+- Grep the Swift sources for any remaining Text whose string is an imperative sentence addressed to the reader, any button whose label exceeds two words, and any Toggle that gates the lookup, and list what is left and why.
+- Bump the marketing version to 1.2.2 and the build number in the project's own sequence. Do not upload to TestFlight or App Store Connect; prepare the release notes in the five languages from the Android docs/listing/release-notes.md sections for versionCode 6 and 7, and say they are prepared, not uploaded.
+- Do not modify the Android repository or the website. Hand over the exact git add, commit and push commands for the Swift repository; the owner runs them. One line for the commit message, no body, no attribution.
