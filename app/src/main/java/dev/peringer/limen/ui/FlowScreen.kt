@@ -207,7 +207,6 @@ private fun FlowMast(vm: LimenViewModel, s: Str, p: Protocol) {
         color = Limen.colors.inkDim,
       )
     }
-    InfoTip(s.tipStep(vm.flowStep))
     ThemeToggle(vm.darkTheme, s.themeMode, vm::toggleTheme)
   }
 }

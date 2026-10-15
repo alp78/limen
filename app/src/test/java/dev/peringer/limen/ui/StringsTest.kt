@@ -51,9 +51,6 @@ class StringsTest {
         assertTrue("$lang issue $it", s.finalizationIssue(it).isNotBlank())
       }
       ExportIssue.entries.forEach { assertTrue("$lang export $it", s.exportIssue(it).isNotBlank()) }
-      // Every place in the flow says what it is for; a place with no lead is a place a
-      // person is standing in without being told why.
-      FlowStep.entries.forEach { assertTrue("$lang lead $it", s.stepLead(it).isNotBlank()) }
     }
   }
 

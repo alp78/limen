@@ -87,6 +87,20 @@ internal fun HubStep(vm: LimenViewModel, s: Str, p: Protocol) {
       glyph = ButtonGlyph.Edit,
     ) { vm.goTo(FlowStep.Dossier) }
 
+    // A signed record has nothing left to close; what it still offers is its document.
+    val locked = LocalRecordLocked.current
+    HubDoor(
+      title = s.stepRecord,
+      lead = s.hubRecordLead,
+      readout = when {
+        p.isFinalized() -> s.finalized
+        p.isSigned() -> s.awaitingSignatures
+        else -> s.notSigned
+      },
+      alert = null,
+      glyph = ButtonGlyph.Confirm,
+    ) { vm.goTo(if (locked) FlowStep.Export else FlowStep.Review) }
+
     Spacer(Modifier.height(2.dp))
 
     // What is still missing, said here rather than found at the signature. Nothing is
@@ -102,13 +116,6 @@ internal fun HubStep(vm: LimenViewModel, s: Str, p: Protocol) {
       }
     }
 
-    // A signed record has nothing left to close; what it still offers is its document.
-    val locked = LocalRecordLocked.current
-    BigKey(
-      if (locked) s.stepExport.uppercase() else s.hubClose,
-      active = true,
-      Modifier.fillMaxWidth(),
-    ) { vm.goTo(if (locked) FlowStep.Export else FlowStep.Review) }
     Spacer(Modifier.height(12.dp))
   }
 }

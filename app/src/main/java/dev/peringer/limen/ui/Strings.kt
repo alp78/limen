@@ -133,6 +133,8 @@ class Str(val lang: Lang) {
   val stepDossier = pick("Dossier", "Dossier", "Dossier", "Dossier", "Dossier")
   val stepSign = pick("Signatures", "Signatures", "Unterschriften", "Firme", "Suttascripziuns")
   val stepExport = pick("Export", "Export", "Export", "Esporta", "Export")
+  val stepRecord = pick("Record", "Constat", "Protokoll", "Verbale", "Protocol")
+  val hubRecordLead = pick("Review, signatures and export", "Relecture, signatures et export", "Durchsicht, Unterschriften und Export", "Rilettura, firme ed esportazione", "Relectura, suttascripziuns ed export")
 
   // The hub.
   val hubInspectionLead = pick(
@@ -149,7 +151,6 @@ class Str(val lang: Lang) {
     "Contratto, deposito, contatori, chiavi e le persone",
     "Contract, cauziun, dumbraders, clavs e las persunas",
   )
-  val hubClose = pick("REVIEW THE RECORD", "RELIRE LE CONSTAT", "PROTOKOLL PRÜFEN", "RIVEDI IL VERBALE", "REPASSAR IL PROTOCOL")
   val objectPreflight = pick(
     "Object and canton first",
     "Informations sur le logement",
@@ -590,13 +591,6 @@ class Str(val lang: Lang) {
     "Locali presenti",
     "Locals avant maun",
   )
-  val chooseRoomsPresentBody = pick(
-    "Select only the spaces that are part of this handover. You can add, rename or remove rooms afterwards.",
-    "Sélectionnez uniquement les espaces concernés par cette remise. Vous pourrez ensuite ajouter, renommer ou retirer des pièces.",
-    "Wählen Sie nur die Räume dieser Übergabe. Danach können Sie Räume ergänzen, umbenennen oder entfernen.",
-    "Selezionate solo gli spazi inclusi nella consegna. In seguito potrete aggiungere, rinominare o rimuovere locali.",
-    "Tschernai mo ils locals da questa surdada. Suenter pudais Vus agiuntar, renumnar u allontanar locals.",
-  )
   val useSelectedRooms = pick(
     "USE SELECTED ROOMS",
     "UTILISER CES PIÈCES",
@@ -702,13 +696,6 @@ class Str(val lang: Lang) {
   val fixDeadline = pick("By (date)", "Délai de réparation", "Bis am", "Entro il", "Fin ils")
   val costNote = pick("Cost note / estimate", "Coût estimé ou montant du devis", "Kosten / Voranschlag", "Costi / preventivo", "Custs / preventiv")
   val reservationLabel = pick("Reservation", "Réserve", "Vorbehalt", "Riserva", "Resalva")
-  val reservationBeforeSign = pick(
-    "Enter any reservation before signing. It is sealed with that person's ink.",
-    "Saisissez toute réserve avant de signer. Elle est scellée avec la signature de cette personne.",
-    "Vorbehalt vor dem Unterschreiben eingeben. Er wird mit dieser Unterschrift versiegelt.",
-    "Inserite ogni riserva prima della firma. Sarà sigillata con quella firma.",
-    "Endatar mintga resalva avant la suttascripziun. Ella vegn sigillada cun quella suttascripziun.",
-  )
   val inkEvidenceNotice = pick(
     "Captured ink is evidence of the recorded outcome, not a Swiss qualified electronic signature.",
     "La signature confirme les constatations et réserves enregistrées. La prise en charge des frais reste distincte. Il ne s’agit pas d’une signature électronique qualifiée.",
@@ -1250,7 +1237,6 @@ class Str(val lang: Lang) {
    * sit under a heading in small type, moved behind the mark without being rewritten: the
    * words were right, the place was wrong.
    */
-  fun tipStep(step: FlowStep) = Tip(stepLead(step))
 
   fun tipAddress() = Tip(addressLookupHint)
 
@@ -1597,57 +1583,6 @@ class Str(val lang: Lang) {
     "Verbale di consegna svizzero",
     "Protocol da surdada svizzer",
   )
-  fun stepLead(step: FlowStep) = when (step) {
-    FlowStep.Hub -> pick(
-      "Two halves, in whatever order suits you: what you can see and touch, and what is on paper.",
-      "Deux moitiés, dans l'ordre qui vous convient : ce qui se voit et se touche, et ce qui est sur papier.",
-      "Zwei Hälften, in beliebiger Reihenfolge: was sichtbar und greifbar ist, und was auf dem Papier steht.",
-      "Due metà, nell'ordine che preferite: ciò che si vede e si tocca, e ciò che è sulla carta.",
-      "Duas mitads, en l'urden che vus vulais: quai ch'ins vesa e tutga, e quai ch'è sin palpiri.",
-    )
-    FlowStep.Inspection -> pick(
-      "Go through the flat in your own order. Confirm every listed room after checking it, even when there is no defect.",
-      "Parcourez le logement dans l'ordre qui vous convient. Confirmez chaque pièce après contrôle, même sans défaut.",
-      "Gehen Sie in Ihrer eigenen Reihenfolge durch. Bestätigen Sie jeden aufgeführten Raum nach der Prüfung, auch ohne Mangel.",
-      "Percorrete l'alloggio nell'ordine che preferite. Confermate ogni locale dopo il controllo, anche senza difetti.",
-      "Giai tras l'abitaziun en voss agen urden. Confermai mintga local suenter la controlla, era senza mancanzas.",
-    )
-    FlowStep.Objects -> pick(
-      "Use one row per supplied item, confirm its condition and add a clear photo when useful.",
-      "Utilisez une ligne par objet fourni, confirmez son état et ajoutez une photo nette si utile.",
-      "Verwenden Sie je mitgeliefertem Gegenstand eine Zeile, bestätigen Sie den Zustand und fügen Sie bei Bedarf ein klares Foto hinzu.",
-      "Usate una riga per ogni oggetto fornito, confermatene lo stato e aggiungete una foto chiara se utile.",
-      "Duvrai ina lingia per mintga object furnì, confermai ses stadi ed agiuntai ina foto clera sche util.",
-    )
-    FlowStep.Dossier -> pick(
-      "The paperwork around the handover. Add a component only when this handover has it.",
-      "Les documents autour de la remise. N'ajoutez une rubrique que si elle concerne cette remise.",
-      "Das Papier rund um die Übergabe. Fügen Sie eine Rubrik nur hinzu, wenn sie diese Übergabe betrifft.",
-      "I documenti attorno alla consegna. Aggiungete una rubrica solo se riguarda questa consegna.",
-      "Ils documents enturn la surdada. Agiuntai ina rubrica mo sch'ella pertutga questa surdada.",
-    )
-    FlowStep.Review -> pick(
-      "Read the findings aloud together and record each side's position. Signing does not decide liability or payment.",
-      "Relisez les constats ensemble et consignez la position de chacun. La signature ne décide ni la responsabilité ni le paiement.",
-      "Gehen Sie die Befunde gemeinsam durch und halten Sie beide Positionen fest. Die Unterschrift entscheidet weder Haftung noch Zahlung.",
-      "Rileggete insieme i rilievi e registrate la posizione di ciascuno. La firma non decide responsabilità o pagamento.",
-      "Legì ils resultats ensemen e registrai la posiziun da mintga vart. La suttascripziun na decida betg responsabladad u pajament.",
-    )
-    FlowStep.Sign -> pick(
-      "Review who must sign or refuse the handover record and record any reservation first.",
-      "Vérifiez qui doit signer ou refuser le constat et consignez d'abord toute réserve.",
-      "Prüfen Sie, wer das Übergabeprotokoll unterzeichnet oder verweigert, und erfassen Sie Vorbehalte zuerst.",
-      "Verificate chi deve firmare o rifiutare il verbale e registrate prima ogni riserva.",
-      "Controllai tgi che sto suttascriver u refusar il protocol e registrai l'emprim mintga resalva.",
-    )
-    FlowStep.Export -> pick(
-      "Export the PDF and hand a copy to each side right now.",
-      "Exportez le PDF et remettez un exemplaire à chaque partie immédiatement.",
-      "Exportieren Sie das PDF und übergeben Sie jeder Seite sofort ein Exemplar.",
-      "Esportate il PDF e consegnate subito una copia a ciascuna parte.",
-      "Exportai il PDF e surdatti immediat ina copia a mintga vart.",
-    )
-  }
   /** Said on the paper, because two signed originals are what both parties go home with. */
   val pdfTwoCopies = pick("Provide an identical copy to each party. Delivery is recorded separately.", "Remettre un exemplaire identique à chaque partie. La remise est consignée séparément.", "Jeder Partei eine gleichlautende Kopie übergeben. Die Zustellung wird gesondert erfasst.", "Consegnare una copia identica a ogni parte. La consegna è registrata separatamente.", "Surdar ina copia identica a mintga partida. La surdada vegn registrada separadamain.")
 

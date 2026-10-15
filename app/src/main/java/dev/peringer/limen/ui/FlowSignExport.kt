@@ -87,7 +87,6 @@ internal fun SignStep(vm: LimenViewModel, s: Str, p: Protocol) {
             vm.edit { it.copy(unilateralNote = value) }
           }
         }
-        Text(s.reservationBeforeSign, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
         p.parties.filter { it.role in vm.requiredRecordRoles(p) }.forEach { party ->
           SignRow(vm, s, p, party, Plane.Record) { padTarget = party }
         }

@@ -6,6 +6,52 @@ Paste each block into the matching language on the release, or let `play_push.py
 
 ---
 
+## versionCode 7, versionName 1.2.2
+
+15 October 2026, the same day as versionCode 6. The explanatory sentences behind the masthead's info button and on the room picker and the signature step go, and the hub's bottom key becomes a third door.
+
+### en-US
+
+```
+The handover overview, dossier, inspection and signature screens lose their explanatory sentences, and the record's review, signatures and export open from a door beside the other two instead of a key at the foot of the page.
+```
+
+(221/500)
+
+### fr-FR
+
+```
+Les écrans de vue d’ensemble, de dossier, d’inspection et de signature perdent leurs phrases d’explication, et la relecture, les signatures et l’export s’ouvrent depuis une porte à côté des deux autres, au lieu d’un bouton en bas de page.
+```
+
+(238/500)
+
+### de-DE
+
+```
+Übersicht, Dossier, Begehung und Unterschriften verlieren ihre Erklärungssätze; Durchsicht, Unterschriften und Export öffnen sich über eine Tür neben den beiden anderen statt über eine Taste am Seitenende.
+```
+
+(211/500)
+
+### it-IT
+
+```
+Panoramica, dossier, sopralluogo e firme perdono le frasi esplicative; rilettura, firme ed esportazione si aprono da una porta accanto alle altre due, non più da un pulsante in fondo alla pagina.
+```
+
+(200/500)
+
+### rm
+
+```
+La survista, il dossier, l’inspecziun e las suttascripziuns perdan lur frasas explicativas; la relectura, las suttascripziuns e l’export s’avran tras ina porta dasper las autras duas, betg pli tras in buttun al pe da la pagina.
+```
+
+(221/500)
+
+---
+
 ## versionCode 6, versionName 1.2.1
 
 15 October 2026. The forms of 1.2.0 carried sentence-long buttons, instruction text under fields, a switch for the address lookup and a data-controller block, all removed on the owner's review. Romansh native review remains pending.

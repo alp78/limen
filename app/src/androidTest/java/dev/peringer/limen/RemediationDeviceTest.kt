@@ -198,7 +198,7 @@ class RemediationDeviceTest {
     compose.onNodeWithContentDescription(s.done).performScrollTo().performClick()
     compose.onNodeWithContentDescription(s.back).performClick()
     compose.onNodeWithContentDescription(s.back).performClick()
-    compose.onNode(hasText(s.hubClose) and hasClickAction()).performScrollTo().performClick()
+    compose.onNodeWithText(s.stepRecord.uppercase()).performScrollTo().performClick()
     compose.onNode(hasText(s.preview) and hasClickAction()).performScrollTo().performClick()
     compose.onNodeWithText(s.done).performClick()
     compose.onNodeWithText(s.stepSign.uppercase()).performScrollTo().performClick()

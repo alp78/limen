@@ -187,13 +187,6 @@ internal fun DossierStep(vm: LimenViewModel, s: Str, p: Protocol) {
     item(key = "documents") { DocumentsPanel(vm, s, p) }
     item(key = "follow-up") { FollowUpPanel(vm, s, p) }
 
-    item(key = "close") {
-      BigKey(
-        if (locked) s.stepExport.uppercase() else s.hubClose,
-        active = true,
-        Modifier.fillMaxWidth(),
-      ) { vm.goTo(if (locked) FlowStep.Export else FlowStep.Review) }
-    }
   }
 
   removing?.let { card ->

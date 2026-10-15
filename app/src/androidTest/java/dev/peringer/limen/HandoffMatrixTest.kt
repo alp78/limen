@@ -130,7 +130,7 @@ class HandoffMatrixTest {
       "Required throughout the canton in the 2026 official snapshot"
     ).performScrollTo().assertIsDisplayed()
     compose.onNodeWithContentDescription("BACK").performClick()
-    compose.onNode(hasText("REVIEW THE RECORD") and hasClickAction()).performScrollTo().performClick()
+    compose.onNodeWithText("RECORD").performScrollTo().performClick()
     compose.onNodeWithText("Object").assertExists()
     compose.onNodeWithText("SIGNATURES").performScrollTo().performClick()
     compose.onNodeWithText("Unilateral record").assertExists()

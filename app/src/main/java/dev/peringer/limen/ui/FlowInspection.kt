@@ -142,7 +142,6 @@ private fun InitialRoomSetup(vm: LimenViewModel, s: Str, p: Protocol) {
   var selected by remember(p.id) { mutableStateOf(emptySet<RoomKind>()) }
   Panel(label = s.chooseRoomsPresent) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-      Text(s.chooseRoomsPresentBody, style = MaterialTheme.typography.bodyMedium, color = Limen.colors.ink)
       FlowRow(
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
