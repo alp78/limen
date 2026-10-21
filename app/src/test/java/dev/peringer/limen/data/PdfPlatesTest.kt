@@ -11,9 +11,7 @@ import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.util.zip.Deflater
-import java.util.zip.Inflater
 import javax.imageio.ImageIO
-import kotlin.math.abs
 
 class PdfPlatesTest {
 
@@ -56,52 +54,21 @@ class PdfPlatesTest {
     return out.toByteArray()
   }
 
-  /** Noisy, so it compresses like a photograph, and written as 8-bit RGB the way Android writes an opaque bitmap. */
-  private fun png(name: String, width: Int, height: Int, seed: Long, type: Int = BufferedImage.TYPE_INT_RGB): Pair<File, IntArray> {
+  /** Noisy, so it compresses like a photograph. */
+  private fun jpeg(name: String, width: Int, height: Int, seed: Long): PdfPlates.Plate {
     val random = java.util.Random(seed)
     val pixels = IntArray(width * height) { random.nextInt() and 0xFFFFFF }
     val file = tmp.newFile(name)
-    ImageIO.write(BufferedImage(width, height, type).apply { setRGB(0, 0, width, height, pixels, 0, width) }, "png", file)
-    return file to pixels
+    check(ImageIO.write(BufferedImage(width, height, BufferedImage.TYPE_INT_RGB).apply { setRGB(0, 0, width, height, pixels, 0, width) }, "jpg", file))
+    return PdfPlates.Plate(file, width, height)
   }
 
   private fun swapped(plates: List<PdfPlates.Plate>) = ByteArrayOutputStream().also { PdfPlates.swap(skiaShaped(), plates, it) }.toByteArray()
 
-  /** What /Predictor 15 asks a reader to do: inflate, then undo each row's PNG filter. */
-  private fun decode(stream: ByteArray, width: Int, height: Int): IntArray {
-    val stride = width * 3
-    val raw = ByteArray((stride + 1) * height)
-    Inflater().run { setInput(stream); var n = 0; while (n < raw.size && !finished()) n += inflate(raw, n, raw.size - n); end() }
-    fun paeth(a: Int, b: Int, c: Int): Int { val p = a + b - c; val pa = abs(p - a); val pb = abs(p - b); val pc = abs(p - c); return if (pa <= pb && pa <= pc) a else if (pb <= pc) b else c }
-    val previous = ByteArray(stride)
-    val current = ByteArray(stride)
-    val pixels = IntArray(width * height)
-    for (y in 0 until height) {
-      val row = y * (stride + 1)
-      for (i in 0 until stride) {
-        val x = raw[row + 1 + i].toInt() and 0xFF
-        val a = if (i >= 3) current[i - 3].toInt() and 0xFF else 0
-        val b = previous[i].toInt() and 0xFF
-        val c = if (i >= 3) previous[i - 3].toInt() and 0xFF else 0
-        current[i] = when (raw[row].toInt()) {
-          0 -> x; 1 -> x + a; 2 -> x + b; 3 -> x + (a + b) / 2; 4 -> x + paeth(a, b, c)
-          else -> error("Unknown PNG filter")
-        }.toByte()
-      }
-      for (px in 0 until width) {
-        pixels[y * width + px] = ((current[px * 3].toInt() and 0xFF) shl 16) or ((current[px * 3 + 1].toInt() and 0xFF) shl 8) or (current[px * 3 + 2].toInt() and 0xFF)
-      }
-      current.copyInto(previous)
-    }
-    return pixels
-  }
-
-  @Test fun everyStandInBecomesItsPlatePixelForPixelAndEveryOffsetStillPointsAtItsObject() {
-    val (smallFile, small) = png("small.png", 41, 29, 1L)
-    // Large enough that the PNG writer splits its pixel data over several IDAT chunks.
-    val (largeFile, large) = png("large.png", 300, 200, 2L)
-    assertTrue(latin(largeFile.readBytes()).split("IDAT").size > 2)
-    val text = latin(swapped(listOf(PdfPlates.Plate(smallFile), PdfPlates.Plate(largeFile))))
+  @Test fun everyStandInBecomesItsPlateJpegByteForByteAndEveryOffsetStillPointsAtItsObject() {
+    val small = jpeg("small.jpg", 41, 29, 1L)
+    val large = jpeg("large.jpg", 300, 200, 2L)
+    val text = latin(swapped(listOf(small, large)))
 
     val xrefAt = Regex("""startxref\n(\d+)\n%%EOF\n$""").find(text)!!.groupValues[1].toInt()
     assertTrue(text.startsWith("xref\n0 6\n", xrefAt))
@@ -113,15 +80,13 @@ class PdfPlatesTest {
       return text.substring(at, text.indexOf("\nendstream\nendobj\n", at).takeIf { it >= 0 } ?: text.indexOf("endobj\n", at))
     }
     // Stand-in 0 is object 2, stand-in 1 is object 4.
-    listOf(Triple(2, 41 to 29, small), Triple(4, 300 to 200, large)).forEach { (number, size, pixels) ->
-      val (width, height) = size
+    listOf(2 to small, 4 to large).forEach { (number, plate) ->
       val body = objectAt(number)
-      assertTrue(body, body.contains("/Width $width\n/Height $height\n/ColorSpace [/ICCBased 9 0 R]\n/BitsPerComponent 8\n"))
-      assertTrue(body, body.contains("/Filter /FlateDecode\n/DecodeParms <</Predictor 15 /Colors 3 /BitsPerComponent 8 /Columns $width>>\n"))
+      assertTrue(body, body.contains("/Width ${plate.width}\n/Height ${plate.height}\n/ColorSpace [/ICCBased 9 0 R]\n/BitsPerComponent 8\n/Filter /DCTDecode\n"))
       val length = Regex("""/Length (\d+)>> stream\n""").find(body)!!
       val stream = body.substring(length.range.last + 1).toByteArray(Charsets.ISO_8859_1)
       assertEquals(length.groupValues[1].toInt(), stream.size)
-      assertArrayEquals(pixels, decode(stream, width, height))
+      assertArrayEquals(plate.jpeg.readBytes(), stream)
     }
     val unrelated = entries[3].groupValues[1].toInt()
     assertEquals(latin(image(3, ByteArray(48) { it.toByte() }, flate = true)), text.substring(unrelated, text.indexOf("endobj\n", unrelated) + 7))
@@ -129,14 +94,8 @@ class PdfPlatesTest {
   }
 
   @Test fun aPlateWithoutItsStandInFailsTheExportRatherThanDropAPhotograph() {
-    val plates = listOf(1L, 2L, 3L).map { PdfPlates.Plate(png("p$it.png", 8, 8, it).first) }
+    val plates = listOf(1L, 2L, 3L).map { jpeg("p$it.jpg", 8, 8, it) }
     assertThrows(IllegalStateException::class.java) { swapped(plates) }
-  }
-
-  @Test fun aPlateThatIsNotEightBitRgbIsRefusedRatherThanPrintedWrong() {
-    val alpha = png("alpha.png", 8, 8, 4L, BufferedImage.TYPE_INT_ARGB).first
-    val plain = png("plain.png", 8, 8, 5L).first
-    assertThrows(IllegalArgumentException::class.java) { swapped(listOf(alpha, plain).map { PdfPlates.Plate(it) }) }
   }
 
   @Test fun aDocumentWithoutPlatesIsWrittenAsItCame() {

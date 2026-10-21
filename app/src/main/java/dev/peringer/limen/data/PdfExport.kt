@@ -77,8 +77,7 @@ object PdfExport {
     val retained = File(context.filesDir, "exports/${p.id}").apply { mkdirs() }
     val original = File(retained, name)
     val companion = File(retained, name.removeSuffix(".pdf") + ".html")
-    // The plates go through files, never memory: a record has no size limit, and thirty
-    // lossless plates already weigh 45 MB.
+    // The plates go through files, never memory: a record holds any number of photographs.
     val spool = File(context.cacheDir, "annex-${System.nanoTime()}").apply { mkdirs() }
     try {
       var plates = emptyList<PdfPlates.Plate>()
@@ -116,7 +115,7 @@ object PdfExport {
   /**
    * One rendering pass. [total] is 0 while counting, and the real page count afterwards. The
    * HTML copy is written to [html] as the pages are drawn. With a [spool], each annex plate
-   * is kept there as a lossless PNG and handed to [onPlates]; without one, the plates are
+   * is kept there as a JPEG and handed to [onPlates]; without one, the plates are
    * light JPEG copies for the screen.
    */
   private fun build(
@@ -181,7 +180,7 @@ object PdfExport {
     val contents: List<Int>,
   ) {
     val html = HtmlCompanion(s.lang.name.lowercase(), "Limen · $reference", html)
-    /** The annex photographs as lossless PNG files, in the order their stand-ins were drawn. */
+    /** The annex photographs as JPEG files, in the order their stand-ins were drawn. */
     val plates = mutableListOf<PdfPlates.Plate>()
     val sectionStarts = mutableListOf<Int>()
     val ink = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.BLACK }
@@ -966,11 +965,11 @@ object PdfExport {
    * to it, and when the photograph was taken. No hash: it tells the people at a handover
    * nothing.
    *
-   * The photographs are large, up to the full width or 1100 units high, 17 cm wide or 19 cm high, and
-   * lossless at 300 dpi: no compression is traded against file size, because the photograph
-   * is the evidence. Each is written once as a PNG, which the HTML copy embeds as it is and
-   * whose pixel stream [PdfPlates] puts into the PDF in place of a marked stand-in, so that
-   * PdfDocument never holds the bitmap and a record of any size exports.
+   * The photographs are large, up to the full width or 1100 units high, 17 cm wide or 19 cm high,
+   * at 200 dpi as JPEG, which keeps thirty of them to a PDF of 7.7 MB. Each is written once
+   * as a JPEG, which the HTML copy embeds as it is and [PdfPlates] puts into the PDF in place
+   * of a marked stand-in, so that PdfDocument never holds the bitmap and a record of any size
+   * exports.
    *
    * The counting pass decodes nothing, but it reads every photograph's size from its header
    * and lays out every legend, so both passes break the pages in the same places.
@@ -1176,8 +1175,8 @@ object PdfExport {
   }
 
   /**
-   * The photograph itself. For the export it becomes a lossless PNG in the spool and a stand-in
-   * on the page; for the on-screen preview, a light JPEG at half the size in the HTML only.
+   * The photograph itself. For the export it becomes a JPEG in the spool and a stand-in on
+   * the page; for the on-screen preview, a light JPEG at half the size in the HTML only.
    */
   private fun photo(sheet: Sheet, card: AnnexContent.Card, file: File, fit: AnnexPlate.Fit, box: android.graphics.RectF) {
     val spool = sheet.spool
@@ -1186,15 +1185,13 @@ object PdfExport {
     require(bmp != null) { "Photograph cannot be rendered: ${card.file}" }
     val picture = onPaper(bmp)
     if (spool == null) sheet.html.jpeg(picture, card) else {
-      val png = File(spool, "plate-${sheet.plates.size}.png")
-      png.outputStream().buffered().use { out ->
-        PngWriter.write(out, picture.width, picture.height) { y, row -> picture.getPixels(row, 0, picture.width, 0, y, picture.width, 1) }
-      }
+      val jpeg = File(spool, "plate-${sheet.plates.size}.jpg")
+      jpeg.outputStream().buffered().use { check(picture.compress(Bitmap.CompressFormat.JPEG, AnnexPlate.JPEG_QUALITY, it)) }
       val standIn = standIn(sheet.plates.size)
-      sheet.plates += PdfPlates.Plate(png)
+      sheet.plates += PdfPlates.Plate(jpeg, picture.width, picture.height)
       sheet.canvas.drawBitmap(standIn, null, box, null)
       standIn.recycle()
-      sheet.html.png(png, card)
+      sheet.html.plate(jpeg, card)
     }
     picture.recycle()
   }
@@ -1208,8 +1205,8 @@ object PdfExport {
 
   /**
    * The plate as paper shows it: a picture with transparency, a screenshot picked from the
-   * gallery, is laid on white. A PDF image carries three colour channels and no alpha, and
-   * Android writes an opaque bitmap as the 8-bit RGB PNG [PdfPlates] takes.
+   * gallery, is laid on white. A JPEG carries three colour channels and no alpha, and
+   * Android would encode a transparent pixel as black.
    */
   private fun onPaper(bitmap: Bitmap): Bitmap {
     if (!bitmap.hasAlpha()) return bitmap

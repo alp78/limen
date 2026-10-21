@@ -20,10 +20,14 @@ object AnnexPlate {
   const val MAX_HEIGHT = 1100.0
 
   /**
-   * One unit is 0.169 mm on the 1240-unit A4 page, so two pixels per unit is 300 dpi, the
-   * resolution a printed photograph stops looking like a screen capture at.
+   * 200 dpi. One unit is 0.169 mm on the 1240-unit A4 page, so one pixel per unit is 150
+   * dpi. Thirty photographs made a 137 MB PDF at 300 dpi lossless, and make 7.7 MB at 200
+   * dpi as JPEG at [JPEG_QUALITY].
    */
-  private const val PIXELS_PER_UNIT = 2.0
+  private const val PIXELS_PER_UNIT = 200.0 / 150.0
+
+  /** The plates' JPEG quality, the same in the PDF and in its HTML copy. */
+  const val JPEG_QUALITY = 85
 
   /** [boxWidth] × [boxHeight] in page units; [pixelWidth] × [pixelHeight] decoded, both upright. */
   data class Fit(val boxWidth: Float, val boxHeight: Float, val pixelWidth: Int, val pixelHeight: Int)

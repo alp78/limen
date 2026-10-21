@@ -10,8 +10,8 @@ import java.io.OutputStream
  * Built by the PDF's own drawing pass: identical content selection and reading order.
  *
  * Written straight to [sink] as the pages are drawn and never held whole. Built in memory, a
- * record of thirty photographs once exhausted the heap and failed the PDF with it, and the
- * annex plates are now lossless, so the copy weighs what the photographs weigh.
+ * record of thirty photographs once exhausted the heap and failed the PDF with it, and a
+ * record holds any number of photographs.
  */
 internal class HtmlCompanion(language: String, title: String, private val sink: OutputStream) {
   init {
@@ -34,8 +34,8 @@ internal class HtmlCompanion(language: String, title: String, private val sink: 
       check(bitmap.compress(if (png) Bitmap.CompressFormat.PNG else Bitmap.CompressFormat.JPEG, if (png) 100 else 85, it))
     }
   }
-  /** An annex plate in the exported copy: the very PNG whose pixels the PDF carries, with its legend. */
-  fun png(file: File, card: AnnexContent.Card) = figure("png", alt(card), legend(card)) { out -> file.inputStream().use { it.copyTo(out) } }
+  /** An annex plate in the exported copy: the very JPEG the PDF carries, with its legend. */
+  fun plate(file: File, card: AnnexContent.Card) = figure("jpeg", alt(card), legend(card)) { out -> file.inputStream().use { it.copyTo(out) } }
   /** An annex plate in the on-screen preview, which is not the evidence and stays light. */
   fun jpeg(bitmap: Bitmap, card: AnnexContent.Card) = figure("jpeg", alt(card), legend(card)) {
     check(bitmap.compress(Bitmap.CompressFormat.JPEG, 85, it))

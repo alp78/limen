@@ -310,7 +310,7 @@ class RemediationDeviceTest {
       android.graphics.BitmapFactory.decodeFile(hdr.absolutePath).let { assertTrue(it.hasGainmap()); it.recycle() }
       val fit = AnnexPlate.fit(3200, 2400)
       val plate = dev.peringer.limen.photo.PhotoDecode.uprightAtSize(hdr, fit.pixelWidth, fit.pixelHeight)!!
-      assertEquals(2040, plate.width); assertEquals(1530, plate.height); assertFalse(plate.hasGainmap())
+      assertEquals(1360, plate.width); assertEquals(1020, plate.height); assertFalse(plate.hasGainmap())
       plate.recycle(); hdr.delete()
     }
     val sideways = jpeg("annex-sideways.jpg", gainmap = false)
@@ -320,14 +320,14 @@ class RemediationDeviceTest {
     assertEquals(2400 to 3200, dev.peringer.limen.photo.PhotoDecode.uprightSize(sideways))
     val fit = AnnexPlate.fit(2400, 3200)
     val plate = dev.peringer.limen.photo.PhotoDecode.uprightAtSize(sideways, fit.pixelWidth, fit.pixelHeight)!!
-    assertEquals(1650, plate.width); assertEquals(2200, plate.height)
+    assertEquals(1100, plate.width); assertEquals(1467, plate.height)
     // The red quarter was top left before the quarter turn and stands top right after it.
     fun red(pixel: Int) = android.graphics.Color.red(pixel) > 200 && android.graphics.Color.green(pixel) < 60 && android.graphics.Color.blue(pixel) < 60
     assertTrue(red(plate.getPixel(plate.width - 20, 20))); assertFalse(red(plate.getPixel(20, 20)))
     plate.recycle(); sideways.delete()
   }
 
-  @Test fun theExportedAnnexCarriesEachPlateLosslessAtItsPlateSize() {
+  @Test fun theExportedAnnexCarriesEachPlateAsJpegAtItsPlateSize() {
     val base = sample()
     val photo = File(store.photoDir(base.id), "d1-annex.jpg")
     Bitmap.createBitmap(1600, 1200, Bitmap.Config.ARGB_8888).apply {
@@ -343,14 +343,45 @@ class RemediationDeviceTest {
     val pdf = context.contentResolver.openInputStream(exported.uri)!!.use { it.readBytes() }
     val text = String(pdf, Charsets.ISO_8859_1)
     val fit = AnnexPlate.fit(1600, 1200)
-    assertTrue(text.contains("/Width ${fit.pixelWidth}\n/Height ${fit.pixelHeight}\n"))
-    assertTrue(text.contains("/Filter /FlateDecode\n/DecodeParms <</Predictor 15 /Colors 3 /BitsPerComponent 8 /Columns ${fit.pixelWidth}>>\n"))
+    val head = Regex("""/Width ${fit.pixelWidth}\n/Height ${fit.pixelHeight}\n/ColorSpace [^\n]+\n/BitsPerComponent 8\n/Filter /DCTDecode\n/Length (\d+)>> stream\n""").find(text)
+    assertNotNull(head)
+    val jpeg = pdf.copyOfRange(head!!.range.last + 1, head.range.last + 1 + head.groupValues[1].toInt())
+    android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size).let {
+      assertEquals(fit.pixelWidth, it.width); assertEquals(fit.pixelHeight, it.height); it.recycle()
+    }
     // No stand-in survives: every plate was replaced, and a stand-in is the only 4 × 4 image.
     assertFalse(text.contains("/Width ${PdfPlates.SIDE}\n/Height ${PdfPlates.SIDE}\n"))
     context.contentResolver.openFileDescriptor(exported.uri, "r")!!.use { fd -> android.graphics.pdf.PdfRenderer(fd).use { assertTrue(it.pageCount > 1) } }
-    // The HTML copy carries the same plate, as the PNG itself.
+    // The HTML copy carries the very JPEG the PDF does.
     val html = context.contentResolver.openInputStream(exported.companionUri!!)!!.use { it.readBytes().toString(Charsets.UTF_8) }
-    assertTrue(html.contains("src=\"data:image/png;base64,"))
+    val embedded = Regex("""src="data:image/jpeg;base64,([^"]+)"""").findAll(html).map { android.util.Base64.decode(it.groupValues[1], android.util.Base64.DEFAULT) }
+    assertTrue(embedded.any { it.contentEquals(jpeg) })
+  }
+
+  @Test fun anEncryptedBackupLargerThanTheHeapSavesAndRestores() {
+    // Android's GCM held a whole backup in memory, and a 68 MB one failed to restore for want of heap.
+    val p = Protocol(id = "heavy", kind = Kind.Entry, createdEpochMs = 9L, defects = listOf(Defect(id = "d1", photos = listOf("wall.jpg"))))
+    val sourceRoot = File(context.cacheDir, "heavy-source").apply { deleteRecursively() }
+    val restoredRoot = File(context.cacheDir, "heavy-restored").apply { deleteRecursively() }
+    val archive = File(context.cacheDir, "heavy.limen")
+    val secret = "heavy password".toCharArray()
+    try {
+      val source = Store(sourceRoot).apply { save(p) }
+      // Random bytes do not compress, so the archive outweighs the heap as the photograph does.
+      val photo = File(source.photoDir(p.id), "wall.jpg")
+      val random = java.util.Random(9L)
+      photo.outputStream().buffered().use { out ->
+        val chunk = ByteArray(1 shl 20)
+        repeat((Runtime.getRuntime().maxMemory() shr 20).toInt() + 32) { random.nextBytes(chunk); out.write(chunk) }
+      }
+      archive.outputStream().buffered().use { source.exportArchive(secret, it) }
+      assertTrue(archive.length() > Runtime.getRuntime().maxMemory())
+      val restored = Store(restoredRoot)
+      assertEquals(1, archive.inputStream().buffered().use { restored.importArchive(secret, it) }.imported)
+      assertEquals(ProtocolIntegrity.fileHash(photo), ProtocolIntegrity.fileHash(File(restored.photoDir(p.id), "wall.jpg")))
+    } finally {
+      sourceRoot.deleteRecursively(); restoredRoot.deleteRecursively(); archive.delete()
+    }
   }
 
   @Test fun supportingDocumentsMetersAndOverviewPhotosSurviveBackup() {

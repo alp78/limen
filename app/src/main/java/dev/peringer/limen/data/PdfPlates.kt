@@ -3,24 +3,22 @@ package dev.peringer.limen.data
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.OutputStream
-import java.io.RandomAccessFile
 import java.util.zip.Inflater
 
 /**
- * The annex photographs inside the PDF, lossless and at their plate size.
+ * The annex photographs inside the PDF, as JPEG at their plate size.
  *
  * PdfDocument cannot be handed a plate as it is. It rasterized a Pixel capture's bitmap into
- * a 72 dpi page image, and even a plain bitmap it keeps in memory until the whole document
- * is written, which bounds how many photographs a record can hold. So the annex draws a small
- * stand-in for each plate, a [SIDE] × [SIDE] image whose pixels spell its [marker], and once
- * PdfDocument has written the file, [swap] puts each plate's pixels in place of its stand-in's
- * image object and rewrites the cross-reference table. The page paints the new image into
- * the same box, because a PDF image is always drawn into a unit square the page scales: its
- * pixel size lives in the image object alone.
+ * a 72 dpi page image, it stores even a plain bitmap losslessly, which made thirty
+ * photographs 137 MB, and it keeps every bitmap in memory until the whole document is
+ * written. So the annex draws a small stand-in for each plate, a [SIDE] × [SIDE] image whose
+ * pixels spell its [marker], and once PdfDocument has written the file, [swap] puts each
+ * plate's JPEG in place of its stand-in's image object and rewrites the cross-reference
+ * table. The page paints the new image into the same box, because a PDF image is always
+ * drawn into a unit square the page scales: its pixel size lives in the image object alone.
  *
- * The pixels are the compressed stream of the plate's PNG, carried unchanged: a PDF reads the
- * same zlib data under the same row filters when told /Predictor 15. Nothing is re-encoded,
- * so the PDF and the HTML copy, which embeds the PNG itself, hold identical pixels.
+ * A PDF reads a JPEG file unchanged under /DCTDecode, so nothing is re-encoded and the PDF
+ * and the HTML copy, which embeds the same file, hold the same photograph.
  *
  * Plain files and bytes, no Android, so the rewrite is tested on the JVM.
  */
@@ -28,8 +26,8 @@ internal object PdfPlates {
 
   const val SIDE = 4
 
-  /** A plate as the 8-bit RGB PNG the drawing pass wrote for it. */
-  class Plate(val png: File)
+  /** A plate as the RGB JPEG the drawing pass wrote for it, [width] × [height] pixels. */
+  class Plate(val jpeg: File, val width: Int, val height: Int)
 
   private val SIGNATURE = "LIMEN-PLATE:".toByteArray(Charsets.ISO_8859_1)
 
@@ -47,7 +45,6 @@ internal object PdfPlates {
    */
   fun swap(pdf: ByteArray, plates: List<Plate>, out: OutputStream) {
     if (plates.isEmpty()) { out.write(pdf); return }
-    val images = plates.map { png(it.png) }
     // Every regular expression here runs on a small slice. Android matches in native code
     // and copies the whole input into each matcher, and Kotlin opens one per match: reading
     // the table with a regex over the document cost 220 MB for a 0.5 MB file.
@@ -91,7 +88,7 @@ internal object PdfPlates {
         val (index, dictionary) = standIn
         check(index in plates.indices && !placed[index]) { "Annex stand-in $index has no plate, or appears twice" }
         placed[index] = true
-        replace(counted, number, dictionary, plates[index].png, images[index])
+        replace(counted, number, dictionary, plates[index])
       }
     }
     check(placed.all { it }) { "An annex plate has no stand-in in the written PDF" }
@@ -116,41 +113,6 @@ internal object PdfPlates {
     override fun flush() = out.flush()
   }
 
-  /** A PNG's size and where its pixel stream lies: the data of every IDAT chunk, in order. */
-  private class Png(val width: Int, val height: Int, val idat: List<LongArray>) {
-    val length: Long get() = idat.sumOf { it[1] }
-  }
-
-  private fun png(file: File): Png = RandomAccessFile(file, "r").use { raf ->
-    val signature = ByteArray(8).also { raf.readFully(it) }
-    require(signature.contentEquals(byteArrayOf(-119, 80, 78, 71, 13, 10, 26, 10))) { "Annex plate is not a PNG" }
-    var width = 0
-    var height = 0
-    val idat = mutableListOf<LongArray>()
-    while (raf.filePointer < raf.length()) {
-      val length = raf.readInt().toLong() and 0xFFFFFFFFL
-      val type = ByteArray(4).also { raf.readFully(it) }.toString(Charsets.US_ASCII)
-      val data = raf.filePointer
-      when (type) {
-        "IHDR" -> {
-          width = raf.readInt()
-          height = raf.readInt()
-          val depth = raf.read()
-          val colour = raf.read()
-          raf.read()
-          raf.read()
-          val interlace = raf.read()
-          // The PDF filter reads 8-bit RGB rows in order: anything else would print wrong.
-          require(depth == 8 && colour == 2 && interlace == 0) { "Annex plate is not an 8-bit RGB PNG" }
-        }
-        "IDAT" -> idat += longArrayOf(data, length)
-        "IEND" -> return@use Png(width, height, idat).also { require(width > 0 && idat.isNotEmpty()) { "Annex plate has no pixels" } }
-      }
-      raf.seek(data + length + 4)
-    }
-    error("Annex plate PNG ends without IEND")
-  }
-
   private val OBJECT = Regex("""\A(\d+) 0 obj\s*<<(.*?)>>\s*stream\r?\n""", RegexOption.DOT_MATCHES_ALL)
 
   /** The stand-in's index and its dictionary when the object at [start], up to [end], is one. */
@@ -171,27 +133,14 @@ internal object PdfPlates {
     return if (pixels.contentEquals(marker(index))) index to dictionary else null
   }
 
-  private fun replace(out: OutputStream, number: Int, dictionary: String, file: File, png: Png) {
+  private fun replace(out: OutputStream, number: Int, dictionary: String, plate: Plate) {
     // The stand-in's colour space is the one PdfDocument gave an opaque bitmap, an sRGB
-    // profile with three components, which is what the plate's PNG holds.
+    // profile with three components, which is what a JPEG of the same bitmap holds.
     val colorSpace = Regex("""/ColorSpace\s*(\[[^\]]*]|/\w+|\d+ \d+ R)""").find(dictionary)?.groupValues?.get(1) ?: "/DeviceRGB"
-    val head = "$number 0 obj\n<</Type /XObject\n/Subtype /Image\n/Width ${png.width}\n/Height ${png.height}\n" +
-      "/ColorSpace $colorSpace\n/BitsPerComponent 8\n/Filter /FlateDecode\n" +
-      "/DecodeParms <</Predictor 15 /Colors 3 /BitsPerComponent 8 /Columns ${png.width}>>\n/Length ${png.length}>> stream\n"
+    val head = "$number 0 obj\n<</Type /XObject\n/Subtype /Image\n/Width ${plate.width}\n/Height ${plate.height}\n" +
+      "/ColorSpace $colorSpace\n/BitsPerComponent 8\n/Filter /DCTDecode\n/Length ${plate.jpeg.length()}>> stream\n"
     out.write(head.toByteArray(Charsets.ISO_8859_1))
-    RandomAccessFile(file, "r").use { raf ->
-      val buffer = ByteArray(64 * 1024)
-      png.idat.forEach { (offset, length) ->
-        raf.seek(offset)
-        var left = length
-        while (left > 0) {
-          val read = raf.read(buffer, 0, minOf(buffer.size.toLong(), left).toInt())
-          check(read > 0) { "Annex plate PNG is truncated" }
-          out.write(buffer, 0, read)
-          left -= read
-        }
-      }
-    }
+    plate.jpeg.inputStream().use { it.copyTo(out, 64 * 1024) }
     out.write("\nendstream\nendobj\n".toByteArray(Charsets.ISO_8859_1))
   }
 

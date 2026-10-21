@@ -4,10 +4,7 @@ import java.io.InputStream
 import java.io.OutputStream
 import java.io.PushbackInputStream
 import java.security.SecureRandom
-import javax.crypto.Cipher
-import javax.crypto.CipherOutputStream
 import javax.crypto.SecretKeyFactory
-import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.PBEKeySpec
 import javax.crypto.spec.SecretKeySpec
 
@@ -17,6 +14,7 @@ internal object ArchiveCrypto {
   private const val VERSION: Byte = 1
   private const val SALT_BYTES = 16
   private const val IV_BYTES = 12
+  private const val TAG_BYTES = 16
   private const val KEY_BITS = 256
   private const val ITERATIONS = 210_000
 
@@ -33,15 +31,17 @@ internal object ArchiveCrypto {
     val salt = ByteArray(SALT_BYTES).also(random::nextBytes)
     val iv = ByteArray(IV_BYTES).also(random::nextBytes)
     val header = magic + byteArrayOf(VERSION) + salt + iv
-    val key = derive(password, salt)
-    val cipher = Cipher.getInstance("AES/GCM/NoPadding").apply {
-      init(Cipher.ENCRYPT_MODE, key, GCMParameterSpec(128, iv))
-      updateAAD(header)
-    }
+    val gcm = StreamingGcm(derive(password, salt), iv, header, encrypting = true)
     output.write(header)
-    CipherOutputStream(output, cipher).use { encrypted ->
-      ArchiveIO.export(root, encrypted, protocolIds)
+    val encrypted = object : OutputStream() {
+      override fun write(value: Int) = write(byteArrayOf(value.toByte()), 0, 1)
+      override fun write(buffer: ByteArray, offset: Int, length: Int) = output.write(gcm.update(buffer, offset, length))
+      override fun flush() = output.flush()
     }
+    ArchiveIO.export(root, encrypted, protocolIds)
+    output.write(gcm.finish())
+    output.write(gcm.tag())
+    output.flush()
   }
 
   /** Encrypted archives are preferred; version-1 plain ZIP files remain importable. */
@@ -66,32 +66,40 @@ internal object ArchiveCrypto {
     val salt = probe.readExactly(SALT_BYTES)
     val iv = probe.readExactly(IV_BYTES)
     val header = magic + byteArrayOf(VERSION) + salt + iv
-    val key = derive(password, salt)
-    val cipher = Cipher.getInstance("AES/GCM/NoPadding").apply {
-      init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(128, iv))
-      updateAAD(header)
-    }
+    val gcm = StreamingGcm(derive(password, salt), iv, header, encrypting = false)
     // Decrypted whole, and authenticated, BEFORE a single record is installed.
     //
     // CipherInputStream is the trap here: its close() calls doFinal and then swallows the
     // AEADBadTagException, so a tampered or truncated archive read that way reports success.
     // The zip reader compounds it by stopping at the central directory, so the tag bytes were
-    // never even reached, and ArchiveIO.import installs as it reads. Calling doFinal here by
-    // hand is what makes the tag mean something.
+    // never even reached, and ArchiveIO.import installs as it reads. Checking the tag here by
+    // hand, at the end of the stream, is what makes it mean something.
     val staged = java.io.File.createTempFile("archive-decrypt-", ".zip", root)
     try {
       staged.outputStream().buffered().use { out ->
-        val buffer = ByteArray(64 * 1024)
+        // The tag is the last 16 bytes, which only the end of the stream reveals, so the
+        // newest 16 bytes read are always held back from the cipher.
+        val buffer = ByteArray(64 * 1024 + TAG_BYTES)
+        var held = 0
         // No size limit: the decrypted copy needs room on disk, and nothing else bounds it.
         val space = FreeSpace(root)
         while (true) {
-          val read = probe.read(buffer)
+          val read = probe.read(buffer, held, buffer.size - held)
           if (read < 0) break
-          if (read == 0) continue
-          space.before(read)
-          cipher.update(buffer, 0, read)?.let(out::write)
+          val total = held + read
+          val ready = total - TAG_BYTES
+          if (ready > 0) {
+            space.before(ready)
+            out.write(gcm.update(buffer, 0, ready))
+            buffer.copyInto(buffer, 0, ready, total)
+            held = TAG_BYTES
+          } else {
+            held = total
+          }
         }
-        cipher.doFinal()?.let(out::write)
+        require(held == TAG_BYTES) { "Truncated Limen backup" }
+        out.write(gcm.finish())
+        gcm.verify(buffer.copyOf(TAG_BYTES))
       }
       return staged.inputStream().buffered().use { verified ->
         ArchiveIO.import(root, verified, repairCorrupt)

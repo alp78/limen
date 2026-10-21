@@ -6,6 +6,52 @@ Paste each block into the matching language on the release, or let `play_push.py
 
 ---
 
+## versionCode 9, versionName 1.2.4
+
+21 October 2026. The annex photographs go into the PDF as JPEG at 200 dpi, quality 85, instead of lossless at 300 dpi: a 30-photograph record makes 7.7 MB instead of 137 MB. Encrypted backups are sealed and opened a buffer at a time, so a backup larger than memory saves and restores.
+
+### en-US
+
+```
+The PDF is now much lighter: annex photographs are stored at the resolution their printed size needs, so a handover with 30 photographs makes a PDF of about 8 MB instead of more than 100 MB, exported more than twice as fast. Backups of any size now save and restore reliably.
+```
+
+(275/500)
+
+### fr-FR
+
+```
+Le PDF est désormais bien plus léger : les photos de l’annexe sont enregistrées à la résolution qu’exige leur taille d’impression, si bien qu’un état des lieux de 30 photos donne un PDF d’environ 8 Mo au lieu de plus de 100 Mo, exporté plus de deux fois plus vite. Les sauvegardes de toute taille s’enregistrent et se restaurent désormais de manière fiable.
+```
+
+(357/500)
+
+### de-DE
+
+```
+Das PDF ist jetzt viel leichter: Die Fotos im Anhang werden in der Auflösung gespeichert, die ihre Druckgrösse braucht. Ein Protokoll mit 30 Fotos ergibt so ein PDF von etwa 8 MB statt über 100 MB und wird mehr als doppelt so schnell exportiert. Sicherungen jeder Grösse werden jetzt zuverlässig gespeichert und wiederhergestellt.
+```
+
+(330/500)
+
+### it-IT
+
+```
+Il PDF è ora molto più leggero: le foto dell’allegato sono salvate alla risoluzione richiesta dalla loro dimensione di stampa, così un verbale con 30 foto produce un PDF di circa 8 MB invece di oltre 100 MB, esportato più di due volte più velocemente. I backup di qualsiasi dimensione ora si salvano e si ripristinano in modo affidabile.
+```
+
+(337/500)
+
+### rm
+
+```
+Il PDF è ussa bler pli lev: las fotos da l’agiunta vegnan memorisadas en la resoluziun che lur grondezza da stampa dumonda, uschia dat in protocol cun 30 fotos in PDF da var 8 MB empè da passa 100 MB, exportà pli che dubel uschè svelt. Copias da segirezza da mintga grondezza vegnan ussa memorisadas e restabilidas a moda fidabla.
+```
+
+(330/500)
+
+---
+
 ## versionCode 8, versionName 1.2.3
 
 21 October 2026. The photo annex becomes a photographic report: a contents page, one section per room, each photograph framed and large, lossless at 300 dpi, with its context beside it and no hash. Backups, photographs and documents lose every size cap.

@@ -151,6 +151,37 @@ class ArchiveTest {
   }
 
   @Test
+  fun aTamperedOrTruncatedEncryptedBackupInstallsNothing() {
+    val source = Store(tmp.newFolder("source-tampered"))
+    source.save(Protocol(id = "p5", kind = Kind.Entry, createdEpochMs = 5L, remarks = "kept whole"))
+    val bytes = ByteArrayOutputStream().also { source.exportArchive(password, it) }.toByteArray()
+    val flipped = bytes.copyOf().also { it[bytes.size / 2] = (it[bytes.size / 2].toInt() xor 1).toByte() }
+    listOf(flipped, bytes.copyOf(bytes.size - 1), bytes.copyOf(bytes.size - 17), bytes.copyOf(50)).forEachIndexed { i, damaged ->
+      val restored = Store(tmp.newFolder("restored-tampered-$i"))
+      assertThrows(Exception::class.java) { restored.importArchive(password, ByteArrayInputStream(damaged)) }
+      assertTrue(restored.list().isEmpty())
+    }
+  }
+
+  @Test
+  fun aBackupSealedWholeByThePlatformCipherStillRestores() {
+    val root = tmp.newFolder("source-platform")
+    Store(root).save(Protocol(id = "older", kind = Kind.Entry, createdEpochMs = 8L))
+    // How 1.2.3 and earlier sealed a backup: the platform's GCM over the whole archive at once.
+    val salt = ByteArray(16) { it.toByte() }
+    val iv = ByteArray(12) { (it + 16).toByte() }
+    val header = "LIMENSAFE".toByteArray() + byteArrayOf(1) + salt + iv
+    val key = javax.crypto.SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
+      .generateSecret(javax.crypto.spec.PBEKeySpec(password, salt, 210_000, 256)).encoded
+    val cipher = javax.crypto.Cipher.getInstance("AES/GCM/NoPadding").apply {
+      init(javax.crypto.Cipher.ENCRYPT_MODE, javax.crypto.spec.SecretKeySpec(key, "AES"), javax.crypto.spec.GCMParameterSpec(128, iv))
+      updateAAD(header)
+    }
+    val bytes = header + cipher.doFinal(ByteArrayOutputStream().also { ArchiveIO.export(root, it) }.toByteArray())
+    assertEquals(1, Store(tmp.newFolder("restored-platform")).importArchive(password, ByteArrayInputStream(bytes)).imported)
+  }
+
+  @Test
   fun legacyPlainZipRemainsImportable() {
     val root = tmp.newFolder("source-legacy")
     val source = Store(root)
