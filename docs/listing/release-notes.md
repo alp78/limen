@@ -6,6 +6,52 @@ Paste each block into the matching language on the release, or let `play_push.py
 
 ---
 
+## versionCode 10, versionName 1.2.5
+
+21 October 2026. Backups repack their JPEG photographs losslessly as JPEG XL through libjxl 0.12.0, built into the app: thirty camera originals make a 54.8 MB backup instead of 68.4 MB, and every photograph restores byte for byte. A backup with repacked photographs is archive version 2, which 1.2.4 and earlier refuse; one with none stays version 1.
+
+### en-US
+
+```
+Backups are now about a fifth smaller: photographs are repacked losslessly as JPEG XL and restored byte for byte, so every evidence check still holds. A backup made with this version restores in Limen 1.2.5 or later; older backups restore as before.
+```
+
+(249/500)
+
+### fr-FR
+
+```
+Les sauvegardes sont désormais environ un cinquième plus légères : les photos y sont recompressées sans perte au format JPEG XL et restaurées à l’octet près, si bien que chaque contrôle des preuves reste valable. Une sauvegarde faite avec cette version se restaure avec Limen 1.2.5 ou plus récent ; les anciennes sauvegardes se restaurent comme avant.
+```
+
+(351/500)
+
+### de-DE
+
+```
+Sicherungen sind jetzt rund ein Fünftel kleiner: Die Fotos werden verlustfrei als JPEG XL neu verpackt und beim Wiederherstellen Byte für Byte zurückgewonnen, sodass jede Beweisprüfung gültig bleibt. Eine mit dieser Version erstellte Sicherung lässt sich mit Limen 1.2.5 oder neuer wiederherstellen; ältere Sicherungen wie bisher.
+```
+
+(330/500)
+
+### it-IT
+
+```
+I backup sono ora più leggeri di circa un quinto: le foto vengono ricompresse senza perdita in JPEG XL e ripristinate byte per byte, così ogni verifica delle prove resta valida. Un backup creato con questa versione si ripristina con Limen 1.2.5 o successivo; i backup precedenti si ripristinano come prima.
+```
+
+(306/500)
+
+### rm
+
+```
+Las copias da segirezza èn ussa var in tschintgavel pli pitschnas: las fotos vegnan cumprimidas senza perdita en il format JPEG XL e restabilidas byte per byte, uschia resta valaivla mintga controlla da las cumprovas. Ina copia da segirezza fatga cun questa versiun sa lascha restabilir cun Limen 1.2.5 u pli nov; copias pli veglias vegnan restabilidas sco fin ussa.
+```
+
+(366/500)
+
+---
+
 ## versionCode 9, versionName 1.2.4
 
 21 October 2026. The annex photographs go into the PDF as JPEG at 200 dpi, quality 85, instead of lossless at 300 dpi: a 30-photograph record makes 7.7 MB instead of 137 MB. Encrypted backups are sealed and opened a buffer at a time, so a backup larger than memory saves and restores.

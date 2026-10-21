@@ -358,6 +358,50 @@ class RemediationDeviceTest {
     assertTrue(embedded.any { it.contentEquals(jpeg) })
   }
 
+  @Test fun aBackupRepacksAnUltraHdrJpegAsJpegXlAndRestoresItByteForByte() {
+    assertNotNull(JpegXl.loaded)
+    // Shaped like a Pixel capture: a gain map appended after the image, which must come back untouched.
+    val bitmap = Bitmap.createBitmap(1600, 1200, Bitmap.Config.ARGB_8888)
+    val random = java.util.Random(3L)
+    android.graphics.Canvas(bitmap).apply {
+      drawColor(android.graphics.Color.rgb(180, 170, 150))
+      val paint = android.graphics.Paint()
+      repeat(400) {
+        paint.color = android.graphics.Color.rgb(random.nextInt(256), random.nextInt(256), random.nextInt(256))
+        val x = random.nextInt(1600).toFloat(); val y = random.nextInt(1200).toFloat()
+        drawRect(x, y, x + 20 + random.nextInt(200), y + 20 + random.nextInt(200), paint)
+      }
+    }
+    if (android.os.Build.VERSION.SDK_INT >= 34) bitmap.gainmap = android.graphics.Gainmap(Bitmap.createBitmap(400, 300, Bitmap.Config.ARGB_8888))
+    val jpeg = java.io.ByteArrayOutputStream().also { bitmap.compress(Bitmap.CompressFormat.JPEG, 90, it) }.toByteArray()
+    bitmap.recycle()
+    if (android.os.Build.VERSION.SDK_INT >= 34) {
+      android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size).let { assertTrue(it.hasGainmap()); it.recycle() }
+    }
+    val packed = JpegXl.pack(jpeg)!!
+    assertTrue("${packed.size} against ${jpeg.size}", packed.size < jpeg.size)
+    assertArrayEquals(jpeg, JpegXl.unpack(packed))
+
+    val sourceRoot = File(context.cacheDir, "jxl-source").apply { deleteRecursively() }
+    val restoredRoot = File(context.cacheDir, "jxl-restored").apply { deleteRecursively() }
+    try {
+      val source = Store(sourceRoot)
+      File(source.photoDir("jxl"), "wall.jpg").writeBytes(jpeg)
+      val hash = ProtocolIntegrity.fileHash(File(source.photoDir("jxl"), "wall.jpg"))
+      source.save(Protocol(id = "jxl", kind = Kind.Entry, createdEpochMs = 9L,
+        defects = listOf(Defect(id = "d1", photos = listOf("wall.jpg"), photoEvidence = listOf(PhotoEvidence("wall.jpg", hash))))))
+      // Unencrypted, so the archive's entries can be read here.
+      val backup = java.io.ByteArrayOutputStream().also { source.exportArchive(CharArray(0), it) }.toByteArray()
+      val names = java.util.zip.ZipInputStream(backup.inputStream()).use { zip -> generateSequence { zip.nextEntry }.map { it.name }.toList() }
+      assertTrue(names.toString(), "jpegxl/jxl/wall.jpg" in names && "photos/jxl/wall.jpg" !in names)
+      val restored = Store(restoredRoot)
+      assertEquals(1, restored.importArchive(CharArray(0), backup.inputStream()).imported)
+      assertArrayEquals(jpeg, File(restored.photoDir("jxl"), "wall.jpg").readBytes())
+    } finally {
+      sourceRoot.deleteRecursively(); restoredRoot.deleteRecursively()
+    }
+  }
+
   @Test fun anEncryptedBackupLargerThanTheHeapSavesAndRestores() {
     // Android's GCM held a whole backup in memory, and a 68 MB one failed to restore for want of heap.
     val p = Protocol(id = "heavy", kind = Kind.Entry, createdEpochMs = 9L, defects = listOf(Defect(id = "d1", photos = listOf("wall.jpg"))))

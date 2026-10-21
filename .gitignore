@@ -3,6 +3,8 @@
 build/
 captures/
 .cxx/
+# libjxl source, fetched pinned by tools/fetch-deps.sh, never committed
+app/third_party/
 local.properties
 
 # IDE

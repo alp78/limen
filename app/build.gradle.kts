@@ -62,12 +62,19 @@ android {
         // (This comment used to say 1.1.1 was pinned by the published privacy page stating the
         // version its permission claims were checked against. None of the five published
         // notices names a version, so nothing was holding the name back.)
-        versionCode = 9
-        versionName = "1.2.4"
+        versionCode = 10
+        versionName = "1.2.5"
         // Without this the androidTest sources compile and never run: AGP falls back to
         // the deprecated platform runner, which cannot execute an @RunWith(AndroidJUnit4)
         // class, and the suite reports green having done nothing.
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        externalNativeBuild {
+            cmake {
+                // Size over speed for libjxl: 14 % smaller than a Release build, and 11 % slower
+                // to repack thirty photographs on a Pixel 10, 9.1 s against 8.2 s.
+                arguments += "-DCMAKE_BUILD_TYPE=MinSizeRel"
+            }
+        }
     }
 
     signingConfigs {
@@ -120,6 +127,16 @@ android {
       resources {
         excludes += "/META-INF/{AL2.0,LGPL2.1}"
       }
+    }
+
+    // libjxl and a JNI shim, which repack the photographs in a backup as JPEG XL. The source
+    // arrives through tools/fetch-deps.sh, pinned; the same pattern as Recast and Verbatim.
+    ndkVersion = "28.2.13676358"
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.31.6"
+        }
     }
 }
 

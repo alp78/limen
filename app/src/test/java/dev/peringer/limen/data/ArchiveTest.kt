@@ -207,4 +207,73 @@ class ArchiveTest {
     val restored = Store(tmp.newFolder("restored-open"))
     assertEquals(1, restored.importArchive(none, ByteArrayInputStream(bytes)).imported)
   }
+
+  /** Deflate standing in for libjxl, which runs only on a device: it shrinks the zero-filled test JPEGs and gives them back exactly. */
+  private val deflating = object : JpegPacker {
+    override fun pack(jpeg: ByteArray): ByteArray = java.util.zip.Deflater().run {
+      setInput(jpeg); finish()
+      val out = ByteArray(jpeg.size + 64)
+      val n = deflate(out); end(); out.copyOf(n)
+    }
+    override fun unpack(packed: ByteArray): ByteArray = java.util.zip.Inflater().run {
+      setInput(packed)
+      val out = ByteArrayOutputStream()
+      val buffer = ByteArray(8192)
+      while (!finished()) { val n = inflate(buffer); if (n == 0 && needsInput()) break; out.write(buffer, 0, n) }
+      end(); out.toByteArray()
+    }
+  }
+
+  private val jpeg = byteArrayOf(-1, -40, -1, -31) + ByteArray(4000) + byteArrayOf(-1, -39)
+  private val png = byteArrayOf(-119, 80, 78, 71, 13, 10, 26, 10) + ByteArray(500)
+
+  private fun entries(bytes: ByteArray): Map<String, ByteArray> = java.util.zip.ZipInputStream(ByteArrayInputStream(bytes)).use { zip ->
+    generateSequence { zip.nextEntry }.associate { it.name to zip.readBytes() }
+  }
+
+  /** A record with one JPEG and one PNG photograph, the JPEG's hash recorded as at capture. */
+  private fun withPhotographs(name: String): File {
+    val root = tmp.newFolder(name)
+    val store = Store(root)
+    File(store.photoDir("photos"), "wall.jpg").writeBytes(jpeg)
+    File(store.photoDir("photos"), "plan.png").writeBytes(png)
+    val hash = ProtocolIntegrity.fileHash(File(store.photoDir("photos"), "wall.jpg"))
+    store.save(Protocol(id = "photos", kind = Kind.Entry, createdEpochMs = 9L, defects = listOf(
+      Defect(id = "d1", photos = listOf("wall.jpg", "plan.png"), photoEvidence = listOf(PhotoEvidence("wall.jpg", hash))))))
+    return root
+  }
+
+  @Test
+  fun aJpegPhotographGoesInRepackedAndComesBackByteForByte() {
+    val bytes = ByteArrayOutputStream().also { ArchiveIO.export(withPhotographs("source-packed"), it, packer = deflating) }.toByteArray()
+    val zip = entries(bytes)
+    assertEquals("LIMEN_ARCHIVE\nversion=2\n", String(zip.getValue("limen-archive.txt")))
+    assertTrue("jpegxl/photos/wall.jpg" in zip && "photos/photos/wall.jpg" !in zip)
+    assertTrue(zip.getValue("photos/photos/plan.png").contentEquals(png))
+
+    val restored = tmp.newFolder("restored-packed")
+    assertEquals(1, ArchiveIO.import(restored, ByteArrayInputStream(bytes), packer = deflating).imported)
+    assertTrue(File(Store(restored).photoDir("photos"), "wall.jpg").readBytes().contentEquals(jpeg))
+    assertTrue(File(Store(restored).photoDir("photos"), "plan.png").readBytes().contentEquals(png))
+
+    // A build that cannot unpack refuses the backup whole rather than restore it without its photograph.
+    val unable = tmp.newFolder("restored-unable")
+    assertThrows(IllegalStateException::class.java) { ArchiveIO.import(unable, ByteArrayInputStream(bytes), packer = null) }
+    assertTrue(Store(unable).list().isEmpty())
+  }
+
+  @Test
+  fun aJpegThatWouldNotComeBackExactlyGoesInAsItIsAndTheBackupStaysVersionOne() {
+    val unfaithful = object : JpegPacker {
+      override fun pack(jpeg: ByteArray) = deflating.pack(jpeg)
+      override fun unpack(packed: ByteArray) = deflating.unpack(packed).also { it[it.size - 1] = 0 }
+    }
+    val bytes = ByteArrayOutputStream().also { ArchiveIO.export(withPhotographs("source-unfaithful"), it, packer = unfaithful) }.toByteArray()
+    val zip = entries(bytes)
+    assertEquals("LIMEN_ARCHIVE\nversion=1\n", String(zip.getValue("limen-archive.txt")))
+    assertTrue(zip.keys.none { it.startsWith("jpegxl/") })
+    assertTrue(zip.getValue("photos/photos/wall.jpg").contentEquals(jpeg))
+    // Version 1 is what 1.2.4 and earlier restore, with no packer at all.
+    assertEquals(1, ArchiveIO.import(tmp.newFolder("restored-unfaithful"), ByteArrayInputStream(bytes), packer = null).imported)
+  }
 }
