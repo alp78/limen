@@ -20,9 +20,16 @@ internal class HtmlCompanion(language: String, title: String) {
     val png = bitmap.hasAlpha()
     val output = ByteArrayOutputStream()
     check(bitmap.compress(if (png) Bitmap.CompressFormat.PNG else Bitmap.CompressFormat.JPEG, if (png) 100 else 85, output))
-    body.append("<figure><img alt=\"").append(escape(caption)).append("\" src=\"data:image/").append(if (png) "png" else "jpeg").append(";base64,")
-      .append(android.util.Base64.encodeToString(output.toByteArray(), android.util.Base64.NO_WRAP))
-      .append("\"><figcaption>").append(escape(caption)).append("</figcaption></figure>")
+    figure(if (png) "png" else "jpeg", output.toByteArray(), caption, "")
+  }
+  /** An annex plate, as the very JPEG the PDF carries, so the two copies show the same pixels. */
+  fun jpeg(bytes: ByteArray, caption: String, detail: String) = figure("jpeg", bytes, caption, detail)
+  private fun figure(type: String, bytes: ByteArray, caption: String, detail: String) {
+    body.append("<figure><img alt=\"").append(escape(caption)).append("\" src=\"data:image/").append(type).append(";base64,")
+      .append(android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP))
+      .append("\"><figcaption>").append(escape(caption))
+      .apply { if (detail.isNotBlank()) append("<br><small>").append(escape(detail)).append("</small>") }
+      .append("</figcaption></figure>")
   }
   fun finish(): String = body.append("</main></body></html>").toString()
   companion object {

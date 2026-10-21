@@ -6,6 +6,52 @@ Paste each block into the matching language on the release, or let `play_push.py
 
 ---
 
+## versionCode 8, versionName 1.2.3
+
+21 October 2026. The photo annex moves to one photograph per row at 300 dpi, the layout the iPhone prints, and the photographs go into the PDF as JPEG.
+
+### en-US
+
+```
+The photo annex of the PDF prints one photograph per row, larger and sharper, with its file name and its full fingerprint beneath it.
+```
+
+(133/500)
+
+### fr-FR
+
+```
+L’annexe photos du PDF imprime une photo par ligne, plus grande et plus nette, avec son nom de fichier et son empreinte complète en dessous.
+```
+
+(140/500)
+
+### de-DE
+
+```
+Der Fotoanhang des PDF zeigt ein Foto pro Zeile, grösser und schärfer, mit Dateinamen und vollständigem Fingerabdruck darunter.
+```
+
+(127/500)
+
+### it-IT
+
+```
+L’allegato foto del PDF stampa una foto per riga, più grande e più nitida, con il nome del file e l’impronta completa sotto.
+```
+
+(124/500)
+
+### rm
+
+```
+L’agiunta da fotos dal PDF stampa ina foto per lingia, pli gronda e pli nitida, cun il num da la datoteca e l’impronta cumpletta sutvart.
+```
+
+(137/500)
+
+---
+
 ## versionCode 7, versionName 1.2.2
 
 15 October 2026, the same day as versionCode 6. The explanatory sentences behind the masthead's info button and on the room picker and the signature step go, and the hub's bottom key becomes a third door.

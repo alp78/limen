@@ -296,6 +296,59 @@ class RemediationDeviceTest {
     }
   }
 
+  @Test fun annexPlatesDecodeUprightAtTheirExactSizeWithoutTheGainMap() {
+    fun jpeg(name: String, gainmap: Boolean): File {
+      val bitmap = Bitmap.createBitmap(1600, 1200, Bitmap.Config.ARGB_8888).apply { eraseColor(android.graphics.Color.GRAY) }
+      android.graphics.Canvas(bitmap).drawRect(0f, 0f, 800f, 600f, android.graphics.Paint().apply { color = android.graphics.Color.RED })
+      if (gainmap) bitmap.gainmap = android.graphics.Gainmap(Bitmap.createBitmap(400, 300, Bitmap.Config.ARGB_8888))
+      return File(context.cacheDir, name).also { file -> file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, 95, it) }; bitmap.recycle() }
+    }
+    // A gain map is what made PdfDocument rasterize every plate at 72 dpi, so the annex must drop it.
+    if (android.os.Build.VERSION.SDK_INT >= 34) {
+      val hdr = jpeg("annex-hdr.jpg", gainmap = true)
+      android.graphics.BitmapFactory.decodeFile(hdr.absolutePath).let { assertTrue(it.hasGainmap()); it.recycle() }
+      val fit = AnnexPlate.fit(1600, 1200)
+      val plate = dev.peringer.limen.photo.PhotoDecode.uprightAtSize(hdr, fit.pixelWidth, fit.pixelHeight)!!
+      assertEquals(1413, plate.width); assertEquals(1060, plate.height); assertFalse(plate.hasGainmap())
+      plate.recycle(); hdr.delete()
+    }
+    val sideways = jpeg("annex-sideways.jpg", gainmap = false)
+    androidx.exifinterface.media.ExifInterface(sideways).apply {
+      setAttribute(androidx.exifinterface.media.ExifInterface.TAG_ORIENTATION, androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_90.toString()); saveAttributes()
+    }
+    assertEquals(1200 to 1600, dev.peringer.limen.photo.PhotoDecode.uprightSize(sideways))
+    val fit = AnnexPlate.fit(1200, 1600)
+    val plate = dev.peringer.limen.photo.PhotoDecode.uprightAtSize(sideways, fit.pixelWidth, fit.pixelHeight)!!
+    assertEquals(795, plate.width); assertEquals(1060, plate.height)
+    // The red quarter was top left before the quarter turn and stands top right after it.
+    fun red(pixel: Int) = android.graphics.Color.red(pixel) > 200 && android.graphics.Color.green(pixel) < 60 && android.graphics.Color.blue(pixel) < 60
+    assertTrue(red(plate.getPixel(plate.width - 20, 20))); assertFalse(red(plate.getPixel(20, 20)))
+    plate.recycle(); sideways.delete()
+  }
+
+  @Test fun theExportedAnnexCarriesEachPlateAsJpegAtItsPlateSize() {
+    val base = sample()
+    val photo = File(store.photoDir(base.id), "d1-annex.jpg")
+    Bitmap.createBitmap(1600, 1200, Bitmap.Config.ARGB_8888).apply {
+      eraseColor(android.graphics.Color.GRAY)
+      android.graphics.Canvas(this).drawCircle(800f, 600f, 400f, android.graphics.Paint().apply { color = android.graphics.Color.BLUE })
+      photo.outputStream().use { compress(Bitmap.CompressFormat.JPEG, 95, it) }
+      recycle()
+    }
+    val p = base.copy(finalizedEpochMs = 1, defects = listOf(base.defects.single().copy(photos = listOf(photo.name),
+      photoEvidence = listOf(PhotoEvidence(photo.name, ProtocolIntegrity.fileHash(photo))))))
+    val frozen = p.copy(evidenceFingerprint = ProtocolIntegrity.fingerprint(p, store.photoDir(p.id), store.signatureDir(p.id)))
+    val exported = PdfExport.export(context, frozen, Str(Lang.Fr), store.photoDir(p.id), store.signatureDir(p.id))
+    val pdf = context.contentResolver.openInputStream(exported.uri)!!.use { it.readBytes() }
+    val text = String(pdf, Charsets.ISO_8859_1)
+    val fit = AnnexPlate.fit(1600, 1200)
+    assertTrue(text.contains("/Width ${fit.pixelWidth}\n/Height ${fit.pixelHeight}\n"))
+    assertTrue(text.contains("/Filter /DCTDecode\n"))
+    // No stand-in survives: every plate was replaced, and a stand-in is the only 4 × 4 image.
+    assertFalse(text.contains("/Width ${JpegPlates.SIDE}\n/Height ${JpegPlates.SIDE}\n"))
+    context.contentResolver.openFileDescriptor(exported.uri, "r")!!.use { fd -> android.graphics.pdf.PdfRenderer(fd).use { assertTrue(it.pageCount > 1) } }
+  }
+
   @Test fun supportingDocumentsMetersAndOverviewPhotosSurviveBackup() {
     val p = sample().copy(details = RecordDetails(
       attachments = listOf(SupportingDocument("lease", DocumentKind.Lease, "Lease supplied at inspection")),

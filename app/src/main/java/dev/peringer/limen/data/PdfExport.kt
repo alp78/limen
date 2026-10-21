@@ -41,6 +41,9 @@ object PdfExport {
   private const val H = 1754
   private const val MARGIN = 90f
   private const val FOOT = 60f
+  /** An annex plate: room for the picture and its two caption lines, and where the captions start. */
+  private const val PLATE_NEED = 650f
+  private const val PLATE_ADVANCE = 540f
 
   fun export(
     context: Context,
@@ -60,7 +63,8 @@ object PdfExport {
     val total = try { counted.pages.size } finally { counted.close() }
 
     var companion = ""
-    val doc = build(context, p, s, photoDir, signatureDir, reference, total) { companion = it }
+    var plates = emptyList<JpegPlates.Plate>()
+    val doc = build(context, p, s, photoDir, signatureDir, reference, total, onHtml = { companion = it }, onPlates = { plates = it })
     try {
       val kind = if (p.kind == Kind.Entry) s.entry else s.exit
       val property = (p.address + "-" + p.place).replace(Regex("[^\\p{L}\\p{N}._-]+"), "-").take(65)
@@ -68,7 +72,8 @@ object PdfExport {
         .replace(Regex("\\p{M}"), "").replace(Regex("[^A-Za-z0-9._-]"), "-")
       val retained = File(context.filesDir, "exports/${p.id}").apply { mkdirs() }
       val original = File(retained, name)
-      original.outputStream().use { doc.writeTo(it) }
+      val written = java.io.ByteArrayOutputStream().also { doc.writeTo(it) }.toByteArray()
+      original.writeBytes(JpegPlates.swap(written, plates))
       File(retained, name.removeSuffix(".pdf") + ".html").writeText(companion, Charsets.UTF_8)
       val out = writeToDownloads(context, name, "application/pdf") { out -> original.inputStream().use { it.copyTo(out) } }
       val html = writeToDownloads(context, name.removeSuffix(".pdf") + ".html", "text/html") { it.write(companion.toByteArray(Charsets.UTF_8)) }
@@ -81,7 +86,7 @@ object PdfExport {
   fun preview(context: Context, p: Protocol, s: Str, photos: File, ink: File): String {
     dev.peringer.limen.photo.EvidenceValidation.requireReadable(p, photos, ink)
     var html = ""
-    build(context, p, s, photos, ink, if (p.isFinalized()) reference(p) else s.previewDraft, 1) { html = it }.close()
+    build(context, p, s, photos, ink, if (p.isFinalized()) reference(p) else s.previewDraft, 1, onHtml = { html = it }).close()
     return html
   }
 
@@ -95,6 +100,7 @@ object PdfExport {
     reference: String,
     total: Int,
     onHtml: ((String) -> Unit)? = null,
+    onPlates: ((List<JpegPlates.Plate>) -> Unit)? = null,
   ): PdfDocument {
     val doc = PdfDocument()
     val sheet = Sheet(doc, s, reference, total)
@@ -123,6 +129,7 @@ object PdfExport {
     annex(sheet, p, s, photoDir, measuring = total == 0)
     sheet.close()
     onHtml?.invoke(sheet.html.finish())
+    onPlates?.invoke(sheet.plates)
     return doc
   }
 
@@ -133,6 +140,8 @@ object PdfExport {
 
   private class Sheet(val doc: PdfDocument, val s: Str, val reference: String, val total: Int) {
     val html = HtmlCompanion(s.lang.name.lowercase(), "Limen · $reference")
+    /** The annex photographs as JPEG, in the order their stand-ins were drawn. */
+    val plates = mutableListOf<JpegPlates.Plate>()
     val ink = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.BLACK }
     val titlePaint = Paint(ink).apply {
       typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD); textSize = 40f
@@ -229,8 +238,8 @@ object PdfExport {
       y += need
     }
 
-    fun wrapped(text: String, paint: Paint, x: Float = MARGIN, width: Float = W - 2 * MARGIN) {
-      html.text(text)
+    fun wrapped(text: String, paint: Paint, x: Float = MARGIN, width: Float = W - 2 * MARGIN, companion: Boolean = true) {
+      if (companion) html.text(text)
       wrapLines(text, paint, width).forEach { line ->
         ensure(paint.textSize + 10f)
         canvas.drawText(line, x, y + paint.textSize, paint)
@@ -906,52 +915,48 @@ object PdfExport {
     is Report.PlateOwner.Meter -> "${s.meters}: ${o.reading.label} · ${o.reading.identifier}"
   }
 
+  /**
+   * One photograph per row, at 300 dpi, the layout the iPhone port prints: the picture fitted
+   * into the content width and at most 530 units high, then its caption with the file name,
+   * then its full fingerprint. Two plates per row printed each at a quarter of the page, and
+   * the copy the tenant and the landlord receive is the one a dispute is argued over.
+   *
+   * Each plate is drawn as a marked stand-in and becomes JPEG after the file is written, in
+   * [JpegPlates], because PdfDocument would store the bitmap itself losslessly.
+   */
   private fun annex(sheet: Sheet, p: Protocol, s: Str, photoDir: File, measuring: Boolean) {
     val plates = Report.plates(p)
     if (plates.isEmpty()) return
-    val cellW = (W - 2 * MARGIN - 40f) / 2f
-    val cellH = 420f
     require(plates.all { readable(File(photoDir, it.file)) }) { "A referenced photograph cannot be rendered" }
-    val readablePlates = plates
-    if (readablePlates.isEmpty()) return
-    sheet.ensure(cellH + 120f)
+    // The section title, plus the first plate, so the title never closes a page on its own.
+    sheet.ensure(PLATE_NEED + 60f)
     sheet.sectionTitle(s.pdfDefectAnnex)
-    var col = 0
-    readablePlates.forEach { plate ->
+    plates.forEach { plate ->
       val file = File(photoDir, plate.file)
-      // The counting pass reads the dimensions only: same page breaks, no decoding.
-      val bmp = if (measuring) null else decodeDown(file, cellW.toInt())
-      require(measuring || bmp != null) { "Photograph cannot be rendered: ${plate.file}" }
-      if (if (measuring) readable(file) else bmp != null) {
-        if (col == 0) sheet.ensure(cellH + 50f)
-        val x = MARGIN + col * (cellW + 40f)
-        if (bmp != null) {
-          val scale = minOf(cellW / bmp.width, (cellH - 40f) / bmp.height)
-          val w = bmp.width * scale
-          val h = bmp.height * scale
-          val paint = Paint(Paint.FILTER_BITMAP_FLAG)
-          sheet.canvas.drawBitmap(bmp, null, android.graphics.RectF(x, sheet.y, x + w, sheet.y + h), paint)
-          val caption = buildString {
-            append(plate.caption(s))
-            if (plate.sha256.isNotBlank()) append(" · ").append(plate.sha256.take(12))
-          }
-          sheet.html.image(bmp, caption)
-          sheet.canvas.drawText(
-            sheet.ellipsize(caption, sheet.small, cellW),
-            x,
-            sheet.y + h + sheet.small.textSize + 6f,
-            sheet.small,
-          )
-          bmp.recycle()
-        }
-        col++
-        if (col == 2) {
-          col = 0
-          sheet.y += cellH + 20f
-        }
+      val caption = "${plate.caption(s)} · ${plate.file}"
+      val fingerprint = if (plate.sha256.isNotBlank()) "SHA-256: ${plate.sha256}" else ""
+      sheet.ensure(PLATE_NEED)
+      // The counting pass decodes nothing. The cursor moves the same fixed distance whatever
+      // the picture's height, so both passes break the pages in the same places.
+      if (!measuring) {
+        val fit = PhotoDecode.uprightSize(file)?.let { (width, height) -> AnnexPlate.fit(width, height) }
+        val bmp = fit?.let { PhotoDecode.uprightAtSize(file, it.pixelWidth, it.pixelHeight) }
+        require(fit != null && bmp != null) { "Photograph cannot be rendered: ${plate.file}" }
+        // Quality 85: thirty plates measured 4.9 MB, or 7.3 MB as landscape, where the same
+        // plates stored losslessly made 45 and 78 MB.
+        val jpeg = java.io.ByteArrayOutputStream().also { check(bmp.compress(Bitmap.CompressFormat.JPEG, 85, it)) }.toByteArray()
+        sheet.plates += JpegPlates.Plate(jpeg, bmp.width, bmp.height)
+        bmp.recycle()
+        val standIn = standIn(sheet.plates.lastIndex)
+        sheet.canvas.drawBitmap(standIn, null, android.graphics.RectF(MARGIN, sheet.y, MARGIN + fit.boxWidth, sheet.y + fit.boxHeight), null)
+        standIn.recycle()
+        sheet.html.jpeg(jpeg, caption, fingerprint)
       }
+      sheet.gap(PLATE_ADVANCE)
+      sheet.wrapped(caption, sheet.body, companion = false)
+      if (fingerprint.isNotEmpty()) sheet.wrapped(fingerprint, sheet.small, companion = false)
+      sheet.gap(12f)
     }
-    if (col != 0) sheet.y += cellH + 20f
   }
 
   /** Whether a photo file would decode at all: the bounds pass, for counting pages. */
@@ -961,7 +966,14 @@ object PdfExport {
    */
   private fun readable(file: File): Boolean = PhotoDecode.readable(file)
 
-  /** The plate at roughly [targetWidth], turned upright by the shared decoder. */
-  private fun decodeDown(file: File, targetWidth: Int): Bitmap? =
-    PhotoDecode.sampled(file, targetWidth)
+  /** Plate [index]'s stand-in: opaque, so PdfDocument embeds its pixels exactly as set. */
+  private fun standIn(index: Int): Bitmap {
+    val rgb = JpegPlates.marker(index)
+    val side = JpegPlates.SIDE
+    val pixels = IntArray(side * side) { i -> Color.rgb(rgb[3 * i].toInt() and 0xFF, rgb[3 * i + 1].toInt() and 0xFF, rgb[3 * i + 2].toInt() and 0xFF) }
+    return Bitmap.createBitmap(side, side, Bitmap.Config.ARGB_8888).apply {
+      setPixels(pixels, 0, side, 0, 0, side, side)
+      setHasAlpha(false)
+    }
+  }
 }

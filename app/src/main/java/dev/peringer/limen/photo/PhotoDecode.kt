@@ -3,6 +3,7 @@ package dev.peringer.limen.photo
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
+import android.os.Build
 import androidx.exifinterface.media.ExifInterface
 import java.io.File
 
@@ -35,6 +36,55 @@ object PhotoDecode {
     }.getOrNull() ?: return null
     return upright(bitmap, file)
   }
+
+  /** The photograph's pixel size once turned upright, read from its header without decoding it. */
+  fun uprightSize(file: File): Pair<Int, Int>? {
+    val (width, height) = bounds(file) ?: return null
+    return if (quarterTurned(file)) height to width else width to height
+  }
+
+  /**
+   * The photograph upright at exactly [width] × [height] pixels, both upright dimensions,
+   * which is what the PDF annex prints. Sampling during the decode only gets within a factor
+   * of two, because BitmapFactory rounds the sample down to a power of two: the long edge of
+   * a twelve-megapixel capture asked for 510 came out anywhere from 510 to 1,020. One
+   * filtered scale afterwards makes the size exact.
+   */
+  fun uprightAtSize(file: File, width: Int, height: Int): Bitmap? {
+    val (rawWidth, rawHeight) = bounds(file) ?: return null
+    if (width <= 0 || height <= 0) return null
+    val (targetWidth, targetHeight) = if (quarterTurned(file)) height to width else width to height
+    var sample = 1
+    while (rawWidth / (sample * 2) >= targetWidth && rawHeight / (sample * 2) >= targetHeight) sample *= 2
+    val decoded = runCatching {
+      BitmapFactory.decodeFile(
+        file.absolutePath,
+        BitmapFactory.Options().apply { inSampleSize = sample; inMutable = true },
+      )
+    }.getOrNull() ?: return null
+    withoutGainmap(decoded)
+    val scaled = if (decoded.width == targetWidth && decoded.height == targetHeight) decoded else {
+      val exact = runCatching { Bitmap.createScaledBitmap(decoded, targetWidth, targetHeight, true) }.getOrNull()
+      decoded.recycle()
+      exact ?: return null
+    }
+    return upright(scaled, file)
+  }
+
+  /**
+   * An Ultra HDR capture, which is what a Pixel takes by default, decodes with its gain map
+   * attached. Drawn into PdfDocument, such a bitmap goes through a tone-mapping shader the
+   * PDF cannot hold, and up to 1.2.2 every plate came out as a page-sized image at 72 dpi.
+   * Compressed to JPEG, it writes the map along as a second image that a PDF reader never
+   * shows. The base image under the map is the standard-range picture, the one paper prints.
+   */
+  private fun withoutGainmap(bitmap: Bitmap) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && bitmap.hasGainmap()) bitmap.gainmap = null
+  }
+
+  /** A quarter turn swaps the edges: the annex fits the picture as it will stand on paper. */
+  private fun quarterTurned(file: File): Boolean =
+    runCatching { ExifInterface(file.absolutePath).rotationDegrees % 180 != 0 }.getOrDefault(false)
 
   private fun bounds(file: File): Pair<Int, Int>? {
     if (!file.isFile) return null
