@@ -77,13 +77,15 @@ object PdfExport {
       val pages = counted.marks.map { it.page }
       val annexPages = counted.marks.filter { it.key != null }.associate { it.key!! to it.page }
 
-      val kind = if (p.kind == Kind.Entry) s.entry else s.exit
-      val property = (p.address + "-" + p.place).replace(Regex("[^\\p{L}\\p{N}._-]+"), "-").take(65)
-      val name = java.text.Normalizer.normalize("limen-$property-${kind.lowercase()}-${s.lang.name.lowercase()}-${reference}-d${p.deliveryRevision}-${exportStamp()}.pdf", java.text.Normalizer.Form.NFD)
-        .replace(Regex("\\p{M}"), "").replace(Regex("[^A-Za-z0-9._-]"), "-")
       val retained = File(context.filesDir, "exports/${p.id}").apply { mkdirs() }
-      val original = File(retained, name)
-      val companion = File(retained, name.removeSuffix(".pdf") + ".html")
+      // The address and the day, as the iPhone names it, numbered when the day already has one
+      // in the retained folder or in Download/Limen, so no earlier copy is written over.
+      val downloads = downloadNames(context)
+      val name = DocumentName.unused(DocumentName.of(p.address, p.handoverDate, java.time.LocalDate.now())) { base ->
+        listOf("$base.pdf", "$base.html").any { it in downloads || File(retained, it).exists() }
+      }
+      val original = File(retained, "$name.pdf")
+      val companion = File(retained, "$name.html")
       // The plates go through files, never memory: a record holds any number of photographs.
       val spool = File(context.cacheDir, "annex-${System.nanoTime()}").apply { mkdirs() }
       try {
@@ -95,7 +97,7 @@ object PdfExport {
         check(drawn.marks == counted.marks) { "The drawing pass paginated differently from the counting pass" }
         val written = try { java.io.ByteArrayOutputStream().also { drawn.doc.writeTo(it) }.toByteArray() } finally { drawn.doc.close() }
         original.outputStream().buffered().use { PdfPlates.swap(written, drawn.plates, it) }
-        val out = writeToDownloads(context, name, "application/pdf") { out -> original.inputStream().use { it.copyTo(out) } }
+        val out = writeToDownloads(context, original.name, "application/pdf") { out -> original.inputStream().use { it.copyTo(out) } }
         val html = writeToDownloads(context, companion.name, "text/html") { out -> companion.inputStream().use { it.copyTo(out) } }
         return out.copy(companionUri = html.uri, sha256 = ProtocolIntegrity.fileHash(original))
       } catch (failure: Throwable) {

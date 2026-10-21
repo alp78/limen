@@ -532,4 +532,26 @@ class RemediationDeviceTest {
     context.contentResolver.openInputStream(exported.uri)!!.use { input -> File(output, "six-rooms-fr.pdf").outputStream().use(input::copyTo) }
     context.contentResolver.openInputStream(exported.companionUri!!)!!.use { input -> File(output, "six-rooms-fr.html").outputStream().use(input::copyTo) }
   }
+
+  @Test fun theDocumentIsNamedAfterTheAddressAndTheHandoverDayAndNumberedOnARepeat() {
+    // A street unique to this run, so an earlier run's copies in Download/Limen do not shift the numbering.
+    val address = "Rue de l’Église ${System.nanoTime() % 1_000_000}"
+    fun export(id: String): ExportedFile {
+      val p = sample(id).copy(address = address, finalizedEpochMs = 1)
+      val frozen = p.copy(evidenceFingerprint = ProtocolIntegrity.fingerprint(p, store.photoDir(p.id), store.signatureDir(p.id)))
+      return PdfExport.export(context, frozen, Str(Lang.Fr), store.photoDir(p.id), store.signatureDir(p.id))
+    }
+    val base = "Rue-de-l-Eglise-${address.substringAfterLast(' ')}-2026-10-13"
+    val first = export("name-${System.nanoTime()}")
+    assertEquals("$base.pdf", first.displayName)
+    assertEquals("$base.html", displayName(first.companionUri!!))
+    // A second record at the same address on the same day: only Download/Limen holds the name,
+    // since each record retains its own folder, so this proves the public folder is consulted.
+    val second = export("name-${System.nanoTime()}")
+    assertEquals("$base-2.pdf", second.displayName)
+    assertEquals("$base-2.html", displayName(second.companionUri!!))
+  }
+
+  private fun displayName(uri: android.net.Uri): String =
+    context.contentResolver.query(uri, arrayOf(android.provider.MediaStore.Downloads.DISPLAY_NAME), null, null, null)!!.use { c -> c.moveToFirst(); c.getString(0) }
 }

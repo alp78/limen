@@ -16,6 +16,21 @@ internal fun exportStamp(): String =
   SimpleDateFormat("yyyyMMdd-HHmmss", Locale.ROOT).format(Date())
 
 /**
+ * The names already in Download/Limen, as far as this app can see them, so a second export
+ * of the day takes a numbered name rather than the " (1)" MediaStore would append on its own
+ * while the history still recorded the plain one.
+ */
+internal fun downloadNames(context: Context): Set<String> {
+  val collection = MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+  val names = mutableSetOf<String>()
+  context.contentResolver.query(
+    collection, arrayOf(MediaStore.Downloads.DISPLAY_NAME),
+    "${MediaStore.Downloads.RELATIVE_PATH} = ?", arrayOf("Download/Limen/"), null,
+  )?.use { c -> while (c.moveToNext()) c.getString(0)?.let(names::add) }
+  return names
+}
+
+/**
  * Writes a file into the public Downloads collection under Download/Limen via MediaStore,
  * the same helper the rest of the portfolio ships: IS_PENDING while writing, the row
  * deleted again on failure, no storage permission needed on API 29+.
