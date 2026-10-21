@@ -16,7 +16,7 @@ Limen is a local Android application for Swiss residential handovers. It records
 
 Address lookup is off by default. Enabling it shows a disclosure before typed address searches are sent to swisstopo. Manual entry works offline. Optional device-credential protection restricts access to the saved-record library and settings; it does not encrypt files or prevent access to the current handover being reviewed.
 
-Records and evidence remain in private app storage. Removed evidence can remain for recovery until the entire record is deleted. Public exports and copies shared with other apps must be managed separately. Backups contain the selected records and their referenced evidence and retained exports. Passwords enable authenticated encryption; a plain archive requires an explicit choice. Limits are 64 MB compressed and 256 MB unpacked, with 32 MB per new photograph or supporting document. Use per-record backups for larger libraries.
+Records and evidence remain in private app storage. Removed evidence can remain for recovery until the entire record is deleted. Public exports and copies shared with other apps must be managed separately. Backups contain the selected records and their referenced evidence and retained exports. Passwords enable authenticated encryption; a plain archive requires an explicit choice. Backups, photographs and supporting documents have no size limit; a restore needs free storage for the archive it unpacks.
 
 Save failures remain visible. Unreadable records are listed, and a last-good copy can be recovered. Restore skips healthy existing records. Its optional repair mode preserves corrupt originals in a recovery directory before installing validated replacements.
 

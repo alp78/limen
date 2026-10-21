@@ -1461,12 +1461,8 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
         require(mime in setOf("application/pdf", "image/jpeg", "image/png"))
         val file = File(store.photoDir(p.id), "document-${java.util.UUID.randomUUID()}.${if (mime == "application/pdf") "pdf" else if (mime == "image/png") "png" else "jpg"}")
         try {
-          resolver.openInputStream(uri)?.use { input -> file.outputStream().use { out ->
-            val buffer = ByteArray(32 * 1024)
-            var bytes = 0L
-            while (true) { val read = input.read(buffer); if (read < 0) break
-              bytes += read; require(bytes <= 32L * 1024 * 1024); out.write(buffer, 0, read) }
-          } } ?: error("No input")
+          // No size limit: a supporting document is kept whole, however large.
+          resolver.openInputStream(uri)?.use { input -> file.outputStream().use { out -> input.copyTo(out, 32 * 1024) } } ?: error("No input")
           if (mime == "application/pdf") android.graphics.pdf.PdfRenderer(android.os.ParcelFileDescriptor.open(file, android.os.ParcelFileDescriptor.MODE_READ_ONLY)).use { require(it.pageCount > 0) }
           else require(dev.peringer.limen.photo.PhotoDecode.readable(file))
           SupportingDocument(documentId, file = file.name, mime = mime, sha256 = ProtocolIntegrity.fileHash(file),

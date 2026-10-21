@@ -41,9 +41,15 @@ object PdfExport {
   private const val H = 1754
   private const val MARGIN = 90f
   private const val FOOT = 60f
-  /** An annex plate: room for the picture and its two caption lines, and where the captions start. */
-  private const val PLATE_NEED = 650f
-  private const val PLATE_ADVANCE = 540f
+  /**
+   * An annex card: the frame's padding, which with the margins leaves [AnnexPlate.MAX_WIDTH]
+   * for the photograph, the gap to a legend set beside it, the narrowest legend set beside
+   * rather than below, and the space between cards.
+   */
+  private const val FRAME_PAD = 20f
+  private const val LEGEND_GAP = 30f
+  private const val LEGEND_MIN = 300f
+  private const val CARD_GAP = 40f
 
   fun export(
     context: Context,
@@ -59,38 +65,60 @@ object PdfExport {
     // Twice: the first pass only counts the sheets so the second can number them "3 / 7".
     // A form that names its own total is a form nobody can quietly take a page out of,
     // which is the tamper evidence paper has always used and people actually check.
-    val counted = build(context, p, s, photoDir, signatureDir, reference, 0)
+    // The counting pass also learns where each annex section starts, for the annex contents.
+    var sections = emptyList<Int>()
+    val counted = build(context, p, s, photoDir, signatureDir, reference, 0, Discard, onSections = { sections = it })
     val total = try { counted.pages.size } finally { counted.close() }
 
-    var companion = ""
-    var plates = emptyList<JpegPlates.Plate>()
-    val doc = build(context, p, s, photoDir, signatureDir, reference, total, onHtml = { companion = it }, onPlates = { plates = it })
+    val kind = if (p.kind == Kind.Entry) s.entry else s.exit
+    val property = (p.address + "-" + p.place).replace(Regex("[^\\p{L}\\p{N}._-]+"), "-").take(65)
+    val name = java.text.Normalizer.normalize("limen-$property-${kind.lowercase()}-${s.lang.name.lowercase()}-${reference}-d${p.deliveryRevision}-${exportStamp()}.pdf", java.text.Normalizer.Form.NFD)
+      .replace(Regex("\\p{M}"), "").replace(Regex("[^A-Za-z0-9._-]"), "-")
+    val retained = File(context.filesDir, "exports/${p.id}").apply { mkdirs() }
+    val original = File(retained, name)
+    val companion = File(retained, name.removeSuffix(".pdf") + ".html")
+    // The plates go through files, never memory: a record has no size limit, and thirty
+    // lossless plates already weigh 45 MB.
+    val spool = File(context.cacheDir, "annex-${System.nanoTime()}").apply { mkdirs() }
     try {
-      val kind = if (p.kind == Kind.Entry) s.entry else s.exit
-      val property = (p.address + "-" + p.place).replace(Regex("[^\\p{L}\\p{N}._-]+"), "-").take(65)
-      val name = java.text.Normalizer.normalize("limen-$property-${kind.lowercase()}-${s.lang.name.lowercase()}-${reference}-d${p.deliveryRevision}-${exportStamp()}.pdf", java.text.Normalizer.Form.NFD)
-        .replace(Regex("\\p{M}"), "").replace(Regex("[^A-Za-z0-9._-]"), "-")
-      val retained = File(context.filesDir, "exports/${p.id}").apply { mkdirs() }
-      val original = File(retained, name)
-      val written = java.io.ByteArrayOutputStream().also { doc.writeTo(it) }.toByteArray()
-      original.writeBytes(JpegPlates.swap(written, plates))
-      File(retained, name.removeSuffix(".pdf") + ".html").writeText(companion, Charsets.UTF_8)
+      var plates = emptyList<PdfPlates.Plate>()
+      val doc = companion.outputStream().buffered().use { html ->
+        build(context, p, s, photoDir, signatureDir, reference, total, html, spool, sections) { plates = it }
+      }
+      val written = try { java.io.ByteArrayOutputStream().also { doc.writeTo(it) }.toByteArray() } finally { doc.close() }
+      original.outputStream().buffered().use { PdfPlates.swap(written, plates, it) }
       val out = writeToDownloads(context, name, "application/pdf") { out -> original.inputStream().use { it.copyTo(out) } }
-      val html = writeToDownloads(context, name.removeSuffix(".pdf") + ".html", "text/html") { it.write(companion.toByteArray(Charsets.UTF_8)) }
+      val html = writeToDownloads(context, companion.name, "text/html") { out -> companion.inputStream().use { it.copyTo(out) } }
       return out.copy(companionUri = html.uri, sha256 = ProtocolIntegrity.fileHash(original))
+    } catch (failure: Throwable) {
+      original.delete()
+      companion.delete()
+      throw failure
     } finally {
-      doc.close()
+      spool.deleteRecursively()
     }
   }
 
+  /** The record as the on-screen preview shows it; its plates are light JPEG copies, not the evidence. */
   fun preview(context: Context, p: Protocol, s: Str, photos: File, ink: File): String {
     dev.peringer.limen.photo.EvidenceValidation.requireReadable(p, photos, ink)
-    var html = ""
-    build(context, p, s, photos, ink, if (p.isFinalized()) reference(p) else s.previewDraft, 1, onHtml = { html = it }).close()
-    return html
+    val html = java.io.ByteArrayOutputStream()
+    build(context, p, s, photos, ink, if (p.isFinalized()) reference(p) else s.previewDraft, 1, html).close()
+    return html.toString(Charsets.UTF_8.name())
   }
 
-  /** One rendering pass. [total] is 0 while counting, and the real page count afterwards. */
+  /** The counting pass draws an HTML copy nobody reads. */
+  private object Discard : java.io.OutputStream() {
+    override fun write(b: Int) = Unit
+    override fun write(b: ByteArray, off: Int, len: Int) = Unit
+  }
+
+  /**
+   * One rendering pass. [total] is 0 while counting, and the real page count afterwards. The
+   * HTML copy is written to [html] as the pages are drawn. With a [spool], each annex plate
+   * is kept there as a lossless PNG and handed to [onPlates]; without one, the plates are
+   * light JPEG copies for the screen.
+   */
   private fun build(
     context: Context,
     p: Protocol,
@@ -99,11 +127,14 @@ object PdfExport {
     signatureDir: File,
     reference: String,
     total: Int,
-    onHtml: ((String) -> Unit)? = null,
-    onPlates: ((List<JpegPlates.Plate>) -> Unit)? = null,
+    html: java.io.OutputStream,
+    spool: File? = null,
+    contents: List<Int> = emptyList(),
+    onSections: ((List<Int>) -> Unit)? = null,
+    onPlates: ((List<PdfPlates.Plate>) -> Unit)? = null,
   ): PdfDocument {
     val doc = PdfDocument()
-    val sheet = Sheet(doc, s, reference, total)
+    val sheet = Sheet(doc, s, reference, total, html, spool, contents)
     val cards = p.dossierCards()
     title(sheet, p, s, context)
     header(sheet, p, s)
@@ -128,7 +159,8 @@ object PdfExport {
     release(sheet, p, s)
     annex(sheet, p, s, photoDir, measuring = total == 0)
     sheet.close()
-    onHtml?.invoke(sheet.html.finish())
+    sheet.html.finish()
+    onSections?.invoke(sheet.sectionStarts)
     onPlates?.invoke(sheet.plates)
     return doc
   }
@@ -138,10 +170,20 @@ object PdfExport {
 
   // ── The sheet: cursor, page breaks, footer ───────────────────────────────────────────
 
-  private class Sheet(val doc: PdfDocument, val s: Str, val reference: String, val total: Int) {
-    val html = HtmlCompanion(s.lang.name.lowercase(), "Limen · $reference")
-    /** The annex photographs as JPEG, in the order their stand-ins were drawn. */
-    val plates = mutableListOf<JpegPlates.Plate>()
+  private class Sheet(
+    val doc: PdfDocument,
+    val s: Str,
+    val reference: String,
+    val total: Int,
+    html: java.io.OutputStream,
+    val spool: File?,
+    /** The page each annex section starts on, known from the counting pass, for its contents. */
+    val contents: List<Int>,
+  ) {
+    val html = HtmlCompanion(s.lang.name.lowercase(), "Limen · $reference", html)
+    /** The annex photographs as lossless PNG files, in the order their stand-ins were drawn. */
+    val plates = mutableListOf<PdfPlates.Plate>()
+    val sectionStarts = mutableListOf<Int>()
     val ink = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.BLACK }
     val titlePaint = Paint(ink).apply {
       typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD); textSize = 40f
@@ -156,6 +198,18 @@ object PdfExport {
     val body = Paint(ink).apply { typeface = Typeface.SANS_SERIF; textSize = 24f }
     val small = Paint(ink).apply { typeface = Typeface.SANS_SERIF; textSize = 21f; color = Color.rgb(70, 70, 70) }
     val rule = Paint().apply { color = Color.rgb(200, 200, 200); strokeWidth = 1.5f }
+    // The photo annex: a room's title over a heavy rule, then framed cards with a bold legend.
+    val roomTitle = Paint(ink).apply {
+      typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD); textSize = 36f; letterSpacing = 0.04f
+    }
+    val heavyRule = Paint().apply { color = Color.rgb(21, 32, 45); strokeWidth = 4f }
+    val strong = Paint(ink).apply { typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD); textSize = 27f }
+    val frame = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 2f; color = Color.rgb(185, 185, 185) }
+    val hairline = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 1f; color = Color.rgb(215, 215, 215) }
+    val badgeFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(21, 32, 45) }
+    val badgeText = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+      typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD); textSize = 23f; color = Color.WHITE
+    }
 
     var pageNo = 0
     var page: PdfDocument.Page? = null
@@ -904,59 +958,245 @@ object PdfExport {
 
 
   /**
-   * A plate's caption. A finding is cited by the number it prints under in [findings],
-   * which is what makes the annex checkable against the body; an object is cited by name,
-   * because an object has no number to cite.
-   */
-  private fun Report.Plate.caption(s: Str): String = when (val o = owner) {
-    is Report.PlateOwner.Finding -> "${s.defects} ${o.number}"
-    is Report.PlateOwner.Supplied -> o.entry.displayName(s)
-    is Report.PlateOwner.Overview -> "${s.overviewPhotos}: ${o.room.name.ifBlank { s.room(o.room.kind) }}"
-    is Report.PlateOwner.Meter -> "${s.meters}: ${o.reading.label} · ${o.reading.identifier}"
-  }
-
-  /**
-   * One photograph per row, at 300 dpi, the layout the iPhone port prints: the picture fitted
-   * into the content width and at most 530 units high, then its caption with the file name,
-   * then its full fingerprint. Two plates per row printed each at a quarter of the page, and
-   * the copy the tenant and the landlord receive is the one a dispute is argued over.
+   * The photo annex, organised the way a handover is walked: a contents page, then one
+   * section per room, each opening on a new page under the room's title, then the supplied
+   * objects, the meters and anything left. Every photograph sits in a frame with its legend,
+   * which repeats the room, so a page met on its own still says where it belongs and what it
+   * shows: the finding's number and words as the body prints them, the surface, who is held
+   * to it, and when the photograph was taken. No hash: it tells the people at a handover
+   * nothing.
    *
-   * Each plate is drawn as a marked stand-in and becomes JPEG after the file is written, in
-   * [JpegPlates], because PdfDocument would store the bitmap itself losslessly.
+   * The photographs are large, up to the full width or 1100 units high, 17 cm wide or 19 cm high, and
+   * lossless at 300 dpi: no compression is traded against file size, because the photograph
+   * is the evidence. Each is written once as a PNG, which the HTML copy embeds as it is and
+   * whose pixel stream [PdfPlates] puts into the PDF in place of a marked stand-in, so that
+   * PdfDocument never holds the bitmap and a record of any size exports.
+   *
+   * The counting pass decodes nothing, but it reads every photograph's size from its header
+   * and lays out every legend, so both passes break the pages in the same places.
    */
   private fun annex(sheet: Sheet, p: Protocol, s: Str, photoDir: File, measuring: Boolean) {
     val plates = Report.plates(p)
     if (plates.isEmpty()) return
     require(plates.all { readable(File(photoDir, it.file)) }) { "A referenced photograph cannot be rendered" }
-    // The section title, plus the first plate, so the title never closes a page on its own.
-    sheet.ensure(PLATE_NEED + 60f)
+    val sections = AnnexContent.sections(p, s)
+    sheet.newPage()
     sheet.sectionTitle(s.pdfDefectAnnex)
-    plates.forEach { plate ->
-      val file = File(photoDir, plate.file)
-      val caption = "${plate.caption(s)} · ${plate.file}"
-      val fingerprint = if (plate.sha256.isNotBlank()) "SHA-256: ${plate.sha256}" else ""
-      sheet.ensure(PLATE_NEED)
-      // The counting pass decodes nothing. The cursor moves the same fixed distance whatever
-      // the picture's height, so both passes break the pages in the same places.
-      if (!measuring) {
-        val fit = PhotoDecode.uprightSize(file)?.let { (width, height) -> AnnexPlate.fit(width, height) }
-        val bmp = fit?.let { PhotoDecode.uprightAtSize(file, it.pixelWidth, it.pixelHeight) }
-        require(fit != null && bmp != null) { "Photograph cannot be rendered: ${plate.file}" }
-        // Quality 85: thirty plates measured 4.9 MB, or 7.3 MB as landscape, where the same
-        // plates stored losslessly made 45 and 78 MB.
-        val jpeg = java.io.ByteArrayOutputStream().also { check(bmp.compress(Bitmap.CompressFormat.JPEG, 85, it)) }.toByteArray()
-        sheet.plates += JpegPlates.Plate(jpeg, bmp.width, bmp.height)
-        bmp.recycle()
-        val standIn = standIn(sheet.plates.lastIndex)
-        sheet.canvas.drawBitmap(standIn, null, android.graphics.RectF(MARGIN, sheet.y, MARGIN + fit.boxWidth, sheet.y + fit.boxHeight), null)
-        standIn.recycle()
-        sheet.html.jpeg(jpeg, caption, fingerprint)
+    if (sections.size > 1) {
+      // The contents: each section with its photographs and, once counted, its first page.
+      sections.forEachIndexed { i, section ->
+        val count = "${s.photos}: ${section.cards.size}"
+        val page = sheet.contents.getOrNull(i)?.let { "${s.pdfPage} $it" }.orEmpty()
+        sheet.html.text(listOf(section.title, count, page).filter(String::isNotBlank).joinToString(" · "))
+        sheet.ensure(sheet.body.textSize + 18f)
+        val baseline = sheet.y + sheet.body.textSize
+        sheet.canvas.drawText(sheet.ellipsize(section.title, sheet.body, 640f), MARGIN, baseline, sheet.body)
+        sheet.canvas.drawText(count, MARGIN + 680f, baseline, sheet.small)
+        sheet.canvas.drawText(page, W - MARGIN - sheet.small.measureText(page), baseline, sheet.small)
+        sheet.y += sheet.body.textSize + 10f
+        sheet.canvas.drawLine(MARGIN, sheet.y, W - MARGIN, sheet.y, sheet.rule)
+        sheet.y += 8f
       }
-      sheet.gap(PLATE_ADVANCE)
-      sheet.wrapped(caption, sheet.body, companion = false)
-      if (fingerprint.isNotEmpty()) sheet.wrapped(fingerprint, sheet.small, companion = false)
-      sheet.gap(12f)
     }
+    sections.forEachIndexed { i, section ->
+      if (sections.size > 1 || i > 0) sheet.newPage()
+      sheet.sectionStarts += sheet.pageNo
+      sectionHeader(sheet, section, s)
+      compose(sheet, section.cards.map { layout(sheet, it, photoDir) }, photoDir, measuring)
+    }
+  }
+
+  /**
+   * Sets a section's cards on its pages: as many as fit on each, the first under the section's
+   * title, and a page that continues the section with its cards centred on it, so that a
+   * single photograph does not hang from the top of an empty page.
+   */
+  private fun compose(sheet: Sheet, cards: List<CardLayout>, photoDir: File, measuring: Boolean) {
+    val bottom = H - FOOT - 30f
+    var i = 0
+    var underTitle = true
+    while (i < cards.size) {
+      if (!cards[i].fits) {
+        if (!underTitle) sheet.newPage()
+        drawRunOn(sheet, cards[i], photoDir, measuring)
+        underTitle = false
+        i++
+        continue
+      }
+      var used = 0f
+      var j = i
+      while (j < cards.size && cards[j].fits && sheet.y + used + cards[j].height <= bottom) {
+        used += cards[j].height + CARD_GAP
+        j++
+      }
+      if (j == i) {
+        sheet.newPage()
+        underTitle = false
+        continue
+      }
+      if (!underTitle) sheet.y += (bottom - sheet.y - (used - CARD_GAP)) / 2f
+      for (k in i until j) {
+        drawCard(sheet, cards[k], sheet.y, photoDir, measuring)
+        sheet.y += cards[k].height + CARD_GAP
+      }
+      i = j
+      underTitle = false
+      if (i < cards.size) sheet.newPage()
+    }
+  }
+
+  /** A section's title band: the room in capitals over a heavy rule, its photo count at the right. */
+  private fun sectionHeader(sheet: Sheet, section: AnnexContent.Section, s: Str) {
+    sheet.html.subheading(section.title)
+    val baseline = sheet.y + sheet.roomTitle.textSize
+    val count = "${s.photos}: ${section.cards.size}"
+    val countWidth = sheet.small.measureText(count)
+    sheet.canvas.drawText(sheet.ellipsize(section.title.uppercase(), sheet.roomTitle, W - 2 * MARGIN - countWidth - 30f), MARGIN, baseline, sheet.roomTitle)
+    sheet.canvas.drawText(count, W - MARGIN - countWidth, baseline, sheet.small)
+    sheet.y = baseline + 16f
+    sheet.canvas.drawLine(MARGIN, sheet.y, W - MARGIN, sheet.y, sheet.heavyRule)
+    sheet.y += 30f
+  }
+
+  /** A legend line: its text, paint, offset from the legend's left edge, and baseline from its top. */
+  private class LegendLine(val text: String, val paint: Paint, val x: Float, val baseline: Float)
+
+  /** A card's legend laid out at [width]: its lines, the finding's badge if any, and its height. */
+  private class Legend(val lines: List<LegendLine>, val badge: android.graphics.RectF?, val number: String?, val height: Float)
+
+  /**
+   * The legend. Wide, under a photograph, it has two columns: where and what on the left,
+   * which photograph and when on the right, set flush right against the frame and as wide
+   * as its longest line, so a file name is never cut. Narrow, beside a tall photograph, the
+   * two stack.
+   */
+  private fun legend(sheet: Sheet, card: AnnexContent.Card, width: Float): Legend {
+    val split = width >= 800f
+    val metaWidth = if (split) minOf(width * 0.45f, card.meta.maxOf { sheet.small.measureText(it) } + 2f) else width
+    val mainWidth = if (split) width - metaWidth - 40f else width
+    val lines = mutableListOf<LegendLine>()
+    var y = 0f
+    fun add(text: String, paint: Paint, x: Float, lineWidth: Float, flushRight: Boolean = false) {
+      sheet.wrapLines(text, paint, lineWidth).forEach { line ->
+        y += paint.textSize
+        lines += LegendLine(line, paint, if (flushRight) width - paint.measureText(line) else x, y)
+        y += 8f
+      }
+    }
+    add(card.where.uppercase(), sheet.label, 0f, mainWidth)
+    y += 10f
+    // The finding's number in a dark badge, its words beside it in bold: the way it reads in the body.
+    val number = card.number?.toString()
+    val badgeWidth = number?.let { sheet.badgeText.measureText(it) + 24f } ?: 0f
+    val indent = if (number != null) badgeWidth + 14f else 0f
+    val titleTop = lines.size
+    add(card.title, sheet.strong, indent, mainWidth - indent)
+    val badge = number?.let {
+      val baseline = lines[titleTop].baseline
+      android.graphics.RectF(0f, baseline - sheet.strong.textSize - 3f, badgeWidth, baseline + 9f)
+    }
+    if (card.context.isNotEmpty()) y += 4f
+    card.context.forEach { add(it, sheet.body, 0f, mainWidth) }
+    val main = y
+    y = if (split) 0f else y + 10f
+    card.meta.forEach { add(it, sheet.small, 0f, metaWidth, flushRight = split) }
+    return Legend(lines, badge, number, maxOf(main, y) - 8f)
+  }
+
+  /** Draws [legend] with its top left corner at [left], [top]. */
+  private fun drawLegend(sheet: Sheet, legend: Legend, left: Float, top: Float) {
+    legend.badge?.let { badge ->
+      val box = android.graphics.RectF(left + badge.left, top + badge.top, left + badge.right, top + badge.bottom)
+      sheet.canvas.drawRoundRect(box, 8f, 8f, sheet.badgeFill)
+      val number = legend.number.orEmpty()
+      sheet.canvas.drawText(number, box.centerX() - sheet.badgeText.measureText(number) / 2f, box.bottom - 11f, sheet.badgeText)
+    }
+    legend.lines.forEach { sheet.canvas.drawText(it.text, left + it.x, top + it.baseline, it.paint) }
+  }
+
+  /** A card measured before anything is drawn, so a section's pages can be composed first. */
+  private class CardLayout(val card: AnnexContent.Card, val fit: AnnexPlate.Fit, val legend: Legend, val beside: Boolean, val height: Float, val fits: Boolean)
+
+  /**
+   * The photograph centred with its legend below, or beside it when a tall photograph leaves
+   * at least [LEGEND_MIN] there. Read from the file's header, never decoded, so the counting
+   * pass measures what the drawing pass draws.
+   */
+  private fun layout(sheet: Sheet, card: AnnexContent.Card, photoDir: File): CardLayout {
+    val fit = PhotoDecode.uprightSize(File(photoDir, card.file))?.let { (width, height) -> AnnexPlate.fit(width, height) }
+    require(fit != null) { "Photograph cannot be rendered: ${card.file}" }
+    val inner = W - 2 * MARGIN - 2 * FRAME_PAD
+    val besideWidth = inner - fit.boxWidth - LEGEND_GAP
+    var beside = besideWidth >= LEGEND_MIN
+    var legend = legend(sheet, card, if (beside) besideWidth else inner)
+    if (beside && legend.height > fit.boxHeight + 200f) {
+      beside = false
+      legend = legend(sheet, card, inner)
+    }
+    val body = if (beside) maxOf(fit.boxHeight, legend.height) else fit.boxHeight + 28f + legend.height
+    val height = 2 * FRAME_PAD + body
+    return CardLayout(card, fit, legend, beside, height, height <= H - FOOT - 30f - MARGIN)
+  }
+
+  /** One framed card, its top at [top]. */
+  private fun drawCard(sheet: Sheet, layout: CardLayout, top: Float, photoDir: File, measuring: Boolean) {
+    val inner = W - 2 * MARGIN - 2 * FRAME_PAD
+    val fit = layout.fit
+    val left = if (layout.beside) MARGIN + FRAME_PAD else MARGIN + FRAME_PAD + (inner - fit.boxWidth) / 2f
+    val photo = android.graphics.RectF(left, top + FRAME_PAD, left + fit.boxWidth, top + FRAME_PAD + fit.boxHeight)
+    sheet.canvas.drawRoundRect(android.graphics.RectF(MARGIN, top, W - MARGIN, top + layout.height), 12f, 12f, sheet.frame)
+    if (!measuring) photo(sheet, layout.card, File(photoDir, layout.card.file), fit, photo)
+    sheet.canvas.drawRect(photo, sheet.hairline)
+    if (layout.beside) drawLegend(sheet, layout.legend, photo.right + LEGEND_GAP, photo.top)
+    else {
+      sheet.canvas.drawLine(MARGIN + FRAME_PAD, photo.bottom + 14f, W - MARGIN - FRAME_PAD, photo.bottom + 14f, sheet.rule)
+      drawLegend(sheet, layout.legend, MARGIN + FRAME_PAD, photo.bottom + 28f)
+    }
+  }
+
+  /** A card whose legend is longer than a page: the framed photograph, then the legend running on. */
+  private fun drawRunOn(sheet: Sheet, layout: CardLayout, photoDir: File, measuring: Boolean) {
+    val inner = W - 2 * MARGIN - 2 * FRAME_PAD
+    val fit = layout.fit
+    sheet.ensure(2 * FRAME_PAD + fit.boxHeight)
+    val top = sheet.y
+    val left = MARGIN + FRAME_PAD + (inner - fit.boxWidth) / 2f
+    val photo = android.graphics.RectF(left, top + FRAME_PAD, left + fit.boxWidth, top + FRAME_PAD + fit.boxHeight)
+    sheet.canvas.drawRoundRect(android.graphics.RectF(MARGIN, top, W - MARGIN, photo.bottom + FRAME_PAD), 12f, 12f, sheet.frame)
+    if (!measuring) photo(sheet, layout.card, File(photoDir, layout.card.file), fit, photo)
+    sheet.canvas.drawRect(photo, sheet.hairline)
+    sheet.y = photo.bottom + FRAME_PAD + 16f
+    val flowing = legend(sheet, layout.card, 600f)
+    flowing.lines.forEach { line ->
+      sheet.ensure(line.paint.textSize + 10f)
+      sheet.canvas.drawText(line.text, MARGIN + FRAME_PAD + line.x, sheet.y + line.paint.textSize, line.paint)
+      sheet.y += line.paint.textSize + 8f
+    }
+    sheet.y += CARD_GAP
+  }
+
+  /**
+   * The photograph itself. For the export it becomes a lossless PNG in the spool and a stand-in
+   * on the page; for the on-screen preview, a light JPEG at half the size in the HTML only.
+   */
+  private fun photo(sheet: Sheet, card: AnnexContent.Card, file: File, fit: AnnexPlate.Fit, box: android.graphics.RectF) {
+    val spool = sheet.spool
+    val scale = if (spool == null) 2 else 1
+    val bmp = PhotoDecode.uprightAtSize(file, maxOf(1, fit.pixelWidth / scale), maxOf(1, fit.pixelHeight / scale))
+    require(bmp != null) { "Photograph cannot be rendered: ${card.file}" }
+    val picture = onPaper(bmp)
+    if (spool == null) sheet.html.jpeg(picture, card) else {
+      val png = File(spool, "plate-${sheet.plates.size}.png")
+      png.outputStream().buffered().use { out ->
+        PngWriter.write(out, picture.width, picture.height) { y, row -> picture.getPixels(row, 0, picture.width, 0, y, picture.width, 1) }
+      }
+      val standIn = standIn(sheet.plates.size)
+      sheet.plates += PdfPlates.Plate(png)
+      sheet.canvas.drawBitmap(standIn, null, box, null)
+      standIn.recycle()
+      sheet.html.png(png, card)
+    }
+    picture.recycle()
   }
 
   /** Whether a photo file would decode at all: the bounds pass, for counting pages. */
@@ -966,10 +1206,25 @@ object PdfExport {
    */
   private fun readable(file: File): Boolean = PhotoDecode.readable(file)
 
+  /**
+   * The plate as paper shows it: a picture with transparency, a screenshot picked from the
+   * gallery, is laid on white. A PDF image carries three colour channels and no alpha, and
+   * Android writes an opaque bitmap as the 8-bit RGB PNG [PdfPlates] takes.
+   */
+  private fun onPaper(bitmap: Bitmap): Bitmap {
+    if (!bitmap.hasAlpha()) return bitmap
+    val paper = Bitmap.createBitmap(bitmap.width, bitmap.height, Bitmap.Config.ARGB_8888)
+    paper.eraseColor(Color.WHITE)
+    Canvas(paper).drawBitmap(bitmap, 0f, 0f, null)
+    paper.setHasAlpha(false)
+    bitmap.recycle()
+    return paper
+  }
+
   /** Plate [index]'s stand-in: opaque, so PdfDocument embeds its pixels exactly as set. */
   private fun standIn(index: Int): Bitmap {
-    val rgb = JpegPlates.marker(index)
-    val side = JpegPlates.SIDE
+    val rgb = PdfPlates.marker(index)
+    val side = PdfPlates.SIDE
     val pixels = IntArray(side * side) { i -> Color.rgb(rgb[3 * i].toInt() and 0xFF, rgb[3 * i + 1].toInt() and 0xFF, rgb[3 * i + 2].toInt() and 0xFF) }
     return Bitmap.createBitmap(side, side, Bitmap.Config.ARGB_8888).apply {
       setPixels(pixels, 0, side, 0, 0, side, side)

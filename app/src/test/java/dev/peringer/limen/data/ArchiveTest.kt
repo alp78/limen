@@ -42,6 +42,26 @@ class ArchiveTest {
     assertEquals("original evidence", File(restored.photoDir("p1"), "wall.jpg").readText())
   }
 
+  /** The old cap was 64 MB; thirty camera originals weigh 69 MB, so a real record could not be backed up. */
+  @Test
+  fun aBackupPastTheOldCapSavesAndRestoresEncryptedAndPlain() {
+    listOf(password, CharArray(0)).forEachIndexed { run, secret ->
+      val source = Store(tmp.newFolder("source-large-$run"))
+      source.save(Protocol(id = "large", kind = Kind.Entry, createdEpochMs = 7L, defects = listOf(Defect(id = "d1", photos = listOf("wall.jpg")))))
+      // Random bytes do not compress, so the archive itself passes 64 MB, and so does the one entry.
+      val photo = File(source.photoDir("large"), "wall.jpg")
+      val random = java.util.Random(7L)
+      photo.outputStream().buffered().use { out -> val chunk = ByteArray(1 shl 20); repeat(66) { random.nextBytes(chunk); out.write(chunk) } }
+      val archive = tmp.newFile("large-$run.limen")
+      archive.outputStream().buffered().use { source.exportArchive(secret, it) }
+      assertTrue(archive.length() > 64L * 1024 * 1024)
+
+      val restored = Store(tmp.newFolder("restored-large-$run"))
+      assertEquals(1, archive.inputStream().buffered().use { restored.importArchive(secret, it) }.imported)
+      assertEquals(ProtocolIntegrity.fileHash(photo), ProtocolIntegrity.fileHash(File(restored.photoDir("large"), "wall.jpg")))
+    }
+  }
+
   @Test
   fun restoreRejectsARecordWhoseEvidenceIsMissing() {
     val source = Store(tmp.newFolder("source-missing"))

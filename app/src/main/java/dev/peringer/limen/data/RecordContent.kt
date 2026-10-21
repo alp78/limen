@@ -25,14 +25,10 @@ internal fun extraContent(p: Protocol, s: Str): List<Pair<String, List<String>>>
     "${a.label} · ${a.identifier}\n${s.expected}: ${a.expected} · ${s.transferred}: ${a.transferred}\n${a.note}"
   })
   section(s.attachments, d.attachments.map { a ->
-    "${s.documentKind(a.kind)} · ${a.title}\n${a.externalReference}\n${a.file}\nSHA-256: ${a.sha256} · ${a.bytes} B"
+    "${s.documentKind(a.kind)} · ${a.title}\n${a.externalReference}\n${a.file} · ${a.bytes} B"
   })
-  section(s.photos, p.allPhotoEvidence().map { evidence ->
-    val source = when (evidence.source) { PhotoSource.Camera -> s.photo; PhotoSource.Gallery -> s.gallery; PhotoSource.Unknown -> s.toVerify }
-    val epoch = evidence.importedEpochMs.takeIf { it > 0 } ?: evidence.capturedEpochMs
-    val label = if (evidence.source == PhotoSource.Gallery) s.importedOn else s.capturedOn
-    "${evidence.file} · $source\n$label: ${if (epoch > 0) java.time.Instant.ofEpochMilli(epoch).toString() else s.toVerify}\nSHA-256: ${evidence.sha256}"
-  })
+  // No list of photographs here: each one carries its file name and capture time in the
+  // annex, in its frame, beside the picture it describes.
   section(s.followUps, d.followUps.map { f ->
     "${f.description}\n${s.discoveredOn}: ${SwissDate.display(f.discoveredDate)}\n" +
       "${s.notifiedOn}: ${SwissDate.display(f.notifiedDate)} · ${f.recipient} · ${f.method}\n" +

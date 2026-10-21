@@ -8,47 +8,47 @@ Paste each block into the matching language on the release, or let `play_push.py
 
 ## versionCode 8, versionName 1.2.3
 
-21 October 2026. The photo annex moves to one photograph per row at 300 dpi, the layout the iPhone prints, and the photographs go into the PDF as JPEG.
+21 October 2026. The photo annex becomes a photographic report: a contents page, one section per room, each photograph framed and large, lossless at 300 dpi, with its context beside it and no hash. Backups, photographs and documents lose every size cap.
 
 ### en-US
 
 ```
-The photo annex of the PDF prints one photograph per row, larger and sharper, with its file name and its full fingerprint beneath it.
+The photo annex of the PDF is now organised by room: each room opens its own section under its name, and every photograph is shown large, in a frame, with its room, the finding it documents, who is held responsible and when it was taken. Photographs keep their full print quality, without any loss. Backups, photographs and documents no longer have a size limit.
 ```
 
-(133/500)
+(362/500)
 
 ### fr-FR
 
 ```
-L’annexe photos du PDF imprime une photo par ligne, plus grande et plus nette, avec son nom de fichier et son empreinte complète en dessous.
+L’annexe photos du PDF est désormais organisée par pièce : chaque pièce ouvre sa propre section sous son nom, et chaque photo est présentée en grand, dans un cadre, avec sa pièce, le défaut qu’elle documente, la personne tenue pour responsable et le moment de la prise de vue. Les photos gardent leur pleine qualité d’impression, sans aucune perte. Les sauvegardes, les photos et les documents n’ont plus de limite de taille.
 ```
 
-(140/500)
+(425/500)
 
 ### de-DE
 
 ```
-Der Fotoanhang des PDF zeigt ein Foto pro Zeile, grösser und schärfer, mit Dateinamen und vollständigem Fingerabdruck darunter.
+Der Fotoanhang des PDF ist jetzt nach Räumen geordnet: Jeder Raum beginnt einen eigenen Abschnitt unter seinem Namen, und jedes Foto erscheint gross, in einem Rahmen, mit seinem Raum, dem dokumentierten Mangel, der verantwortlichen Partei und dem Aufnahmezeitpunkt. Die Fotos behalten ihre volle Druckqualität, ohne jeden Verlust. Sicherungen, Fotos und Dokumente haben keine Grössenbeschränkung mehr.
 ```
 
-(127/500)
+(401/500)
 
 ### it-IT
 
 ```
-L’allegato foto del PDF stampa una foto per riga, più grande e più nitida, con il nome del file e l’impronta completa sotto.
+L’allegato foto del PDF è ora organizzato per locale: ogni locale apre una propria sezione con il suo nome, e ogni foto è presentata in grande, in una cornice, con il suo locale, il difetto che documenta, chi ne è ritenuto responsabile e quando è stata scattata. Le foto mantengono la piena qualità di stampa, senza alcuna perdita. Backup, foto e documenti non hanno più limiti di dimensione.
 ```
 
-(124/500)
+(392/500)
 
 ### rm
 
 ```
-L’agiunta da fotos dal PDF stampa ina foto per lingia, pli gronda e pli nitida, cun il num da la datoteca e l’impronta cumpletta sutvart.
+L’agiunta da fotos dal PDF è ussa ordinada tenor local: mintga local avra ina atgna secziun sut ses num, e mintga foto vegn mussada grond, en in rom, cun ses local, la mancanza ch’ella documentescha, tgi ch’è responsabel e cura ch’ella è vegnida fatga. Las fotos mantegnan lur plaina qualitad da stampa, senza nagina perdita. Las copias da segirezza, las fotos e la documents n’han betg pli in limit da grondezza.
 ```
 
-(137/500)
+(413/500)
 
 ---
 

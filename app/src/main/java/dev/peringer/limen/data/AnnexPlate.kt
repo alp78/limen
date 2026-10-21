@@ -11,9 +11,13 @@ import kotlin.math.roundToInt
  */
 object AnnexPlate {
 
-  /** The content width of the page, 1240 units less both margins. */
-  const val MAX_WIDTH = 1060.0
-  const val MAX_HEIGHT = 530.0
+  /**
+   * The width inside an annex card's frame, 1240 units less both margins and the frame's
+   * padding, and the height that still leaves the card's legend and a section title on the
+   * page. A landscape photograph prints about 17 cm wide, a portrait one 19 cm high.
+   */
+  const val MAX_WIDTH = 1020.0
+  const val MAX_HEIGHT = 1100.0
 
   /**
    * One unit is 0.169 mm on the 1240-unit A4 page, so two pixels per unit is 300 dpi, the

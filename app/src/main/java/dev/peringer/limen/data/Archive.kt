@@ -19,34 +19,49 @@ data class ArchiveImportResult(
   val repaired: Int = 0,
 )
 
+/**
+ * The one bound a restore keeps: the disk it writes to. Asked once per megabyte rather than
+ * per read, because the zip reader hands back about 512 bytes at a time and a 66 MB restore
+ * asked the file system 135,000 times. Each check leaves room for the next megabyte and one
+ * more, so the disk never fills.
+ */
+internal class FreeSpace(private val dir: File) {
+  private var unchecked = Long.MAX_VALUE
+
+  fun before(bytes: Int) {
+    if (unchecked >= MEGABYTE) {
+      require(dir.usableSpace > 2 * MEGABYTE) { "Insufficient free storage" }
+      unchecked = 0
+    }
+    unchecked += bytes
+  }
+
+  private companion object { const val MEGABYTE = 1024L * 1024L }
+}
+
 /** Versioned, local-only backup of protocol JSON and its original evidence files. */
 internal object ArchiveIO {
   private const val MANIFEST = "limen-archive.txt"
   private const val MARKER = "LIMEN_ARCHIVE\nversion=1\n"
-  private const val MAX_ENTRIES = 20_000
   private const val STAGE_PREFIX = ".archive-import-"
-  private const val MAX_UNPACKED_BYTES = 256L * 1024L * 1024L
 
   private val json = Json { ignoreUnknownKeys = true }
 
+  /**
+   * No size or count limit, on this side or on [import]. A cap of 64 MB refused a single
+   * record of thirty camera originals, which weigh 69 MB; the only bound a backup meets is
+   * the storage it is written to and restored onto.
+   */
   fun export(root: File, output: OutputStream, protocolIds: Set<String>? = null) {
-    val bounded = object : OutputStream() {
-      var bytes = 0L
-      override fun write(value: Int) { require(++bytes <= 64L * 1024 * 1024) { "Archive exceeds 64 MB" }; output.write(value) }
-      override fun write(buffer: ByteArray, offset: Int, length: Int) {
-        bytes += length; require(bytes <= 64L * 1024 * 1024) { "Archive exceeds 64 MB; use scoped backups" }; output.write(buffer, offset, length)
-      }
+    // Closing the zip finishes the archive without closing the caller's stream.
+    val open = object : OutputStream() {
+      override fun write(value: Int) = output.write(value)
+      override fun write(buffer: ByteArray, offset: Int, length: Int) = output.write(buffer, offset, length)
       override fun flush() = output.flush()
     }
-    ZipOutputStream(bounded.buffered()).use { zip ->
+    ZipOutputStream(open.buffered()).use { zip ->
       put(zip, MANIFEST, MARKER.toByteArray(Charsets.UTF_8))
-      var unpacked = MARKER.length.toLong()
-      var entries = 1
-      fun putChecked(name: String, file: File) {
-        unpacked += file.length(); entries++
-        require(unpacked <= MAX_UNPACKED_BYTES && entries <= MAX_ENTRIES) { "Archive exceeds restore limits; use scoped backups" }
-        put(zip, name, file)
-      }
+      fun putChecked(name: String, file: File) = put(zip, name, file)
       val catalogue = Store(root).catalogue()
       require(catalogue.unreadable.none { protocolIds == null || it.id in protocolIds }) { "Recover unreadable records before exporting" }
       catalogue.records.filter { protocolIds == null || it.id in protocolIds }.forEach { p ->
@@ -96,14 +111,11 @@ internal object ArchiveIO {
   private fun unpack(stage: File, input: InputStream) {
     val rootPath = stage.canonicalPath + File.separator
     val seen = mutableSetOf<String>()
-    var entries = 0
-    var bytes = 0L
+    val space = FreeSpace(stage)
     var hasManifest = false
     ZipInputStream(input.buffered()).use { zip ->
       while (true) {
         val entry = zip.nextEntry ?: break
-        entries++
-        require(entries <= MAX_ENTRIES) { "Archive contains too many entries" }
         val name = entry.name
         require(!entry.isDirectory && isAllowed(name) && seen.add(name)) { "Invalid archive entry" }
         val target = File(stage, name).canonicalFile
@@ -111,15 +123,10 @@ internal object ArchiveIO {
         target.parentFile?.mkdirs()
         target.outputStream().buffered().use { out ->
           val buffer = ByteArray(32 * 1024)
-          var entryBytes = 0L
           while (true) {
             val read = zip.read(buffer)
             if (read <= 0) break
-            bytes += read
-            entryBytes += read
-            require(entryBytes <= if (name.startsWith("protocols/")) 8L * 1024 * 1024 else 64L * 1024 * 1024) { "Archive entry is too large" }
-            require(bytes <= MAX_UNPACKED_BYTES) { "Archive is too large" }
-            require(stage.usableSpace > read + 1024 * 1024) { "Insufficient free storage" }
+            space.before(read)
             out.write(buffer, 0, read)
           }
         }

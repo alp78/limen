@@ -20,8 +20,6 @@ internal object ArchiveCrypto {
   private const val KEY_BITS = 256
   private const val ITERATIONS = 210_000
 
-  /** The same ceiling the unpacker applies, enforced before the unpacker ever sees the bytes. */
-  private const val MAX_PLAINTEXT_BYTES = 64L * 1024L * 1024L
   private val random = SecureRandom()
 
   fun export(root: java.io.File, password: CharArray, output: OutputStream, protocolIds: Set<String>? = null) {
@@ -84,25 +82,16 @@ internal object ArchiveCrypto {
     try {
       staged.outputStream().buffered().use { out ->
         val buffer = ByteArray(64 * 1024)
-        var written = 0L
-        var received = 0L
+        // No size limit: the decrypted copy needs room on disk, and nothing else bounds it.
+        val space = FreeSpace(root)
         while (true) {
           val read = probe.read(buffer)
           if (read < 0) break
           if (read == 0) continue
-          received += read
-          require(received <= MAX_PLAINTEXT_BYTES + 16) { "Encrypted archive exceeds 64 MB; restore smaller scoped archives" }
-          cipher.update(buffer, 0, read)?.let { plain ->
-            written += plain.size
-            require(written <= MAX_PLAINTEXT_BYTES) { "Archive is too large" }
-            out.write(plain)
-          }
+          space.before(read)
+          cipher.update(buffer, 0, read)?.let(out::write)
         }
-        cipher.doFinal()?.let { plain ->
-          written += plain.size
-          require(written <= MAX_PLAINTEXT_BYTES) { "Archive is too large" }
-          out.write(plain)
-        }
+        cipher.doFinal()?.let(out::write)
       }
       return staged.inputStream().buffered().use { verified ->
         ArchiveIO.import(root, verified, repairCorrupt)

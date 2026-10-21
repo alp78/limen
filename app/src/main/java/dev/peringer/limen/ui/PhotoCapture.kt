@@ -86,15 +86,8 @@ fun rememberPhotoIntake(s: Str, onFile: (File, PhotoSource) -> Unit): PhotoIntak
           val copied = withContext(Dispatchers.IO) { runCatching {
             context.contentResolver.openInputStream(uri)?.use { input ->
               slot.outputStream().use { output ->
-                val buffer = ByteArray(32 * 1024)
-                var bytes = 0L
-                while (true) {
-                  val read = input.read(buffer)
-                  if (read < 0) break
-                  bytes += read
-                  require(bytes <= 32L * 1024 * 1024) { "Photo exceeds 32 MB" }
-                  output.write(buffer, 0, read)
-                }
+                // No size limit: a photograph is kept as it was taken, however large.
+                input.copyTo(output, 32 * 1024)
               }
             } != null
           }.getOrDefault(false) }

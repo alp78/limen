@@ -48,8 +48,8 @@ class Store(private val root: File) {
 
   fun list(): List<Protocol> = catalogue().records
 
+  // No size cap: the app must always read back a record it has written.
   private fun read(file: File): Protocol? = runCatching {
-    require(file.length() <= 8L * 1024 * 1024)
     json.decodeFromString<Protocol>(file.readText())
   }.getOrNull()
 

@@ -5,18 +5,22 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.math.abs
 
-/** The table the iPhone suite asserts as well: both apps must print and decode the same sizes. */
+/**
+ * The plate sizes: up to the full width inside the card's frame, 1020 units, or 1100 units
+ * high, decoded at two pixels per unit, which is 300 dpi. The iPhone suite asserts the same
+ * table, so both apps print and decode the same sizes.
+ */
 class AnnexPlateTest {
 
   private data class Row(val width: Int, val height: Int, val boxWidth: Double, val boxHeight: Double, val pixelWidth: Int, val pixelHeight: Int)
 
   private val table = listOf(
-    Row(4032, 3024, 706.7, 530.0, 1413, 1060),
-    Row(3024, 4032, 397.5, 530.0, 795, 1060),
-    Row(6000, 4000, 795.0, 530.0, 1590, 1060),
-    Row(1920, 1080, 942.2, 530.0, 1884, 1060),
-    Row(4000, 1000, 1060.0, 265.0, 2120, 530),
-    Row(800, 600, 706.7, 530.0, 800, 600),
+    Row(4032, 3024, 1020.0, 765.0, 2040, 1530),
+    Row(3024, 4032, 825.0, 1100.0, 1650, 2200),
+    Row(6000, 4000, 1020.0, 680.0, 2040, 1360),
+    Row(1920, 1080, 1020.0, 573.8, 1920, 1080),
+    Row(4000, 1000, 1020.0, 255.0, 2040, 510),
+    Row(800, 600, 1020.0, 765.0, 800, 600),
   )
 
   @Test fun everyRowOfTheSharedTableHoldsLongEdgeExactAndShortEdgeWithinOnePixel() {
