@@ -8,7 +8,7 @@ internal fun extraContent(p: Protocol, s: Str): List<Pair<String, List<String>>>
   fun section(label: String, values: List<String>) { if (values.isNotEmpty()) add(label to values) }
   section(s.actualTransfer, listOfNotNull(
     d.actualTransferDate.takeIf { it.isNotBlank() }?.let { SwissDate.display(it) + " " + d.actualTransferTime },
-    d.notificationClause.takeIf { it.isNotBlank() }?.let { "${s.notificationClause}: $it · ${d.notificationDays}" },
+    d.notificationClause.takeIf { it.isNotBlank() }?.let { "${s.notificationClause}: $it\n${d.notificationDays}" },
   ))
   section(s.understoodLanguage, listOf(d.understoodLanguage).filter(String::isNotBlank))
   section(s.scopeReason, d.scopeNotes.map { (id, reason) ->
@@ -18,36 +18,36 @@ internal fun extraContent(p: Protocol, s: Str): List<Pair<String, List<String>>>
     "$label: $reason"
   })
   section(s.meters, d.readings.map { r ->
-    "${r.label} · ${s.identifier}: ${r.identifier}\n${s.reading}: ${r.value} ${r.unit}\n" +
+    "${r.label}\n${s.identifier}: ${r.identifier}\n${s.reading}: ${r.value} ${r.unit}\n" +
       "${SwissDate.display(r.date)} ${r.time}\n${r.note}"
   })
   section(s.accessDevices, d.accessDevices.map { a ->
-    "${a.label} · ${a.identifier}\n${s.expected}: ${a.expected} · ${s.transferred}: ${a.transferred}\n${a.note}"
+    "${a.label}\n${a.identifier}\n${s.expected}: ${a.expected}\n${s.transferred}: ${a.transferred}\n${a.note}"
   })
   section(s.attachments, d.attachments.map { a ->
-    "${s.documentKind(a.kind)} · ${a.title}\n${a.externalReference}\n${a.file} · ${a.bytes} B"
+    "${s.documentKind(a.kind)}: ${a.title}\n${a.externalReference}\n${a.file}\n${a.bytes} B"
   })
   // No list of photographs here: each one carries its file name and capture time in the
   // annex, in its frame, beside the picture it describes.
   section(s.followUps, d.followUps.map { f ->
     "${f.description}\n${s.discoveredOn}: ${SwissDate.display(f.discoveredDate)}\n" +
-      "${s.notifiedOn}: ${SwissDate.display(f.notifiedDate)} · ${f.recipient} · ${f.method}\n" +
-      "${s.fixDeadline}: ${SwissDate.display(f.deadline)} · ${if (f.done) s.done else s.toVerify}"
+      "${s.notifiedOn}: ${SwissDate.display(f.notifiedDate)}\n${f.recipient}\n${f.method}\n" +
+      "${s.fixDeadline}: ${SwissDate.display(f.deadline)}\n${if (f.done) s.done else s.toVerify}"
   })
   section(s.faceValue, d.estimates.map { (id, e) ->
     val number = p.defects.indexOfFirst { it.id == id } + 1
-    "${s.defects} $number · ${e.basis}\n${s.repairCost}: ${e.replacementChf}\n${s.ageYears}: ${e.ageYears} · ${s.lifespanYears}: ${e.lifeYears}\n${e.date}\n${e.source}\n${s.estimateNotice}"
+    "${s.defects} $number: ${e.basis}\n${s.repairCost}: ${e.replacementChf}\n${s.ageYears}: ${e.ageYears}\n${s.lifespanYears}: ${e.lifeYears}\n${e.date}\n${e.source}\n${s.estimateNotice}"
   })
   section(s.reservationLabel, p.parties.mapNotNull { party ->
     val note = d.reservations[party.participantKey()] ?: p.pendingRecordReservations[party.role]
       ?: p.signatureFor(party)?.reservation
-    note?.takeIf { it.isNotBlank() }?.let { "${party.signerName()} · ${s.role(party.role)}: $it" }
+    note?.takeIf { it.isNotBlank() }?.let { "${party.signerName()} (${s.role(party.role)}): $it" }
   })
   section(s.legalOverlayTitle, buildList {
-    if (d.municipality.isNotBlank()) add("${s.municipality}: ${d.municipality} · ${s.habitableRooms}: ${d.habitableRooms}")
+    if (d.municipality.isNotBlank()) add("${s.municipality}: ${d.municipality}\n${s.habitableRooms}: ${d.habitableRooms}")
     if (d.district.isNotBlank()) add("${s.district}: ${d.district}")
     if (p.legalOverlay.checks.containsKey(LegalRequirement.CantonalDepositHandling)) add(s.depositLocal(p.objectCanton))
-    (d.legalSnapshot ?: if (!p.isFinalized()) p.freezeLegalRules() else null)?.let { snapshot -> add(snapshot.ruleSetId + " · " + snapshot.checkedOn); addAll(snapshot.sources) }
+    (d.legalSnapshot ?: if (!p.isFinalized()) p.freezeLegalRules() else null)?.let { snapshot -> add(snapshot.ruleSetId + "\n" + snapshot.checkedOn); addAll(snapshot.sources) }
   })
 }
 

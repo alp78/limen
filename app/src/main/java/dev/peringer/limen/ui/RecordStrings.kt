@@ -47,6 +47,17 @@ val Str.estimateNotice get() = words("Indicative remaining replacement value onl
 val Str.translationNotice get() = words("Document labels are translated; entered statements remain in their original language.", "Les rubriques sont traduites ; les déclarations saisies restent dans leur langue d’origine.", "Rubriken werden übersetzt; erfasste Aussagen bleiben in ihrer Originalsprache.", "Le rubriche sono tradotte; le dichiarazioni inserite restano nella lingua originale.", "Las rubricas vegnan translatadas; las decleraziuns endatadas restan en lur lingua originala.")
 val Str.understoodLanguage get() = words("Language understood by the participants", "Langue comprise par les participants", "Von den Beteiligten verstandene Sprache", "Lingua compresa dai partecipanti", "Lingua chapida dals participants")
 val Str.accessibleCopy get() = words("HTML copy", "Copie HTML", "HTML-Kopie", "Copia HTML", "Copia HTML")
+val Str.contents get() = words("Contents", "Sommaire", "Inhalt", "Indice", "Cuntegn")
+val Str.continued get() = words("Continued", "Suite", "Fortsetzung", "Continua", "Cuntinuaziun")
+val Str.costSignatureTitle get() = words("Historical cost signature", "Signature historique relative aux frais", "Historische Kostenunterschrift", "Firma storica relativa ai costi", "Suttascripziun istorica davart ils custs")
+/** A room's defect count as its pill reads it, singular and plural in each language's own form. */
+fun Str.defectCount(n: Int): String = when (lang) {
+  Lang.En -> if (n == 1) "1 defect" else "$n defects"
+  Lang.Fr -> if (n == 1) "1 défaut" else "$n défauts"
+  Lang.De -> if (n == 1) "1 Mangel" else "$n Mängel"
+  Lang.It -> if (n == 1) "1 difetto" else "$n difetti"
+  Lang.Rm -> if (n == 1) "1 mancanza" else "$n mancanzas"
+}
 val Str.signatureEditWarning get() = words("Editing this record requires these people to review and sign again:", "La modification exige une nouvelle lecture et signature de ces personnes :", "Nach der Änderung müssen diese Personen erneut prüfen und unterschreiben:", "La modifica richiede una nuova verifica e firma di queste persone:", "La midada pretenda ina nova lectura e suttascripziun da questas persunas:")
 
 fun Str.depositLocal(canton: dev.peringer.limen.data.SwissCanton?) = when (canton) {

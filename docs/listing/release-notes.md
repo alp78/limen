@@ -6,6 +6,51 @@ Paste each block into the matching language on the release, or let `play_push.py
 
 ---
 
+## versionCode 11, versionName 1.2.6
+
+21 October 2026. The exported record is drawn in the app’s own style: the Day palette read from one shared source, panels with rounded corners and a navy border, pills and chips, the system sans-serif in three weights and no monospace, a cover with the key facts and a contents list whose page numbers the export verifies against the drawn pages, one panel per room with its numbered findings inside, and the photo annex in the same panels. Independent facts that one line joined with a dot are now chips or rows. Plates, the stand-in swap and the content order are unchanged.
+
+### en-US
+
+```
+The exported record now looks like the app: a cover with the property, the parties, the record’s status and a contents list, then one panel per room with its numbered defects, the keys and meters as the app shows them, and the photo annex in the same panels. Same colours, rounded corners and typeface as on screen, with the page number on every sheet.
+```
+
+(352/500)
+
+### fr-FR
+
+```
+Le constat exporté ressemble désormais à l’application : une page de garde avec l’objet, les parties, l’état du constat et un sommaire, puis un cadre par pièce avec ses défauts numérotés, les clés et les compteurs tels que l’application les présente, et l’annexe photos dans les mêmes cadres. Mêmes couleurs, coins arrondis et police qu’à l’écran, avec le numéro de page sur chaque feuille.
+```
+
+(390/500)
+
+### de-DE
+
+```
+Das exportierte Protokoll sieht jetzt aus wie die App: ein Deckblatt mit Mietobjekt, Parteien, Status des Protokolls und Inhaltsverzeichnis, dann ein Feld pro Raum mit seinen nummerierten Mängeln, Schlüssel und Zählerstände wie in der App, und der Fotoanhang in denselben Feldern. Gleiche Farben, abgerundete Ecken und Schrift wie auf dem Bildschirm, mit Seitenzahl auf jedem Blatt.
+```
+
+(382/500)
+
+### it-IT
+
+```
+Il verbale esportato ora ha l’aspetto dell’app: una copertina con l’oggetto, le parti, lo stato del verbale e un indice, poi un riquadro per locale con i suoi difetti numerati, chiavi e contatori come li mostra l’app, e l’allegato foto negli stessi riquadri. Stessi colori, angoli arrotondati e carattere dello schermo, con il numero di pagina su ogni foglio.
+```
+
+(359/500)
+
+### rm
+
+```
+Il protocol exportà ha ussa l’aspect da l’app: ina pagina da cuverta cun l’object, las partidas, il stadi dal protocol ed in cuntegn, lura in champ per stanza cun sias mancanzas numeradas, clavs e contaturs sco l’app als mussa, e l’agiunta da fotos en ils medems champs. Las medemas colurs, chantuns arrundads e scrittira sco sin il visur, cun il numer da pagina sin mintga fegl.
+```
+
+(379/500)
+
+---
 ## versionCode 10, versionName 1.2.5
 
 21 October 2026. Backups repack their JPEG photographs losslessly as JPEG XL through libjxl 0.12.0, built into the app: thirty camera originals make a 54.8 MB backup instead of 68.4 MB, and every photograph restores byte for byte. A backup with repacked photographs is archive version 2, which 1.2.4 and earlier refuse; one with none stays version 1.

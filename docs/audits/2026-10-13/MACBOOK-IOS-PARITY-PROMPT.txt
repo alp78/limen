@@ -1,0 +1,342 @@
+Implement the Limen iPhone audit and Android 1.2 parity on this Mac
+
+This is an implementation request. Audit the Swift app, apply the improvements and fixes, and verify the result on macOS, in the simulator, and on my connected iPhone. Continue through implementation and verification rather than stopping at a plan or a list of recommendations. Give particular weight to practical use, a logical sequence of actions, clear organisation, accessibility, and the experience of the people passing the phone around during a handover.
+
+The preceding Windows session was expressly read-only for the Swift repository. That restriction applied to that session. In this Mac session, the Swift changes described here are authorised. Preserve unrelated work and existing user records. Use the Android repository as the reference; do not modify it or the production website as part of this iOS task. Prepare any necessary companion changes as reviewable patches and document unresolved cross-platform differences.
+
+Keep the current product identity and visual language. The older CLAUDE.md instruction against adding features must be read with this new request: the Android 1.2 additions, the fixes below, and justified iOS usability improvements are now in scope. Native platform behaviour is appropriate where it improves access and does not change the meaning of a record. Do not interpret parity as a requirement to copy Android storage paths, permissions, layouts or APIs into iOS.
+
+1. Establish the reference and read the notes
+
+Work in the actual local checkout of alp78/limen-swift. Discover its location instead of assuming that the Windows path exists on macOS. Historical notes mention both ~/DEV/IPHONE/limen-swift and ~/DEV/SWIFT/limen. Read applicable AGENTS.md files, CLAUDE.md, Project.swift, Makefile, all repository notes, and the Limen entry at ~/DEV/vault/apple/limen.md if available. Follow relevant references, including any local publishing runbook. Treat dated notes and claims of previous test success as historical evidence, not current verification.
+
+The Windows source review used these clean working trees on 13 October 2026:
+
+- Swift repository: https://github.com/alp78/limen-swift.git
+- Swift commit: 12324623dc427ca92ca5342af9b7177c331ed394
+- Swift declared version: 1.1.2, build 4, iOS 17 minimum, Swift 6 with complete concurrency checking
+- Android repository: https://github.com/alp78/limen.git
+- Android reference commit: eb5c03800a9e749155db718136c9418a58c0d11c
+- Android reference version: 1.2.0, versionCode 5
+
+Check both current heads and any intervening changes before editing. Use a separate reference checkout if the Android working tree has unrelated work. If the Android repository is absent, obtain an authorised read-only reference checkout from that remote. If access fails, finish independent Swift work and state the specific parity checks that lack evidence; do not invent the new schema from this description.
+
+Read these files from the Android reference:
+
+- docs/audits/2026-10-13/REPORT.md, the original 28-finding audit, including the market assessment
+- docs/audits/2026-10-13/IMPLEMENTATION.md, the disposition and external-review limitations
+- docs/LEGAL-RULES.md and docs/APP-GUIDE.md
+- docs/audits/2026-10-13/remediation/verification.json and the retained PDF/HTML, screenshots and privacy-source.patch
+- app/src/main/java/dev/peringer/limen/data/Protocol.kt, RecordDetails.kt, RecordContent.kt, ProtocolIntegrity.kt, LegalOverlay.kt, LegalProfile.kt, Store.kt, Archive.kt, ArchiveCrypto.kt, Report.kt, PdfExport.kt, HtmlCompanion.kt and Exports.kt
+- app/src/main/java/dev/peringer/limen/ui/Strings.kt, RecordStrings.kt, CompletionRules.kt, CompletionActions.kt, LimenViewModel.kt, RecordExtras.kt, InspectionEvidence.kt, DocumentPreview.kt, ParticipantNotice.kt, AddressPrivacyChoice.kt, LibraryProtection.kt, NumberValidation.kt and the flow screens
+- app/src/main/java/dev/peringer/limen/photo/PhotoDecode.kt and EvidenceValidation.kt
+- Android RemediationTest, InputValidationTest, LegalOverlayTest, ArchiveTest, compatibility/fingerprint tests, RemediationDeviceTest and HandoffMatrixTest
+
+Locate the real Android root and set LIMEN_ANDROID explicitly for tools that use it. The existing Swift generator defaults to ../../ANDROID/limen; a checkout under ANDROID/apps/limen requires a different value. Never generate against an older checkout merely because it is at the expected path.
+
+The Android handoff reports 100 unit tests and 16 physical Pixel tests passing. Those results establish that reference's tested behaviour; they are not evidence that Swift passes. Legal sign-off, native Romansh review, moderated usability research and new cross-platform compatibility were expressly not certified there.
+
+2. Source review already completed on Windows
+
+The Swift source, its generated five-language strings, build/configuration files, existing test definitions, CLAUDE.md and the referenced vault note were inspected. A read-only Python probe invoked parse_declarations from tools/strings.py against the current Android Strings.kt without writing generated output. It failed with:
+
+    SystemExit: expected '=' at 53834: 'get() = tipRecord().lead...'
+
+The generator also reads only Strings.kt; Android RecordStrings.kt contains 47 additional Str extension declarations and there is no corresponding generated Swift file. Fix the generator and its coverage, not just the checked-in generated output. Parsing support must cover the actual new declarations, computed properties, member access and extension members, and fail explicitly on unsupported input.
+
+The Swift source contains 113 @Test declarations in the kit/app test directories and 12 XCTest UI test methods. These were counted, not executed. Windows could not build SwiftUI/UIKit or run Xcode, an iPhone or VoiceOver. The findings below are source-confirmed behaviours or explicit runtime checks to perform, not fabricated device observations. Reproduce the defects on the Mac and retain before/after evidence where meaningful.
+
+Several iOS capabilities already exist and must be preserved:
+
+- PDF MediaBox is already A4, approximately 595.276 x 841.89 points. Android's old non-A4 defect does not apply as stated. The drawing still scales from 1240 x 1754, so inspect the resulting text size and pagination against the improved Android output.
+- PhotoDecode uses ImageIO's EXIF transform. Do not replace this with the old Android rotation-only implementation. Verify all eight orientations, including mirrors, with actual fixtures.
+- The date picker deliberately uses the device time zone and a pinned calendar when reading/writing dates. LocalDate uses proleptic ISO behaviour. Preserve these fixes and test non-Gregorian device settings and time zones west of UTC.
+- WeightedRow fixed an earlier layoutPriority porting error; measured dossier header offsets, a 560-point readable width, scoped file access, ephemeral swisstopo sessions, atomic file replacement, and authenticated archive installation already exist.
+- Crypto interoperability tests cover the real 38-byte GCM associated-data header and non-block-aligned lengths. Preserve them.
+
+3. Account for every Android finding
+
+Use F01-F28 in the implementation ledger so the two audits can be compared. The Swift locations below are relative to the reviewed checkout; use symbols as the durable reference if line numbers have moved.
+
+F01, independent positions. Limen/Sources/Flow/DefectEditor.swift clears chargedToTenant when the response becomes normalWear and hides the claim controls. Preserve the landlord's asserted claim, costs and repair fields independently of each tenant's response. Render both without implying the app has determined liability. Include a normal-wear regression and multiple tenants with different positions.
+
+F02, export and save ordering. LimenModel+Evidence.swift exportPdf captures p, later saves a stamped copy of that old p and assigns it to working. A receipt recorded during a re-export can be lost. LimenModel.scheduleSave detaches writes, while flush writes separately; Store's NSLock prevents overlapping writes but not an older snapshot winning later. Implement one ordered persistence owner, stale-write rejection/sequence handling and a merge into the latest record. Retain the delivery revision actually rendered by each export. Check active-record identity again after every await, including the final save.
+
+F03, clearing reservations. LimenModel+Evidence.swift setRecordReservation removes the pending key for blank input, then keepSignature/refuseSignature falls back to the previous signature reservation. Preserve an explicit empty replacement. Participant reservations must be independent, durable and displayed consistently before and after signing.
+
+F04, invalid input. Limen/Sources/Kit/Field.swift DateField and TimeField keep invalid edits only in view state; the durable record retains its previous valid date/time. CompletionRules checks that required strings are nonblank rather than fully valid. Preserve invalid draft edits across navigation/relaunch, expose a labelled error and a deliberate restore-last-valid action, and block finalization until resolved. A user must still be able to save and leave a draft. Validate optional dates and finite, nonnegative numeric input wherever used.
+
+F05, missing or unreadable evidence. ProtocolIntegrity currently checks nonempty/readable bytes. PhotoDecode.readable checks dimensions without a full decode. PdfExport.annex filters unreadable plates and drawPlane can silently omit undecodable ink. Validate actual decoding and hashes at intake, finalization and export. A referenced image or signature that cannot render must produce a specific error identifying it; never silently produce an apparently complete document. Preserve originals for recovery.
+
+F06, trust at review/signing. ReviewSignExport.swift builds an abbreviated independent ReviewStep, including truncated DefectLine content. PDFPreview is offered after export. Add a complete read-only preview derived from the same content selection/rendering as the delivered document. Include all findings, parties, claims, positions, reservations, images, scope, attachments and legal information. Make signer identity and scope visible; require a deliberate confirmation naming affected signers before a material edit invalidates their signatures.
+
+F07, participants and representation. Protocol.swift, CompletionRules.swift and ReviewSignExport.swift key signatures, reservations and receipts by Role; PartiesCard only adds witness/expert/nextTenant. Add stable participant IDs and multiple tenants/landlords, individual outcomes, positions and deliveries. Keep contractual landlord, agency, attending representative and mandate/authority distinct. createProtocol currently puts an agency company on the landlord line; seedExitFrom overwrites parties sharing the starter's role. Preserve co-tenants and actual contractual parties when seeding an exit and recheck representation authority.
+
+F08, deadlines and transfer facts. DossierStep.HandoverDeadline always derives entry +10 days or exit +2/+3 working days from the handover date. Remove the assumed contractual deadline and any suggested safe waiting period. Record actual possession/key transfer separately, a contractual clause and period before displaying a planning date, and later findings/notices with recipient, date, method and proof. Keep final records immutable; later content belongs in an amendment. The shared handover PDF is not automatically formal service of a notice.
+
+F09, actionable cantonal guidance. LegalOverlay.swift still implements ch-tenancy-2026.1, with generic NE/VD conditional results, mainly Vaud-specific requirements, and one shared explanation. Port and independently verify ch-tenancy-2026.2, including municipality/dwelling category in NE, district in VD, FR/GE/TI deposit checks, individual notes, unresolved status, source links, conciliation routing and the optional TI expert route. A canton flag is not evidence that all that canton's requirements are covered. See the legal matrix and verification requirements below.
+
+F10, privacy and backup wording. Address lookup in both NewSessionScreen and DossierStep starts automatically after focused typing and a 350 ms delay. Make it off by default, disclose the recipient and data before activation, and keep manual entry fully functional offline. Existing privacyParagraphs claims new backups encrypt while an empty password creates plain ZIP. Require an explicit unprotected-export choice and truthful wording. Add the participant notice using the recorded controller. Correct all iOS file-location instructions and local retention/recovery descriptions.
+
+F11, accessibility and responsive layout. KeySurface's BigKey/SmallKey/Chip and Toggle use single-line labels with shrinking; Field labels are single-line; DateAndTimeRow and participant contact/action rows stay horizontal. Inspect and fix at the largest Dynamic Type accessibility sizes and small widths. Wrap essential actions and stack fields when needed, preserving touch targets, visible focus, complete values, screen-reader names/states and keyboard access. Retain the existing measured header behaviour. These layout risks are source-confirmed; actual clipping still needs Mac/device evidence.
+
+F12, storage and recovery. LimenModel ignores save failures with try? in debounce, flush, first save and export, then allows close/switch. Store.list silently drops corrupt records and there is no last-good recovery. Surface failures, retain unsaved work, provide retry including first-save retry, and prevent a navigation success from implying an unsaved record is safe. List unreadable records explicitly; keep last-good data and quarantine originals during repair. Coordinate deletion/undo with successful persistence so a failed save cannot leave disk JSON referencing deleted evidence.
+
+F13, PDF readability. Preserve the already-correct iOS A4 page size and improve text size/layout to the Android 1.2 standard. Check physical-size output, long paragraphs, photo annex pagination, explicit scope, all signatures and long addresses in all five document languages. Do not mark this as a newly fixed non-A4 iOS defect.
+
+F14, usable photographs. PhotoCapture.swift PhotoThumb offers an 84-point cropped thumbnail with overlaid deletion, without opening or zooming. Add a full image viewer with fit, zoom, accessible controls, caption, provenance and separate deletion. Zoomed content must remain clipped away from its controls. Make photos readable in finalized and entry-baseline records.
+
+F15, entry/exit comparison. InspectionStep.RoomDetail shows only the entry-defect count. Expose the prior findings, notes, objects and photographs read-only, plus the complete entry document. Permit an external prior report attachment. Do not copy old damage into the new exit as a new allegation.
+
+F16, room organisation. InspectionStep only offers the name field for custom rooms, although the model can rename any room. Allow names on every room, ordering and a useful next-room action; put destructive room actions in a separate menu. Preserve legacy room/item grids and stable room IDs.
+
+F17, accurate outcomes. Str.lockedRecord says Signed/read only in every language although refusal outcomes can finalize a record. Say finalized/read only and separately show each participant's signed, refused, absent or unable-to-draw outcome. Preserve historical cost-plane signatures in the reader and output; current PdfExport only draws the record plane. Do not relabel refusal, absence or a typed acknowledgement as drawn ink or a qualified electronic signature.
+
+F18, practical start. CountryDirectory.SessionIdentity.hasRequiredFields requires two-letter first and last names, full address, house number and a valid phone; only profile name/company are reused. Support an inclusive quick draft from a name, clear required/optional labels and reusable optional contact information. Starting as agency must not substitute its name for the contractual landlord. Test legitimate short/one-part names, foreign addresses, no house number and no phone.
+
+F19, recovery from incomplete steps. HubStep and SignStep show text-only generic completion issues. Make the next useful action prominent, allow expansion of the rest, and make each issue navigate to the actual field, room, finding, participant or dossier section. Explain disabled actions at the point of use and restore useful scroll/focus context when returning.
+
+F20, honest scope. CompletionRules treats DepositKind.none as incomplete, accepts deletion of the Keys card as a bypass, and has no unavailable/uninspected reasons. Support explicit no deposit, unknown deposit and explained incomplete inspection/components. Record why Keys is omitted instead of bypassing the question. Missing paperwork must not force a false confirmation or prevent saving a factual handover. Display these distinctions in the preview and delivered document.
+
+F21, meters and access devices. Replace the six-string-only meter interface with repeatable readings carrying identifier, unit, value, date/time, note and image. Add identifiable keys, cards, fobs/remotes with expected and actual counts and discrepancy reasons, linked to transfer facts. Preserve the legacy fields for old files. Discourage putting working access codes in shared identifiers.
+
+F22, residual value. Zeitwert.swift calls its result the tenant's share of a repair, and the editor keeps calculator input transient. Port the indicative replacement residual-value interpretation; it is not an automatic debt, repair allocation or adjudication. Reject NaN/infinity, negative and invalid values. Retain the inputs, installation/age basis, source and date with the finding. Do not reproduce a copyrighted lifespan table wholesale.
+
+F23, stale legal confirmations. DossierStep deliberately retains checks when the address changes within a canton; removal of Contract resets facts without the corresponding review. Invalidate only checks whose inputs changed, including locality/category, relevant dates and deposit facts. Explain what needs review. Changing a deposit must not erase unrelated insurance/rent-form confirmations; each unresolved check needs its own reason.
+
+F24, reproducible legal meaning. resolvedLegalOverlay currently recalculates on export; ruleSetId does not select a frozen historical resolver. Freeze resolved classifications, requirements and dated sources at finalization, provide the explicit 2026.1 legacy resolver, and retain exact export copies. Do not alter an old final record or its canonical bytes to add IDs or snapshots. A never-retained historical PDF cannot be claimed byte-reproducible.
+
+F25, evidence provenance. LimenModel.copyPhoto writes the intake moment to capturedEpochMs even for gallery files. Port separate intake and reported capture metadata without claiming EXIF authenticates a moment. Preserve original bytes/hashes. Keep ImageIO's orientation handling and test all eight orientations; add large image, HEIC, damaged/truncated image and misleading-extension cases.
+
+F26, supporting documents. Add classified lease, official rent form, mandate, prior report, deposit and delivery evidence as PDF/image attachments with hashes, size, intake time and external references. Include a manifest in the preview/PDF/HTML and include actual files in scoped backups. Handle Files security-scoped access and document-provider failures. Validate content and size, not only the filename extension.
+
+F27, exact document retrieval. LimenModel.setActiveProtocol resets exported; reopen loses Open/Share, and PdfExport filenames contain only kind/time. Retain exact private PDF/HTML copies and persistent export history with property, language, reference and delivery revision. Verify file hashes and handle moved/deleted public copies. A restored Android content URI or another iPhone's absolute file URL is not a valid local location; resolve private retained copies on this device.
+
+F28, a usable library. Store.list performs synchronous enumeration/JSON decoding and LimenModel calls it on the main actor. SessionsScreen has no search, status filter or property grouping. Load asynchronously, provide address/party/date search, draft/final filters and entry/exit/amendment relationships. Make a record card easy to open while keeping delete distinct. Add the optional device-credential gate for library/settings with accurate scope, not a claim of file encryption or protection of the currently shared handover.
+
+4. Treat the data contract as a release gate
+
+Read the Android definitions and serializer behaviour in full before designing Swift equivalents. The new fields are not interchangeable approximations. Implement matching raw enum names, defaults, omission rules, order, escaping and integrity coverage in both the on-disk and canonical encoders.
+
+The reviewed differences include:
+
+- HandoverProtocol: details, deliveryRevision, exportHistory and saveSequence, appended after the legacy fields with Android's NEVER/default omission semantics
+- Party: id, agency and authority, distinct from name and representedBy
+- Defect: participantPositions keyed by participant ID, containing TenantPosition.response/comment
+- PhotoEvidence: importedEpochMs in addition to existing capture metadata
+- DeliveryReceipt: participantId
+- Signature: participantId and outcome
+- DepositKind.Unknown; LegalRequirement.CantonalDepositHandling; LegalCheckStatus.ToVerify; per-requirement LegalOverlayRecord.notes
+- RecordDetails: municipality, district, habitableRooms, actualTransferDate/time, notificationDays/clause, scopeNotes, roomPhotos, readings, accessDevices, attachments, followUps, estimates, reservations, legalSnapshot, understoodLanguage, participantNoticeShown and reviewRevision
+- Nested types MeterReading, AccessDevice, SupportingDocument/DocumentKind, FollowUp, ReplacementEstimate, LegalSnapshot, ExportCopy and TenantPosition
+- Retained exports under exports/<record-id>/ in the archive, beside protocols/, photos/ and signatures/
+
+At present ProtocolJSON.swift reads only the legacy shape. JSON.swift throws on unknown enum names but discards unknown object fields. An Android 1.2 draft can therefore be rejected for new enum values or lose new fields when it is subsequently saved. A finalized richer record can fail fingerprint verification. ArchiveIO.isAllowed rejects exports/ entries outright. Do not claim interoperability because the old sparse golden fixture still passes.
+
+Implement and test these rules:
+
+1. Preserve every existing legacy fingerprint fixture unchanged. Never regenerate a golden value simply to make a failing test green. Explain any genuine incompatibility before changing format semantics.
+2. Canonical hashing must clear evidenceFingerprint, deliveryReceipts, deliveryMetadataEpochMs, exportedEpochMs, deliveryRevision, exportHistory and saveSequence exactly as Android does. Follow its new evidence labels and ordering for room/meter images and supporting documents. Keep actual signed content, IDs, positions and legal snapshots inside the intended signed aggregate.
+3. Swift MapKeyOrder currently searches raw text for compact occurrences of only checks and pendingRecordReservations. The additions include several nested maps with arbitrary string keys. Preserve insertion order at the correct nesting level through read/write; test whitespace, escaped keys, Unicode, multiple maps and all optional nested fields. Foundation dictionaries or sorted-key Codable output are not a replacement for the canonical format.
+4. Tighten ObjectReader's type handling. It currently treats JSON null as a default for nonnullable fields, accepts NSNumber for both bool/int, and converts numbers with int64Value/boolValue. Test null versus missing, booleans as integers, fractional/overflowing integers and numbers as booleans against Kotlin's actual reader. Reject incompatible/corrupt input with a recoverable error rather than silently changing signed facts.
+5. Do not silently rewrite unknown richer records into a reduced schema. Explicitly preserve or reject unsupported data before installation/editing. Document compatibility by version and feature set. Preserve healthy existing records during restore; recovery of corrupt originals must be explicit and reversible.
+6. Build bidirectional fixtures with Kotlin and Swift, including a fully populated draft, a finalized record, a delivered/exported record, and an amendment. Include two tenants, an actual landlord represented by an agency, three named signers with different reservations/positions, an unknown deposit, every new map/type, legal snapshots, room/meter photos, a supporting PDF and retained PDF/HTML copies. Compare canonical UTF-8 bytes and fingerprints, not just decoded values or round trips through the same implementation.
+7. Test Android -> iOS -> Android and iOS -> Android -> iOS for plain and password-protected archives. Retain deterministic test vectors for encryption using fixed salt/IV only in tests. Production randomness must stay cryptographically secure. Verify Unicode passwords, wrong passwords, tampered/truncated ciphertext and tags, nonaligned AAD and multi-chunk input.
+8. Preserve LIMENSAFE version 1, 16-byte salt, 12-byte IV, 210,000 PBKDF2-HMAC-SHA256 iterations, AES-256-GCM and the authenticated header unless a separately justified versioned migration is necessary. Prefer established platform primitives where suitable; do not invent a new cipher to simplify this work.
+9. Align bounds with the Android reference: 64 MiB ZIP payload, 256 MiB expanded total, 20,000 entries, 8 MiB protocol JSON, 64 MiB other archive entries, and 32 MiB for a newly ingested photo/supporting document. Handle encryption overhead explicitly. Validate compressed sizes, central-directory sizes, offsets and actual bytes before allocating memory. Swift currently reads entire central directories and compressed entry payloads before the unpacker's useful limits. Include archive bomb, duplicate/path traversal, malformed central/local header, symlink and low-storage cases.
+10. Export a chosen record or selected set, referenced evidence and retained exports. Do not sweep every private photo or recovery file into a supposedly scoped backup. Test that unreferenced/deleted evidence and other records are excluded, and that the export itself cannot exceed the reader's limits.
+11. Retain exact private copies and use portable logical references. Never trust a foreign content URI or absolute sandbox path after restoration. Test repair, entry/amendment links and retrieval after a full app restart.
+
+If Kotlin execution or a second platform is unavailable, produce reproducible fixtures/scripts and mark the unexecuted direction as a release gate. Do not substitute a Swift-only round trip and call it cross-platform validation.
+
+5. Additional iOS issues to fix or verify
+
+Test isolation is the first implementation task. Project.swift gives Debug and Release the same dev.peringer.limen bundle ID. LimenApp.swift resets AppFiles.support and standard preferences whenever a DEBUG build is launched with LIMEN_RESET, LIMEN_DEMO or LIMEN_STORE; the current UI tests use those arguments. A connected personal iPhone must not be reset by the audit. Use an isolated test app/container/preferences and make reset impossible for the production store, or otherwise enforce an equally effective hard boundary. Adding an XCTest-looking environment variable alone is not a sufficient data boundary. Prove the isolation before running the full UI suites.
+
+Photo ownership must survive asynchronous work. attachPhoto/attachObjectPhoto capture an old directory but update whichever working record exists when the detached copy completes. Bind intake to the originating record and owner, revalidate after suspension, and clean up cancelled/failed operations safely. Amendments can preserve owner IDs, so checking a defect ID alone is insufficient. A camera callback also sweeps every capture slot; do not delete another in-flight picker/capture's file. Show actionable intake and signature-write failures instead of silently returning.
+
+Bound image ingestion before materialising a full PhotosPicker Data. Preserve and validate the actual media type; current gallery code writes arbitrary original bytes under .jpg. Test HEIC compatibility with Android's supported readers, huge pixel dimensions, orientation and image decompression memory. Preserve original evidence separately from any display derivative and include all retained originals in integrity/backup rules.
+
+Clean up interrupted operations without exposing data. Current archive export plaintext is correctly in private Caches, but its limen-export-*.zip cleanup is only a defer; process termination can leave it behind. Exports.write also leaves a public Documents .part after termination. Recover/sweep stale files safely on restart with operation ownership, keep unfinished/plaintext staging private, and publish only completed exports. Do not delete files belonging to a live operation.
+
+Verify PDF failure propagation. PdfExport.Sheet can continue with a nil graphics context and render is declared throws while build returns data without validating the resulting PDF. Detect context/render/write failures, blank or invalid PDFs and annex page-count differences. Distinguish a readable image header from pixels that actually decode. Test text and evidence content with PDFKit and real fixtures.
+
+Fix platform wording through a maintainable source. archiveSaved/archiveSavedOpen currently say Downloads/Limen in EN/FR/DE/IT/RM, and IdentityTests explicitly expects the French Android path. The implementation actually writes a Limen subfolder beneath the Files-visible app Documents container. Verify the exact breadcrumb on the iPhone and use appropriate iOS wording, plus a direct Open/Share action. A tested platform override or generator input is appropriate; editing a generated file that will be overwritten is not.
+
+Localise NSCameraUsageDescription and any new Face ID usage description in the built bundle. The current camera string in Project.swift is English only. Verify how system permission language follows iOS rather than assuming an in-app language switch controls a system prompt. Provide a useful denial/recovery path and preserve PhotosPicker's permission model.
+
+Review PrivacyInfo.xcprivacy against actual APIs/data flows and current Apple rules. It currently declares only the UserDefaults required-reason category and no collection/tracking. This review did not establish that another declaration is required: inspect the actual call sites and service retention first. Draft accurate App Privacy and encryption-export-compliance answers; do not infer no collection solely from no analytics or assume an exemption for a custom AES-GCM implementation. Keep the existing team/bundle identity. Do not silently put ITSAppUsesNonExemptEncryption=false back into the project.
+
+Review Data Protection and backup exclusions for Application Support, evidence, recovery, preferences, caches and public exports. Verify any optional LocalAuthentication gate with cancellation, background/foreground, passcode fallback and shared-phone review. Do not describe an authentication gate as encryption, and do not conceal the current handover from a participant who is supposed to review it.
+
+Preserve prior iOS repairs documented in CLAUDE.md and the vault note: signature scaling/trimming and cancelled strokes, .background rather than .inactive as the existing flush trigger, archive AAD padding, secure RNG failure handling, country/phone behaviour, off-main photo decoding, and existing source/licence resources. Recheck the old note about dark status-bar glyphs on the Day-theme navy landing instead of asserting it is still broken without a screenshot.
+
+6. Swiss legal coverage, with an explicit 26-canton matrix
+
+The current Swift enum and resources already include all 26 cantons. Its initial-form classification also already distinguishes seven canton-wide cases and NE/VD conditional cases for a 2026 lease conclusion. The main gap is actionable local resolution, deposit guidance, provenance and maintained review state. Preserve the distinction between selecting a canton and covering its applicable requirements.
+
+Start from this Android 2026 snapshot, then verify the relevant official sources and effective dates before implementing/releasing. R means canton-wide initial-rent-form duty in that snapshot, C means local/category conditions, and N means no duty listed in that overview. N is not a statement that a canton has no other tenancy rules. All rows still require the federal/lease baseline and routing to the competent authority.
+
+Code | Initial form | Additional targeted guidance to verify and provide
+AG   | N            | Federal/lease/local timing and authority directory
+AI   | N            | Federal/lease/local timing and authority directory
+AR   | N            | Federal/lease/local timing and authority directory
+BE   | R            | Dated form check and authority directory
+BL   | N            | Federal/lease/local timing and authority directory
+BS   | R            | Dated form check and authority directory
+FR   | R            | Cantonal deposit handling; expressly incorporated Romand terms
+GE   | R            | Deposit form, tenant's bank choice and handling; incorporated terms
+GL   | N            | Federal/lease/local timing and authority directory
+GR   | N            | Federal/lease/local timing and authority directory
+JU   | N            | Expressly incorporated Romand terms where relevant
+LU   | R            | Dated form check and authority directory
+NE   | C            | Municipality plus legal habitable-room category; incorporated terms
+NW   | N            | Federal/lease/local timing and authority directory
+OW   | N            | Federal/lease/local timing and authority directory
+SG   | N            | Federal/lease/local timing and authority directory
+SH   | N            | Federal/lease/local timing and authority directory
+SO   | N            | Federal/lease/local timing and authority directory
+SZ   | N            | Federal/lease/local timing and authority directory
+TG   | N            | Federal/lease/local timing and authority directory
+TI   | N            | Cantonal deposit handling and optional municipal property expert
+UR   | N            | Federal/lease/local timing and authority directory
+VD   | C            | District, dated RULV, deposit/insurance and entry/exit checks
+VS   | N            | Expressly incorporated Romand terms where relevant
+ZG   | R            | Dated form check and authority directory
+ZH   | R            | Dated form check and authority directory
+
+The initial-form baseline above is from the [BWO/OFL 2026 overview](https://www.bwo.admin.ch/fr/formule-officielle-loyer-initial), whose linked PDF is dated September 2026. Its PDF metadata/search title still says 2022, but the document itself says 2026. Read the document and effective dates rather than trusting a search title. A missing or different-year contract conclusion date must produce a verification outcome, not silently reuse 2026.
+
+For NE, use a separate legal dwelling-category input, not the number of inspection rooms. The 2026 decree lists affected municipalities and special categories, including Latena/Laténa at four/five rooms and La Grande Béroche at three/four/five, within the decree's habitable-room rules. Unknown/misspelled localities must remain unresolved. Read the connection between the [NE implementation law](https://rsn.ne.ch/DATA/program/books/rsne/htm/224.1.htm) and the [2026 decree](https://rsn.ne.ch/DATA/program/books/rsne/htm/846.02.htm); a decree about the sale of rented apartments must not be cited without establishing that legal connection to the rent-form rule.
+
+For VD, the [2026 district guidance](https://www.vd.ch/territoire-et-construction/logement/politique-du-logement/penurie-de-logements) identifies Aigle as the district exception. Use an explicit district and the applicable dates. Preserve the previous/current RULV periods and verify the entry, return, copy, security and insurance provisions against the [official RULV](https://www.vd.ch/fileadmin/user_upload/themes/vie_privee/logement/fichiers_pdf/rulv.pdf) and [cantonal tenancy page](https://www.vd.ch/territoire-et-construction/logement/droit-du-bail). The Android reference selects the 2026 period from 1 July 2026 through 30 June 2032; test both boundaries and historical records.
+
+For FR, GE and TI, distinguish cash/securities actually received by a landlord/representative from an existing tenant bank deposit or a guarantee product. Cover receipt/deposit dates, holder/institution, certificate/receipt evidence, applicable timing and exceptions without treating an unchecked box as proof of compliance. Verify [FR LABLF art. 26](https://bdlf.fr.ch/api/fr/versions/7153/pdf_file), [GE LGFL](https://silgeneve.ch/legis/data/rsg_i4_10.htm), and [TI arts. 6-13](https://www3.ti.ch/CAN/RLeggi/public/index.php/raccolta-leggi/legge/num/153). TI's municipal expert is an optional route for findings, not a mandatory participant at every handover. Do not imply every marketed insurance guarantee satisfies every canton's legal category.
+
+Review the federal baseline, including CO 256/256a, 257g, 257e, 267/267a and 270, against the current [Code of Obligations](https://www.fedlex.admin.ch/eli/cc/27/317_321_377/fr). Distinguish a condition record from an official rent form, proven notification, bank release, debt acknowledgement or adjudication. Record a party's position without adopting it. A local hash and drawn signature do not establish independently verified identity, trusted time or qualified signing; consult [OFCOM's explanation](https://www.bakom.admin.ch/fr/23-quelle-est-la-valeur-legale-des-signatures-electroniques).
+
+For every canton, the final audit must map requirement -> triggering facts/effective date -> app field/action/guidance -> PDF/HTML -> regression fixture -> official source -> remaining limitation. Check cantonal/local timing and authority submission formalities as well as initial-rent forms. Use the [BWO authority directory](https://www.bwo.admin.ch/dam/de/sd-web/tzHM7tFgxwhW/20260114_Schlichtungsbeh%C3%B6rden.pdf) and current cantonal pages; its filename date is not necessarily its internal revision date. Unknown facts need an honest To verify outcome with an individual explanation. Do not invent separate statutory handover forms for every canton or imply a general legal certification.
+
+Freeze dated legal results with finalization and show the source/version. Revalidation of a draft must not rewrite a historic signed record. Verify legal sources again if this work occurs after the snapshot date. If an official source contradicts Android, document the precise discrepancy, implement the supported behaviour without hiding a parity difference, and prepare the corresponding Android follow-up instead of copying a known legal error.
+
+7. Review the actual experience, organisation and all five languages
+
+Answer these questions with observed evidence: Can a first-time user understand how to start? Can a busy operator work through a property without losing their place? Does each participant know whose statement is being recorded and what they are signing? Can someone find a missing field, correct it and return? Can they read their photos, compare the entry, recover after interruption and retrieve the exact shared document? Is the app pleasant and predictable to use at normal and large text sizes?
+
+Use this practical sequence as the default journey, while keeping room inspection flexible: quick session start -> property/date/canton and actual parties -> scope/rooms -> room and supplied-object inspection with photographs -> keys/access devices/meters and relevant paperwork -> complete review and participant reservations -> individual outcomes -> finalization -> exact PDF/accessible companion -> actual delivery recording -> amendment/follow-up if needed. Do not force irrelevant dossier fields or a rigid physical room order. Allow drafting and resuming at any stage.
+
+Keep the hub oriented to the next useful action, with progress and issues that mean something to the user. Distinguish observations, claims, tenant responses, legal guidance and delivery metadata. Avoid hiding information needed for a decision exclusively in an info popover. Preserve a compact default view, reveal optional detail where relevant, and check that new features do not turn one practical form into an unmanageable wall of controls.
+
+Review EN, FR, DE, IT and RM throughout onboarding, forms, errors, empty states, tooltips, privacy, signatures, PDF/HTML, exports and app-store drafts. Check Swiss terminology, Swiss German spelling, plural/count wording, required/optional labels, dates, CHF/decimal input, punctuation, file destinations and the distinction between finalized and signed. Entered testimony remains in its original language; switching labels must not translate or rewrite evidence. Provide record language/understanding information where the Android reference does.
+
+Keep shared business/legal translations traceable to Android's sources and implement explicit, testable iOS overrides for platform copy. Add generation drift/coverage checks for both Strings.kt and RecordStrings.kt. Update obsolete tests that intentionally expect the wrong folder, the automatic ten-day date, silent corrupt-file disappearance or a keys-deletion bypass. Do not weaken the tests merely to retain old behaviour.
+
+New translations must have honest provenance. Do not silently replace an established translation provider or claim native review. Revised Romansh and consequential legal wording need native/professional review as an external gate. Recheck app-store locale support rather than assuming every in-app language has a store locale. The historical notes use the store name Limen Traditionis; verify relevant store facts before changing public copy or names.
+
+Privacy information must explain the actual controller, purposes, sharing, retention/recovery and rights route in a concise form available to participants, consistent with [FDPIC guidance](https://www.edoeb.admin.ch/en/duty-to-provide-information). Inspect the five canonical sources in the PERINGER repository under src/content/legal/limen if locally available. Their Android 1.2 update deliberately distinguishes older iPhone behaviour. Prepare a precise proposed iOS-version update after implementation and verification; do not erase the older-version distinction, silently update translation provenance, deploy the site or claim the policy is live.
+
+8. Accessibility and usability acceptance work
+
+Run the critical journey in all five languages at default, large and the largest accessibility Dynamic Type categories. Record category names, device/window sizes and OS versions; Android's font-scale percentages are not an exact iOS setting. Use a small supported iPhone, a current large iPhone, portrait/landscape and the supported iPad/compact window layouts. Inspect screenshots instead of assuming a successful tap proves readability.
+
+Specifically check:
+
+- No clipped/shrunken essential action, field label, date, participant name, reservation or legal warning. Reflow rather than cap Dynamic Type or hide the problem with minimumScaleFactor.
+- Touch targets of at least 44 x 44 points, with comfortable spacing and larger primary actions. InfoTip's current default is 40 points. Check zoom/delete controls, signature actions and every destructive affordance.
+- VoiceOver labels, values, selected/on/off states, headings, logical order and focus restoration. Custom Toggle currently exposes 1/0; provide a meaningful localized state or native semantics. Errors need words and announcements, not just a coloured border.
+- True modal focus isolation for the custom deposit comparison, defect editor, photo viewer, signature pad and previews. A view that blocks touches is not automatically isolated from VoiceOver or hardware-keyboard focus.
+- Visible keyboard focus, appropriate keyboard/return actions, hardware-keyboard operation, Switch Control and Voice Control where available. Drawing ink must have the honest alternative outcome for a participant unable to draw; never fake an equivalent signature.
+- Dark/light colour contrast, Increase Contrast, Bold Text, Reduce Motion and Reduce Transparency where applicable. Verify the changed Android warning colours semantically against iOS rendering instead of blindly copying a hex value. Check status-bar and system-sheet contrast.
+- Focused inputs and errors stay visible with the keyboard and pinned dossier rail. Rotation and backgrounding must not discard partial input, reservations, photos, scroll position or an unsaved draft.
+- Undo and failure messages remain discoverable long enough for assistive-technology use. The existing six-second undo and three-second notice must not be the only way to recover data or understand a save failure.
+- Full image inspection works with magnification and accessible zoom controls without covering the close/reset controls.
+- A genuinely readable accessible HTML companion or equivalent structured document contains the same selected content as the PDF, with document language, headings, meaningful image alternatives, escaped entered text and no active untrusted HTML. Do not call an untagged graphics PDF accessible just because PDFKit displays it.
+
+Run Apple's [XCUIApplication accessibility audit](https://developer.apple.com/documentation/xcuiautomation/xcuiapplication/performaccessibilityaudit%28for%3A_%3A%29) on the important screens and retain results. Do not suppress all audit issues or treat this API as a substitute for a VoiceOver journey. Follow the current [Apple localization guidance](https://developer.apple.com/documentation/xcode/supporting-multiple-languages-in-your-app) for system resources and layout. Measure and report assistive-technology work actually performed; leave untested human tasks explicit.
+
+9. Meaningful regression and compatibility tests
+
+Add tests that reproduce these behaviours, using temporary directories and controllable operation barriers for races rather than arbitrary sleeps:
+
+- A charged exit finding survives a normal-wear response, including cost/repair details and another tenant's different position.
+- An old reservation is deliberately cleared, saved, re-signed, reopened and absent from both delivered outputs.
+- Export is paused while a receipt changes. Finishing export preserves the latest receipt on disk/UI while the retained copy truthfully records its older delivery revision. Switching records during export and during its save cannot stamp the wrong record.
+- A late debounced write cannot overwrite a newer flush/finalization/metadata write. Test first-save failure, later-save failure, retry, disk full, close/switch, corruption, last-good recovery and repair preservation.
+- Impossible, partial and invalid dates/times remain visible after navigation/relaunch and block finalization, with an explicit revert. Test optional dates, non-Gregorian device calendars, leap days, time zones and locale-specific numeric entry.
+- Missing, zero-length, hash-mismatched, header-only/truncated and undecodable images or signatures are rejected with named errors; export never silently drops one. Cover all EXIF orientations and image-size limits.
+- Async photo/document intake cannot attach to another record or amended owner after a navigation switch, cancellation or finalization. A second capture cannot delete the first operation's input.
+- Two tenants and an actual landlord represented by an agency have distinct names/IDs, three independent signatures/outcomes, reservations, positions and deliveries. An edit clearly invalidates affected signatures. Seeding an exit preserves parties and requires authority review.
+- Missing/unknown/no-deposit, omitted Keys, unavailable documents and uninspected rooms all preserve honest scope with the expected explanation and export wording. A record with refusals can finalize without being called signed.
+- Every canton has a fixture; add NE locality/category boundaries and unknown names, VD Aigle/other district/unknown district, FR/GE/TI deposit triggers, old/new RULV boundaries, different-year/missing dates, per-check explanations and dependency-specific invalidation. Old finalized 2026.1 records retain their original resolver/meaning.
+- Every new field and nested map participates correctly in JSON round trips, omissions, canonical bytes, fingerprint coverage, draft/final states and entry/amendment flows. Include null/type/overflow/escaping/map-order negative cases.
+- Scoped plain/encrypted archives round-trip between platforms, include referenced attachments and retained exports, exclude unrelated private data, enforce all bounds, preserve existing healthy records, and fail before installation on authentication or format errors.
+- Export history and exact files survive restart and restoration; names, document language, hashes, delivery revisions and Open/Share are correct when a public copy has been removed.
+- PDF MediaBox is A4; actual text includes every signer/reservation, long finding, legal source/scope note and attachment manifest; image annexes contain the expected images and accurate page counts. Compare PDF/HTML meaning and evidence across platforms, not byte identity between different renderers. Retained copies themselves must remain byte-exact.
+- Residual-value inputs reject nonfinite/negative values and persist their basis/source without generating a debt assertion.
+- Address typing emits no search request by default; manual offline completion works; explicit activation discloses and permits lookup; turning it off cancels/ignores pending searches.
+- Whole visible workflows pass for entry, exit from an entry, standalone exit and amendment, as tenant/private landlord/agency. Include camera and Files cancellation/denial, app interruption, optional library lock, and document retrieval. At least one workflow must start with empty UI fields and end with real drawn signatures and an opened exported document; do not seed away the journey being tested.
+
+Keep the existing legacy/crypto tests that protect valid historical behaviour. Existing tests called entryListRunsTenCalendarDays, removingTheKeysCardRemovesTheKeyRuleWithIt, corruptFileIsRefusedQuietlyAndDoesNotPoisonTheList and the French Downloads assertion encode behaviours this task supersedes; update their intent and assertions deliberately. Do not report a larger passing test count as evidence of field usability without screenshots and the visible workflow.
+
+10. Audit the product's Swiss market value
+
+Reassess the iPhone offering after the fixes, using the existing Android market section as a starting point and current primary sources for time-sensitive facts. Separate an occasional tenant/private landlord, a small professional operator and a large agency. Assess whether offline operation, readable Swiss guidance, independent positions, trustworthy evidence, entry/exit history and accessible multilingual outputs create enough practical value for each segment.
+
+Compare the actual delivered workflow with current first-party descriptions of relevant products, including Wohnungsprotokoll, AXimmo/Tayo and ImmoPad if still relevant. Distinguish competitors' published claims from features you personally tested. Do not infer revenue or paying customers by treating Swiss moving-person statistics as numbers of household handovers. Historical notes mention CHF 15 and Switzerland-only availability; verify any live price, store listing and rollout state before making recommendations, and do not change them automatically.
+
+Give a candid answer about whether the app is nice to use, whether steps and information are logically arranged, and what remains awkward. Report observed task friction, unnecessary repeated entry, comprehension failures, time/tap burden where measured, and the risks of overcrowding the new features. Prepare a short moderated test protocol for representative Swiss users, including someone who uses assistive technology. Do not claim unperformed interviews, a measured success rate, native-language approval or legal certification. External research must not be used as a reason to leave independently implementable defects unfixed.
+
+11. Work order and Mac verification
+
+Proceed in coherent, reviewable stages:
+
+1. Record Git/toolchain state and read the notes. Establish isolated test storage/app identity before running reset-based suites. Run a safe baseline and retain its results.
+2. Establish canonical/schema fixtures against Android. Repair the string generator with explicit iOS overrides, and update the model/codec without changing legacy fingerprints.
+3. Fix ordered persistence, recovery, export merge, evidence validation/ownership, independent positions and reservation clearing. These are prerequisites for trusting subsequent UI tests.
+4. Add participants, complete pre-sign review, scope, meters/access devices, supporting documents, exact exports and historical legal snapshots. Add the verified cantonal guidance and privacy controls.
+5. Improve the actual screen flow, library, responsive layout, accessibility and all five language versions. Keep behavioural regressions green as the interfaces change.
+6. Execute cross-platform fixtures and end-to-end simulator/device tests, inspect document/screenshot evidence, fix failures, then build and smoke-test the exact signed release artifact.
+7. Complete the audit/disposition/parity documents and the non-publishing Git handoff. Do not stop after only the first integrity fixes or call a plan completion of the task.
+
+Use the repository's Tuist/Makefile workflow, adapting it where isolation and the new files require changes. Discover current targets instead of trusting the hardcoded historical SIM_ID and DEVICE_ID:
+
+    xcodebuild -version
+    xcrun simctl list devices available
+    xcrun devicectl list devices
+    make gen
+    make build SIM_ID="<verified Limen simulator UDID>"
+    make test SIM_ID="<verified isolated Limen simulator UDID>"
+    make lint
+
+Regenerate the project after adding source/resource files; Tuist resolves the globs during generation. Check that the generated shared schemes and test targets use the intended isolated container and that no new localisation/resource is omitted from the built app. Add a deterministic generation check and run git diff --check. Preserve complete Swift concurrency checking and investigate unsafe crossings rather than disabling diagnostics broadly.
+
+Use the actual minimum supported iOS runtime/device when available and a current runtime, a small screen, a large screen and supported tablet/window configurations. Do not claim minimum-iOS testing from a deployment-target setting alone. Keep the selected simulator visible for inspection and prove hardware-keyboard text entry. Restore changed accessibility/device settings after testing.
+
+Use the pinned production identity dev.peringer.limen and team KDSZB7N44K for the real app, subject to verification of the owner's current legitimate signing configuration. Preserve existing records when updating my physical iPhone. Never uninstall the production app, clear its data or remove another app to free a signing/profile slot as an incidental test operation. If signing or device access is genuinely unavailable, finish all independent work and name the exact release gate still untested.
+
+After tests pass, build Release and an .xcarchive, inspect the actual built Info.plist/version, signing team, entitlements and embedded provisioning profile, and export a distributable artifact if the available authorised signing setup supports it. Use 1.2.0 as the alignment target unless newer verified project state requires a later version; choose a valid monotonically increasing build number, not blindly Android's versionCode. State whether an installed artifact is development-signed, ad hoc or distribution-signed. An Apple Development signature is not evidence of an App Store upload.
+
+Install/update the exact verified release build on the connected iPhone, launch it and smoke-check the critical flow without deleting user data. Retain simulator and physical-device evidence separately, including model/OS/UDID, screenshot provenance, artifact hashes, command results and any limitations. Provide the archive/artifact path. No TestFlight/App Store submission, public link, website deployment, price/country/account changes, messages to testers, Git commit or Git push is authorised by this task.
+
+12. Deliverables and definition of done
+
+Keep an audit and implementation ledger in this Swift repository, in an appropriate docs/audits/<date>/ location. Include:
+
+- A source/device distinction for each finding, severity, reproduction, consequence, affected files/symbols, fix and validation result
+- F01-F28 with a clear disposition, plus the iOS-specific defects above and any further verified defects discovered during the audit
+- The 26-canton mapping with sources, effective/review dates, app/export coverage, tests and unresolved legal review
+- A feature-by-feature Android/iOS parity matrix, including canonical data, encryption/archive compatibility, documents, privacy and legitimate platform differences
+- The usability/accessibility and EN/FR/DE/IT/RM results, screenshots and a candid explanation of what still requires human/native review
+- Exact tests executed, counts/results, build/lint/concurrency results and a list of anything not run; no historical result presented as today's run
+- Cross-platform golden vectors, fixtures and repeatable commands, with file/canonical hashes and both directions actually verified or explicitly outstanding
+- Current feature documentation, corrected CLAUDE.md technical decisions, release notes and draft store/privacy updates consistent with the shipped iOS behaviour
+- A concise Swiss market/readiness assessment with sources and a separate moderated research proposal
+- Release/archive/signing/device evidence, remaining risks and any narrow Android/website follow-up patch needed for alignment
+
+Update repository documentation rather than rewriting historical audit evidence. Do not edit the external vault without a separate request. Keep synthetic test data in committed fixtures/evidence, avoid real party details, and do not commit credentials, signing secrets, build products or unrelated changes.
+
+The final reply must distinguish implemented, tested, externally unreviewed and blocked. Functional parity is complete only when the relevant real behaviours and data exchange work, not merely when screens or models have matching names. A legally consequential source correction or untested archive direction must remain visible even if all local tests pass. Professional Swiss tenancy review and native Romansh/assistive-technology user validation remain separate from engineering test success.
+
+Summarise the changes and material limitations, link the audit and release artifact, and provide exact path-limited cd/git add/git commit/git push commands as the repository requests. Do not execute the Git publishing commands. Continue autonomously through the authorised engineering work; ask only for a genuinely missing decision or resource that cannot be established from the repositories, local setup or primary sources.
+
+Reference freshness note: the Windows review spot-checked the official BWO 2026 overview, NE and VD locality guidance, FR/GE/TI statutes, RULV, FDPIC information duties and Apple accessibility/privacy documentation. It was not a replacement for the Mac runtime audit or an exhaustive independent legal opinion. The original Android audit has the wider market/federal source ledger. For Apple store declarations, use the current [App Privacy guidance](https://developer.apple.com/app-store/app-privacy-details/) and [required-reason API guidance](https://developer.apple.com/documentation/bundleresources/describing-use-of-required-reason-api), then verify the actual build and network behaviour. Do not copy store assertions from old notes without checking them.

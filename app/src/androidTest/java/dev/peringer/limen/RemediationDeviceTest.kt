@@ -121,6 +121,8 @@ class RemediationDeviceTest {
     assertTrue(preview.contains("Full defect reservation")); assertTrue(preview.contains("Tenant comment"))
     assertTrue(preview.contains("&lt;script&gt;")); assertFalse(preview.contains("<script>"))
     assertTrue(preview.contains("No admission of costs")); assertTrue(preview.contains("Named Agent"))
+    // The preview is the HTML copy, drawn in the app's panels with a contents list.
+    assertTrue(preview.contains("class=\"panel")); assertTrue(preview.contains("<nav class=\"contents\""))
     val bmp = ink()
     act { p.parties.forEach { vm.keepSignature(it.role, Plane.Record, bmp, it.participantKey()) } }
     bmp.recycle()
@@ -468,5 +470,66 @@ class RemediationDeviceTest {
     capture("photo-zoom-controls")
     compose.onNodeWithText("Fit image").performClick()
     compose.onNodeWithText(Str(Lang.En).done).performClick()
+  }
+
+  @Test fun theRecordIsDrawnInTheAppsPaletteAndFamilyOnEveryPage() {
+    val p = sample().copy(finalizedEpochMs = 1)
+    val frozen = p.copy(evidenceFingerprint = ProtocolIntegrity.fingerprint(p, store.photoDir(p.id), store.signatureDir(p.id)))
+    val exported = PdfExport.export(context, frozen, Str(Lang.De), store.photoDir(p.id), store.signatureDir(p.id))
+    val pdf = context.contentResolver.openInputStream(exported.uri)!!.use { it.readBytes() }
+    val text = String(pdf, Charsets.ISO_8859_1)
+    // The system sans-serif, which is what the app renders, and never a typewriter face. The
+    // Pixel's Roboto is a variable font, which PdfDocument writes as Type3 glyph outlines whose
+    // face is named by the descriptor's FontName; an embedded TrueType names it in BaseFont.
+    val fonts = Regex("""/(?:BaseFont|FontName)\s*/([A-Za-z0-9+\-_,]+)""").findAll(text).map { it.groupValues[1] }.toList()
+    assertTrue(fonts.toString(), fonts.isNotEmpty())
+    assertTrue(fonts.toString(), fonts.none { it.contains("Mono", ignoreCase = true) || it.contains("Courier", ignoreCase = true) })
+    assertTrue(fonts.toString(), fonts.any { it.contains("Roboto") })
+    context.contentResolver.openFileDescriptor(exported.uri, "r")!!.use { fd -> android.graphics.pdf.PdfRenderer(fd).use { renderer ->
+      assertTrue(renderer.pageCount >= 2)
+      for (i in 0 until renderer.pageCount) renderer.openPage(i).use { page -> assertEquals(595, page.width); assertEquals(842, page.height) }
+      // The cover: the landing's navy banner over white paper, the first panel in the app's plate grey.
+      val cover = Bitmap.createBitmap(595, 842, Bitmap.Config.ARGB_8888).apply { eraseColor(android.graphics.Color.WHITE) }
+      renderer.openPage(0).use { it.render(cover, null, null, android.graphics.pdf.PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY) }
+      fun near(pixel: Int, r: Int, g: Int, b: Int) =
+        kotlin.math.abs(android.graphics.Color.red(pixel) - r) <= 6 && kotlin.math.abs(android.graphics.Color.green(pixel) - g) <= 6 && kotlin.math.abs(android.graphics.Color.blue(pixel) - b) <= 6
+      assertTrue(Integer.toHexString(cover.getPixel(297, 130)), near(cover.getPixel(297, 130), 0x23, 0x33, 0x50))
+      assertTrue(Integer.toHexString(cover.getPixel(528, 283)), near(cover.getPixel(528, 283), 0xE7, 0xE9, 0xEE))
+      assertTrue(Integer.toHexString(cover.getPixel(10, 10)), near(cover.getPixel(10, 10), 0xFF, 0xFF, 0xFF))
+      cover.recycle()
+    } }
+    context.contentResolver.openInputStream(exported.uri)!!.use { input -> File(output, "palette-de.pdf").outputStream().use(input::copyTo) }
+  }
+
+  @Test fun aRecordOfSixRoomsWithPhotographsExportsWithItsContentsOnThePagesItNames() {
+    val base = sample()
+    val rooms = (1..6).map { Room("room$it", RoomKind.entries[it % 6], name = "Room $it", inspected = true) }
+    val defects = mutableListOf<Defect>()
+    rooms.forEach { room ->
+      (1..3).forEach { n ->
+        val photos = (1..2).map { k ->
+          val file = File(store.photoDir(base.id), "${room.id}-$n-$k.jpg")
+          Bitmap.createBitmap(640, 480, Bitmap.Config.ARGB_8888).apply {
+            eraseColor(android.graphics.Color.rgb(40 * n, 90, 200 - 30 * k))
+            file.outputStream().use { compress(Bitmap.CompressFormat.JPEG, 80, it) }
+            recycle()
+          }
+          file
+        }
+        defects += Defect("${room.id}-d$n", room.id, ItemKey.Walls, "Finding $n in ${room.name}, described at some length so that the row wraps onto a second line",
+          photos = photos.map { it.name }, photoEvidence = photos.map { PhotoEvidence(it.name, ProtocolIntegrity.fileHash(it)) },
+          chargedToTenant = n == 1, fixBy = FixBy.Tenant, costNote = "CHF ${100 * n}")
+      }
+    }
+    val p = base.copy(finalizedEpochMs = 1, rooms = rooms, defects = defects)
+    val frozen = p.copy(evidenceFingerprint = ProtocolIntegrity.fingerprint(p, store.photoDir(p.id), store.signatureDir(p.id)))
+    // The export itself refuses a document whose drawn sections or pages differ from the counted ones.
+    val exported = PdfExport.export(context, frozen, Str(Lang.Fr), store.photoDir(p.id), store.signatureDir(p.id))
+    context.contentResolver.openFileDescriptor(exported.uri, "r")!!.use { fd -> android.graphics.pdf.PdfRenderer(fd).use { renderer ->
+      assertTrue("${renderer.pageCount} pages", renderer.pageCount >= 8)
+      for (i in 0 until renderer.pageCount) renderer.openPage(i).use { page -> assertEquals(595, page.width); assertEquals(842, page.height) }
+    } }
+    context.contentResolver.openInputStream(exported.uri)!!.use { input -> File(output, "six-rooms-fr.pdf").outputStream().use(input::copyTo) }
+    context.contentResolver.openInputStream(exported.companionUri!!)!!.use { input -> File(output, "six-rooms-fr.html").outputStream().use(input::copyTo) }
   }
 }

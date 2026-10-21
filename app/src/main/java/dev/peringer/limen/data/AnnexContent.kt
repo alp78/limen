@@ -20,8 +20,12 @@ import java.time.format.DateTimeFormatter
  */
 internal object AnnexContent {
 
-  /** A room, the supplied objects without one, the findings whose room is gone, or the meters. */
-  data class Section(val title: String, val cards: List<Card>)
+  /**
+   * A room, the supplied objects without one, the findings whose room is gone, or the
+   * meters. [key] is the room's id, or the group's name, so the body can cite the page the
+   * section opens on even when two rooms share a name.
+   */
+  data class Section(val title: String, val cards: List<Card>, val key: String = "")
 
   /**
    * One photograph and its legend. [number] is the finding it documents, as numbered in the
@@ -72,24 +76,24 @@ internal object AnnexContent {
       val cards = cards(p.details.roomPhotos[room.id].orEmpty().map { it.file }, name, null, s.overviewPhotos, emptyList()) +
         Report.roomFindings(p, room.id).flatMap { finding(it.number - 1, name) } +
         p.objects.filter { it.roomId == room.id }.flatMap { objectCards(it, name) }
-      if (cards.isNotEmpty()) sections += Section(name, cards)
+      if (cards.isNotEmpty()) sections += Section(name, cards, room.id)
     }
     val roomless = p.objects.filter { entry -> p.rooms.none { it.id == entry.roomId } }.flatMap { objectCards(it, s.objects) } +
       p.defects.indices.filter { i -> p.defects[i].objectId.isNotBlank() && p.objects.none { it.id == p.defects[i].objectId } }
         .flatMap { finding(it, s.objects) }
-    if (roomless.isNotEmpty()) sections += Section(s.objects, roomless)
+    if (roomless.isNotEmpty()) sections += Section(s.objects, roomless, "objects")
     val orphaned = Report.orphanedFindings(p).flatMap { finding(it.number - 1, s.defects) }
-    if (orphaned.isNotEmpty()) sections += Section(s.defects, orphaned)
+    if (orphaned.isNotEmpty()) sections += Section(s.defects, orphaned, "defects")
     val meters = p.details.readings.flatMap { r ->
       val reading = listOf(r.value, r.unit).filter(String::isNotBlank).joinToString(" ")
       val taken = listOf(SwissDate.display(r.date), r.time).filter(String::isNotBlank).joinToString(" ")
       cards(r.photos.map { it.file }, s.meters, null, listOf(r.label, r.identifier).filter(String::isNotBlank).joinToString(" · "),
         listOf(if (reading.isNotBlank()) "${s.reading}: $reading" else "", taken, r.note))
     }
-    if (meters.isNotEmpty()) sections += Section(s.meters, meters)
+    if (meters.isNotEmpty()) sections += Section(s.meters, meters, "meters")
     // Nothing the annex is asked to print may go missing because no section claimed it.
     val rest = Report.plates(p).map { it.file }.filter { it !in placed }
-    if (rest.isNotEmpty()) sections += Section(s.photos, cards(rest, s.photos, null, s.photos, emptyList()))
+    if (rest.isNotEmpty()) sections += Section(s.photos, cards(rest, s.photos, null, s.photos, emptyList()), "photos")
     return sections
   }
 
