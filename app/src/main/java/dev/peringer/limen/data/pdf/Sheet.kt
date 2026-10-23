@@ -81,6 +81,8 @@ internal class Sheet(
   val onPage get() = page != null
   /** The width inside a panel. */
   val inner = W - 2 * MARGIN - 2 * PANEL_PAD
+  /** What a panel's frame, title and pill take of a page before any row does. */
+  private val chrome = 2 * PANEL_PAD + PILL_HEIGHT + LABEL_GAP
 
   fun newPage(cover: Boolean = false) {
     finish()
@@ -160,11 +162,15 @@ internal class Sheet(
     return width
   }
 
-  /** A section heading over a navy rule, the hub door's title: for a group of panels. */
-  fun heading(title: String, level: Int = 0, pill: Pill? = null, key: String? = null) {
-    ensure(HEADING_NEED)
-    html.heading(title, mark(title, level, key))
+  /**
+   * A section heading over a navy rule, the hub door's title: for a group of panels.
+   * [first] is the panel that follows, so the heading moves to a fresh page when that
+   * panel would not open under it and the heading would stay behind alone.
+   */
+  fun heading(title: String, level: Int = 0, pill: Pill? = null, key: String? = null, first: Panel? = null) {
     val line = paints.lineOf(Style.Title)
+    ensure(headingNeed(line, first))
+    html.heading(title, mark(title, level, key))
     var max = W - 2 * MARGIN
     pill?.let { max -= pill(it, W - MARGIN, y + (line - PILL_HEIGHT) / 2f) + 20f }
     canvas.drawText(TextMeasure.ellipsize(title, paints.title, max), MARGIN, y + paints.title.baseline(line), paints.title)
@@ -174,13 +180,25 @@ internal class Sheet(
   }
 
   /**
+   * What a heading reserves: room for [first] to open under it, which is the heading, the
+   * panel's chrome and the rows it cannot open without. [HEADING_NEED] when there is no
+   * panel to ask, and when the panel could not open under a heading even on a fresh page,
+   * since moving the heading would then strand it at the top of that page instead.
+   */
+  private fun headingNeed(line: Float, first: Panel?): Float {
+    if (first == null) return HEADING_NEED
+    val rows = first.blocks.flatMap { it.rows(paints, inner) }
+    val need = line + 10f + 24f + chrome + Paginator.opening(rows.map { Slot(it.height, it.keepWithNext) }, BOTTOM - HEADER_BOTTOM - chrome)
+    return if (need > BOTTOM - HEADER_BOTTOM) HEADING_NEED else maxOf(need, HEADING_NEED)
+  }
+
+  /**
    * Draws [panel], whole when it fits the space left, otherwise in closed segments, each
    * a complete panel with the title repeated and a "continued" pill, so no page ends on an
    * open shape. The HTML is written once, before the first segment.
    */
   fun panel(panel: Panel) {
     val rows = panel.blocks.flatMap { it.rows(paints, inner) }
-    val chrome = 2 * PANEL_PAD + PILL_HEIGHT + LABEL_GAP
     val available = if (page == null) -1f else BOTTOM - y - chrome
     val full = BOTTOM - HEADER_BOTTOM - chrome
     val segments = Paginator.segments(rows.map { Slot(it.height, it.keepWithNext) }, available, full)

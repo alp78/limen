@@ -152,7 +152,7 @@ fun DataPrivacyScreen(
           }
           when {
             vm.archiveBusy -> Text(s.working, style = MaterialTheme.typography.bodySmall, color = Limen.colors.inkDim)
-            vm.archiveFailed -> Text(s.archiveFailed, style = MaterialTheme.typography.bodySmall, color = Limen.colors.dangerOutline)
+            vm.archiveFailed -> Text(s.archiveFailure(vm.archiveRefused, vm.archiveRecordId == null), style = MaterialTheme.typography.bodySmall, color = Limen.colors.dangerOutline)
             vm.archiveExported != null -> Text(
               if (vm.archiveProtected) s.archiveSaved(vm.archiveExported!!.displayName)
               else s.archiveSavedOpen(vm.archiveExported!!.displayName),

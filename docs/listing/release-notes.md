@@ -6,6 +6,51 @@ Paste each block into the matching language on the release, or let `play_push.py
 
 ---
 
+## versionCode 12, versionName 1.2.7
+
+23 October 2026. The fixes from a review of the whole app. A refused backup names the record and the reason, a restore unpacks the evidence once instead of twice and refuses a wrong password after the first chunk, and a stage left by a killed restore is swept at start. Finalization names every value it rejects and the dossier ticks follow the same checks, the printed record leaves out what the screen no longer shows, and removing a reading, a document, a party or a key type offers undo. A gallery photograph is copied by the view model rather than the screen, and the signature pad keeps its ink across a rotation or a language change.
+
+### en-US
+
+```
+Safer backups and clearer checks. A backup that cannot be made names the record at fault, a restore needs less free space, and a wrong password is refused sooner. Finalizing names every value it rejects. Removed readings, documents, parties and key types can be undone. The printed record shows only what applies. A gallery photograph keeps copying when the screen changes, and signature ink survives a rotation.
+```
+
+(412/500)
+
+### fr-FR
+
+```
+Sauvegardes plus sûres et contrôles plus clairs. Une sauvegarde impossible nomme le constat en cause, une restauration demande moins d’espace libre et un mauvais mot de passe est refusé plus tôt. La finalisation nomme chaque valeur refusée. Les suppressions de relevés, documents, parties et types de clés peuvent être annulées. Le constat imprimé n’indique que ce qui s’applique. Une photo de la galerie continue de se copier quand l’écran change, et la signature résiste à une rotation.
+```
+
+(488/500)
+
+### de-DE
+
+```
+Zuverlässigere Sicherungen, klarere Prüfungen. Eine unmögliche Sicherung nennt das betroffene Protokoll, eine Wiederherstellung braucht weniger Speicherplatz, und ein falsches Passwort wird früher abgelehnt. Der Abschluss nennt jeden abgewiesenen Wert. Entfernte Zählerstände, Beilagen, Parteien und Schlüsselarten lassen sich rückgängig machen. Das gedruckte Protokoll zeigt nur, was zutrifft. Ein Galeriefoto wird beim Bildschirmwechsel weiterkopiert, die Unterschrift übersteht eine Drehung.
+```
+
+(494/500)
+
+### it-IT
+
+```
+Backup più affidabili e controlli più chiari. Un backup impossibile indica il verbale in causa, un ripristino richiede meno spazio libero e una password errata viene rifiutata prima. La finalizzazione indica ogni valore rifiutato. Letture, documenti, parti e tipi di chiave rimossi si possono annullare. Il verbale stampato mostra solo ciò che si applica. Una foto della galleria continua a copiarsi se cambia la schermata, e la firma resiste alla rotazione.
+```
+
+(458/500)
+
+### rm
+
+```
+Copias da segirezza pli sigiras e controllas pli cleras. Ina copia da segirezza impussibla numna il protocol en dumonda, ina restauraziun dovra main spazi liber ed in pled-clav fauss vegn refusà pli baud. La finalisaziun numna mintga valur refusada. Lecturas dal contatur, documents, partidas e tips da clav stizzads sa laschan revocar. Il protocol stampà mussa be quai che vala. Ina foto da la galaria vegn copiada vinavant cur che il visur sa mida, e la suttascripziun resista ad ina rotaziun.
+```
+
+(495/500)
+
+---
 ## versionCode 11, versionName 1.2.6
 
 21 October 2026. The exported record is drawn in the app’s own style: the Day palette read from one shared source, panels with rounded corners and a navy border, pills and chips, the system sans-serif in three weights and no monospace, a cover with the key facts and a contents list whose page numbers the export verifies against the drawn pages, one panel per room with its numbered findings inside, and the photo annex in the same panels. Independent facts that one line joined with a dot are now chips or rows. Plates, the stand-in swap and the content order are unchanged. The document is named after the address and the handover day, as the iPhone names it.

@@ -3,6 +3,7 @@ package dev.peringer.limen.data
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -155,5 +156,118 @@ class StoreTest {
       signatures = listOf(Signature(Role.Tenant, plane = Plane.Record, refused = true))
     )
     assertTrue(!refusedOnly.isSigned())
+  }
+
+  @Test
+  fun aRecoveryThatCannotBeWrittenLeavesTheUnreadableRecordListedForAnotherTry() {
+    val store = Store(tmp.root)
+    val protocols = File(tmp.root, "protocols")
+    File(protocols, "p1.json").writeText("{ not json")
+    // A last-good copy that save refuses to file under any id stands in for a write that fails.
+    File(protocols, "p1.json.last-good").writeText(
+      kotlinx.serialization.json.Json.encodeToString(Protocol.serializer(), fullProtocol("not an id")))
+    assertThrows(IllegalArgumentException::class.java) { store.recover("p1") }
+    assertEquals("{ not json", File(protocols, "p1.json").readText())
+    assertEquals(listOf(Store.UnreadableRecord("p1", true)), store.catalogue().unreadable)
+  }
+
+  @Test
+  fun sweepingTheStoreRemovesWhatARestoreOrAnAmendmentKilledPartWayLeftBehind() {
+    val root = tmp.newFolder("killed-restore")
+    File(root, ".archive-import-123/photos/p1").mkdirs()
+    File(root, ".archive-import-123/photos/p1/wall.jpg").writeText("staged")
+    File(root, "archive-decrypt-456.zip").writeText("decrypted")
+    File(root, "photos/.amend-x").mkdirs()
+    File(root, "photos/.amend-x/wall.jpg").writeText("half copied")
+    File(root, "photos/p1").mkdirs()
+    File(root, "photos/p1/wall.jpg").writeText("kept")
+    Store(root).sweepStale()
+    assertTrue(!File(root, ".archive-import-123").exists())
+    assertTrue(!File(root, "archive-decrypt-456.zip").exists())
+    assertTrue(!File(root, "photos/.amend-x").exists())
+    assertEquals("kept", File(root, "photos/p1/wall.jpg").readText())
+  }
+
+  @Test
+  fun aSecondSweepOnTheSameRootLeavesARunningRestoresStageAlone() {
+    val root = tmp.newFolder("running-restore")
+    Store(root).sweepStale()
+    File(root, ".archive-import-789").mkdirs()
+    Store(root).sweepStale()
+    assertTrue(File(root, ".archive-import-789").exists())
+  }
+
+  @Test
+  fun openingTheStoreDeletesNothingUntilItIsSweptOffTheMainThread() {
+    val root = tmp.newFolder("opened-only")
+    File(root, ".archive-import-123").mkdirs()
+    Store(root)
+    assertTrue(File(root, ".archive-import-123").exists())
+  }
+
+  private fun parentWithAnOrphan(store: Store): Protocol {
+    val parent = Protocol(
+      id = "p1",
+      kind = Kind.Entry,
+      createdEpochMs = 1L,
+      defects = listOf(Defect(id = "d1", photos = listOf("wall.jpg"))),
+      details = RecordDetails(
+        roomPhotos = mapOf("r1" to listOf(PhotoEvidence("overview.jpg"))),
+        readings = listOf(MeterReading("m1", photos = listOf(PhotoEvidence("meter.jpg")))),
+        attachments = listOf(SupportingDocument("a1", file = "lease.pdf")),
+      ),
+    )
+    listOf("wall.jpg", "overview.jpg", "meter.jpg", "lease.pdf", "removed.jpg").forEach {
+      File(store.photoDir("p1"), it).writeText("bytes of $it")
+    }
+    return parent
+  }
+
+  @Test
+  fun anAmendmentCarriesOnlyTheFilesItsDraftRefersTo() {
+    val store = Store(tmp.root)
+    val parent = parentWithAnOrphan(store)
+
+    store.saveAmendment(parent, parent.copy(id = "p2", amendedFromId = "p1"))
+
+    assertEquals(
+      setOf("wall.jpg", "overview.jpg", "meter.jpg", "lease.pdf"),
+      store.photoDir("p2").listFiles().orEmpty().map { it.name }.toSet(),
+    )
+    assertEquals("p2", store.load("p2")?.id)
+    assertTrue(!File(tmp.root, "photos/.amend-p2").exists())
+    // Removed evidence stays with the record it was removed from.
+    assertTrue(File(store.photoDir("p1"), "removed.jpg").isFile)
+  }
+
+  @Test
+  fun anAmendmentWhoseCopyFailsLeavesNeitherFolderNorRecord() {
+    val store = Store(tmp.root)
+    val parent = parentWithAnOrphan(store)
+    // A file already in the draft's stage makes the copy refuse, as a full disk would part way.
+    File(tmp.root, "photos/.amend-p2").apply { mkdirs() }.resolve("meter.jpg").writeText("in the way")
+
+    assertThrows(FileAlreadyExistsException::class.java) {
+      store.saveAmendment(parent, parent.copy(id = "p2", amendedFromId = "p1"))
+    }
+
+    assertTrue(!File(tmp.root, "photos/.amend-p2").exists())
+    assertTrue(!File(tmp.root, "photos/p2").exists())
+    assertNull(store.load("p2"))
+    assertTrue(File(store.photoDir("p1"), "meter.jpg").isFile)
+  }
+
+  @Test
+  fun aReferencedNameThatLeavesTheFolderIsNotCopiedIntoAnAmendment() {
+    val store = Store(tmp.root)
+    File(store.photoDir("p1").parentFile, "secret.txt").writeText("not evidence")
+    val parent = Protocol(
+      id = "p1", kind = Kind.Entry, createdEpochMs = 1L,
+      defects = listOf(Defect(id = "d1", photos = listOf("../secret.txt"))),
+    )
+
+    store.saveAmendment(parent, parent.copy(id = "p2"))
+
+    assertTrue(store.photoDir("p2").listFiles().isNullOrEmpty())
   }
 }

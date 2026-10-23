@@ -552,6 +552,30 @@ class RemediationDeviceTest {
     assertEquals("$base-2.html", displayName(second.companionUri!!))
   }
 
+  @Test fun removingAReadingOrADocumentOffersItBackAndUndoRestoresIt() {
+    launch(sample().copy(details = RecordDetails(
+      readings = listOf(MeterReading("m1", "Electricity", "Meter-42", "150.4", "kWh", "2026-10-13", "12:00")),
+      attachments = listOf(SupportingDocument("a1", DocumentKind.Lease, "Lease supplied at inspection")),
+    )))
+    val en = Str(Lang.En)
+    act { vm.removeReading("m1") }
+    compose.onNodeWithText(en.removedForUndo(UndoKind.Reading)).assertIsDisplayed()
+    act { assertTrue(vm.working!!.details.readings.isEmpty()) }
+    compose.onNodeWithText(en.undo).performClick()
+    act { assertEquals("Meter-42", vm.working!!.details.readings.single().identifier) }
+    act { vm.removeAttachment("a1") }
+    compose.onNodeWithText(en.removedForUndo(UndoKind.Document)).assertIsDisplayed()
+    compose.onNodeWithText(en.undo).performClick()
+    act { assertEquals("a1", vm.working!!.details.attachments.single().id) }
+  }
+
+  @Test fun aPhotographRemovedInsideTheOpenFindingEditorOffersItBack() {
+    launch(sample().copy(defects = listOf(Defect(id = "d1", roomId = "r1", text = "Scratch beside the door", photos = listOf("wall.jpg")))))
+    act { vm.editDefect("d1"); vm.removePhoto("d1", "wall.jpg") }
+    compose.onNodeWithText(Str(Lang.En).undo).assertIsDisplayed().performClick()
+    act { assertEquals(listOf("wall.jpg"), vm.working!!.defects.single().photos) }
+  }
+
   private fun displayName(uri: android.net.Uri): String =
     context.contentResolver.query(uri, arrayOf(android.provider.MediaStore.Downloads.DISPLAY_NAME), null, null, null)!!.use { c -> c.moveToFirst(); c.getString(0) }
 }

@@ -40,7 +40,7 @@ import dev.peringer.limen.theme.Limen
 fun DefectEditor(vm: LimenViewModel, s: Str, p: Protocol, defectId: String) {
   val d = p.defects.firstOrNull { it.id == defectId } ?: return
   val locked = LocalRecordLocked.current
-  val intake = rememberPhotoIntake(s) { file, source -> vm.attachPhoto(defectId, file, source) }
+  val intake = rememberPhotoIntake(s, vm, defectId) { file, source -> vm.attachPhoto(defectId, file, source) }
 
   BackHandler { vm.closeDefect() }
 
@@ -81,7 +81,7 @@ fun DefectEditor(vm: LimenViewModel, s: Str, p: Protocol, defectId: String) {
 
       if (!locked || d.photos.isNotEmpty()) Panel(label = s.photos) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-          if (vm.evidenceError.isNotBlank()) Text("${s.finalizationIssue(FinalizationIssue.Evidence)}: ${vm.evidenceError}", color = Limen.colors.dangerOutline)
+          if (vm.evidenceError.isNotBlank()) Text(vm.evidenceError, color = Limen.colors.dangerOutline)
           if (!locked) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             IconKey(ButtonGlyph.Camera, s.photo, Modifier.weight(1f), onPress = intake.takePhoto)
             IconKey(ButtonGlyph.Gallery, s.gallery, Modifier.weight(1f), onPress = intake.pickPhoto)

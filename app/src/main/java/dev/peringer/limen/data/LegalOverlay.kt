@@ -207,9 +207,13 @@ fun legalSources(canton: SwissCanton?): List<String> = buildList {
 
 const val CONCILIATION_DIRECTORY = "https://www.bwo.admin.ch/dam/de/sd-web/tzHM7tFgxwhW/20260114_Schlichtungsbeh%C3%B6rden.pdf"
 
-/** Recheck facts that changed without discarding unrelated confirmations. */
+/**
+ * Recheck facts that changed without discarding unrelated confirmations. The street and the
+ * place are not among them: no requirement resolves from their text, the canton is chosen
+ * apart from them, and a keystroke in either used to empty every answer with no undo.
+ */
 fun Protocol.invalidatedLegalRequirements(next: Protocol): Set<LegalRequirement> {
-  if (address != next.address || place != next.place || objectCanton != next.objectCanton) return LegalRequirement.entries.toSet()
+  if (objectCanton != next.objectCanton) return LegalRequirement.entries.toSet()
   return buildSet {
     if (handoverDate != next.handoverDate || contract.startDate != next.contract.startDate || contract.endDate != next.contract.endDate) {
       addAll(listOf(LegalRequirement.LeaseAndLocalTiming, LegalRequirement.DepositProof,

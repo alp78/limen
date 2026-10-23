@@ -59,7 +59,6 @@ import dev.peringer.limen.data.SwissAddressLookup
 import dev.peringer.limen.data.SwissDate
 import dev.peringer.limen.data.dossierCards
 import dev.peringer.limen.data.isBlank
-import dev.peringer.limen.data.resolvedLegalOverlay
 import dev.peringer.limen.sense.Clocks
 import dev.peringer.limen.theme.Limen
 import kotlinx.coroutines.delay
@@ -99,12 +98,12 @@ internal fun DossierStep(vm: LimenViewModel, s: Str, p: Protocol) {
     }
   }
   val sections = listOf(
-    DossierSection(s.objectLabel, objectSectionComplete(p)),
-    DossierSection(s.parties, partiesSectionComplete(p)),
-  ) + cards.map { card -> DossierSection(s.dossierCard(card), dossierSectionComplete(p, card)) } + listOf(
-    DossierSection(s.actualTransfer, p.details.actualTransferDate.isNotBlank()),
-    DossierSection(s.attachments, p.details.attachments.isNotEmpty()),
-    DossierSection(s.followUps, p.details.followUps.isNotEmpty()),
+    DossierSection(s.objectLabel, objectRecorded(p)),
+    DossierSection(s.parties, partiesRecorded(p)),
+  ) + cards.map { card -> DossierSection(s.dossierCard(card), dossierCardRecorded(p, card)) } + listOf(
+    DossierSection(s.actualTransfer, transferRecorded(p)),
+    DossierSection(s.attachments, attachmentsRecorded(p)),
+    DossierSection(s.followUps, followUpsRecorded(p)),
   )
   val activeSection by remember(listState, sections.size, locked) {
     derivedStateOf {
@@ -203,26 +202,6 @@ internal fun DossierStep(vm: LimenViewModel, s: Str, p: Protocol) {
 }
 
 private data class DossierSection(val label: String, val complete: Boolean)
-
-private fun objectSectionComplete(p: Protocol): Boolean =
-  p.address.isNotBlank() && p.place.isNotBlank() && p.objectCanton != null &&
-    p.handoverDate.isNotBlank() && p.handoverTime.isNotBlank() &&
-    (p.resolvedLegalOverlay()?.isComplete(p.legalOverlay) == true)
-
-private fun partiesSectionComplete(p: Protocol): Boolean =
-  listOf(Role.Tenant, Role.Landlord).all { role ->
-    p.parties.firstOrNull { it.role == role }?.name?.isNotBlank() == true
-  }
-
-private fun dossierSectionComplete(p: Protocol, card: DossierCard): Boolean = when (card) {
-  DossierCard.Contract -> p.contract != dev.peringer.limen.data.Contract()
-  DossierCard.Deposit -> depositRecorded(p)
-  DossierCard.Meters -> !p.meters.isBlank()
-  // The same rule the finalization gate applies, so a ticked chip cannot sit beside a
-  // blocked FINALIZE with nothing on screen naming what is missing.
-  DossierCard.Keys -> keyOutcomeRecorded(p)
-  DossierCard.Notes -> p.remarks.isNotBlank() || p.chargesStatementBy.isNotBlank()
-}
 
 /**
  * The removal affordance every optional component carries, in the same place on each.
@@ -425,7 +404,7 @@ private fun PartyBlock(vm: LimenViewModel, s: Str, p: Protocol, index: Int, part
       val removable = party.role !in listOf(Role.Tenant, Role.Landlord) || p.parties.count { it.role == party.role } > 1
       if (removable && !LocalRecordLocked.current) {
         IconKey(ButtonGlyph.Delete, s.delete, destructive = true) {
-          vm.edit { it.copy(parties = it.parties.filterIndexed { j, _ -> j != index }) }
+          vm.removeParty(index)
         }
       }
     }
@@ -478,10 +457,12 @@ private fun ContractCard(vm: LimenViewModel, s: Str, p: Protocol, onRemove: () -
       CardHeader(s, onRemove)
       ScopeReason(vm, s, p, "Contract")
       Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Field(s.monthlyRent, p.contract.monthlyRentChf, Modifier.weight(1f), keyboardType = KeyboardType.Decimal) { v ->
+        Field(s.monthlyRent, p.contract.monthlyRentChf, Modifier.weight(1f), keyboardType = KeyboardType.Decimal,
+          isError = invalidAmount(p.contract.monthlyRentChf)) { v ->
           vm.edit { it.copy(contract = it.contract.copy(monthlyRentChf = v)) }
         }
-        Field(s.serviceCharges, p.contract.serviceChargesChf, Modifier.weight(1f), keyboardType = KeyboardType.Decimal) { v ->
+        Field(s.serviceCharges, p.contract.serviceChargesChf, Modifier.weight(1f), keyboardType = KeyboardType.Decimal,
+          isError = invalidAmount(p.contract.serviceChargesChf)) { v ->
           vm.edit { it.copy(contract = it.contract.copy(serviceChargesChf = v)) }
         }
       }
@@ -546,7 +527,8 @@ private fun DepositCard(vm: LimenViewModel, s: Str, p: Protocol, onRemove: () ->
                 Field(s.depositPolicy, p.deposit.policyNo, Modifier.weight(1.3f)) { v ->
                   vm.edit { it.copy(deposit = it.deposit.copy(policyNo = v)) }
                 }
-                Field(s.depositAmount, p.deposit.amountChf, Modifier.weight(1f), keyboardType = KeyboardType.Decimal) { v ->
+                Field(s.depositAmount, p.deposit.amountChf, Modifier.weight(1f), keyboardType = KeyboardType.Decimal,
+                  isError = invalidAmount(p.deposit.amountChf)) { v ->
                   vm.edit { it.copy(deposit = it.deposit.copy(amountChf = v)) }
                 }
               }
@@ -558,7 +540,8 @@ private fun DepositCard(vm: LimenViewModel, s: Str, p: Protocol, onRemove: () ->
                 Field(s.depositAccount, p.deposit.account, Modifier.weight(1.3f)) { v ->
                   vm.edit { it.copy(deposit = it.deposit.copy(account = v)) }
                 }
-                Field(s.depositAmount, p.deposit.amountChf, Modifier.weight(1f), keyboardType = KeyboardType.Decimal) { v ->
+                Field(s.depositAmount, p.deposit.amountChf, Modifier.weight(1f), keyboardType = KeyboardType.Decimal,
+                  isError = invalidAmount(p.deposit.amountChf)) { v ->
                   vm.edit { it.copy(deposit = it.deposit.copy(amountChf = v)) }
                 }
               }
@@ -687,7 +670,7 @@ private fun KeysCard(vm: LimenViewModel, s: Str, p: Protocol, onRemove: () -> Un
             }
             Spacer(Modifier.width(6.dp))
             IconKey(ButtonGlyph.Delete, s.delete, destructive = true) {
-              vm.edit { it.copy(keys = it.keys.filterIndexed { j, _ -> j != i }) }
+              vm.removeKeyKind(i)
             }
           }
         }
@@ -781,10 +764,12 @@ private fun CautionProviderPicker(s: Str, storedName: String, onSelect: (Caution
   var expanded by remember { mutableStateOf(false) }
   val play = rememberTick()
   val selected = CautionProvider.fromStoredName(storedName)
+  val locked = LocalRecordLocked.current
 
   Box(Modifier.fillMaxWidth()) {
     KeySurface(
       modifier = Modifier.fillMaxWidth(),
+      enabled = !locked,
       shape = RoundedCornerShape(6.dp),
       onPress = { expanded = true },
     ) {

@@ -32,14 +32,13 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.peringer.limen.data.PhotoSource
 import dev.peringer.limen.data.allPhotoEvidence
 import dev.peringer.limen.photo.PhotoDecode
 import dev.peringer.limen.theme.Limen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.launch
-import androidx.compose.runtime.rememberCoroutineScope
 import java.io.File
 
 /**
@@ -58,12 +57,14 @@ class PhotoIntake(
 
 /**
  * Wires the launchers for one owner, a defect id or an object id, and returns the two
- * actions. [onFile] receives a file in the cache that it must move or delete.
+ * actions. [onFile] receives a file in the cache that it must move or delete. [vm] is only
+ * asked to hold a gallery copy and to say whether anything is still being stored. [owner] is
+ * the defect id of an editor that can close while the pick is still arriving, and is blank
+ * for the rest.
  */
 @Composable
-fun rememberPhotoIntake(s: Str, onFile: (File, PhotoSource) -> Unit): PhotoIntake {
+fun rememberPhotoIntake(s: Str, vm: LimenViewModel = viewModel(), owner: String = "", onFile: (File, PhotoSource) -> Unit): PhotoIntake {
   val context = LocalContext.current
-  val scope = rememberCoroutineScope()
   // The slot path survives process death on purpose: the camera app routinely kills this
   // process while the shutter is open, and the result still arrives afterwards.
   var cameraSlot by rememberSaveable { mutableStateOf<String?>(null) }
@@ -82,20 +83,7 @@ fun rememberPhotoIntake(s: Str, onFile: (File, PhotoSource) -> Unit): PhotoIntak
     rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
       if (uri != null) {
         val slot = File(captureDir(context), "pick${System.currentTimeMillis()}.jpg")
-        scope.launch {
-          val copied = withContext(Dispatchers.IO) { runCatching {
-            context.contentResolver.openInputStream(uri)?.use { input ->
-              slot.outputStream().use { output ->
-                // No size limit: a photograph is kept as it was taken, however large.
-                input.copyTo(output, 32 * 1024)
-              }
-            } != null
-          }.getOrDefault(false) }
-          if (copied && slot.length() > 0L) onFile(slot, PhotoSource.Gallery) else {
-            slot.delete()
-            Toast.makeText(context, s.finalizationIssue(FinalizationIssue.Evidence), Toast.LENGTH_LONG).show()
-          }
-        }
+        vm.copyPicked(uri, slot, owner) { onFile(it, PhotoSource.Gallery) }
       }
     }
 
@@ -104,8 +92,11 @@ fun rememberPhotoIntake(s: Str, onFile: (File, PhotoSource) -> Unit): PhotoIntak
       takePhoto = {
         val dir = captureDir(context)
         // Old slots are swept rather than reused: a fixed name plus a camera crash equals
-        // a stale photo silently attached to the wrong finding.
-        dir.listFiles()?.forEach { it.delete() }
+        // a stale photo silently attached to the wrong finding. Not while a photograph is
+        // being stored: the previous capture's slot is deleted only after it was copied, and
+        // a pick's slot is still being written, so sweeping them lost a photograph the
+        // camera had reported.
+        if (vm.evidenceBusy == 0) dir.listFiles()?.forEach { it.delete() }
         val slot = File.createTempFile("cap", ".jpg", dir)
         cameraSlot = slot.absolutePath
         // Read from the package rather than written twice: the manifest declares the
@@ -153,18 +144,20 @@ fun PhotoThumb(vm: LimenViewModel, s: Str, name: String, size: Int = 84, onRemov
     .size(size.dp)
     .clip(RoundedCornerShape(8.dp))
     .border(1.5.dp, Limen.colors.actionOutline, RoundedCornerShape(10.dp))
-  if (shown == null) {
-    // The same square, empty, so nothing jumps when the picture arrives.
-    Box(frame)
-    return
-  }
   Column(horizontalAlignment = Alignment.CenterHorizontally) {
-    Image(
-      bitmap = shown.asImageBitmap(),
-      contentDescription = caption,
-      contentScale = ContentScale.Crop,
-      modifier = frame.clickable { open = true },
-    )
+    if (shown == null) {
+      // The same square, empty, so nothing jumps when the picture arrives. A photograph that
+      // never decodes stays this square, and the key below is then the only way to take it
+      // off the record and clear the evidence issue it raises.
+      Box(frame)
+    } else {
+      Image(
+        bitmap = shown.asImageBitmap(),
+        contentDescription = caption,
+        contentScale = ContentScale.Crop,
+        modifier = frame.clickable { open = true },
+      )
+    }
     // On a finalized record the photograph is evidence the fingerprint covers, so the
     // square is a picture and nothing else.
     if (LocalRecordLocked.current) return@Column

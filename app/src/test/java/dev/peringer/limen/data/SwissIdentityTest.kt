@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.Locale
 
 class InternationalIdentityTest {
   @Test fun validatesAndFormatsNumbersForTheirSelectedCountry() {
@@ -35,6 +36,16 @@ class InternationalIdentityTest {
         phoneRegion = "GB",
       ).hasRequiredFields(),
     )
+  }
+
+  @Test fun sortsCountriesByTheirNameInTheChosenLanguageNotByIsoCode() {
+    val english = listOf("AE", "AT", "CH", "DE").sortedWith(CountryDirectory.nameOrder(Locale.ENGLISH))
+    assertEquals(listOf("AT", "DE", "CH", "AE"), english)
+  }
+
+  @Test fun sortsAnAccentedInitialWithItsLetterNotAfterZ() {
+    val french = listOf("CH", "AE", "AT", "DE").sortedWith(CountryDirectory.nameOrder(Locale.FRENCH))
+    assertEquals(listOf("DE", "AT", "AE", "CH"), french)
   }
 
   @Test fun parsesOfficialAddressSearchResults() {

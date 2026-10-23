@@ -80,18 +80,35 @@ std::vector<uint8_t> Bytes(JNIEnv* env, jbyteArray array) {
 jbyteArray Array(JNIEnv* env, const std::vector<uint8_t>& bytes) {
   if (bytes.empty()) return nullptr;
   jbyteArray array = env->NewByteArray(static_cast<jsize>(bytes.size()));
-  if (array != nullptr) env->SetByteArrayRegion(array, 0, static_cast<jsize>(bytes.size()), reinterpret_cast<const jbyte*>(bytes.data()));
+  if (array == nullptr) {
+    // A failed allocation leaves an OutOfMemoryError pending. The null already says "not packed",
+    // and the caller stores the file as it is, so the error is cleared rather than thrown.
+    env->ExceptionClear();
+    return nullptr;
+  }
+  env->SetByteArrayRegion(array, 0, static_cast<jsize>(bytes.size()), reinterpret_cast<const jbyte*>(bytes.data()));
   return array;
 }
 
 }  // namespace
 
+// The vectors above throw std::bad_alloc on a large photograph, and an exception that leaves an
+// extern "C" function ends the process. Nothing may cross: a failure is a null, as a JPEG that
+// libjxl refuses already is, and the photograph goes into the backup as it is.
 extern "C" JNIEXPORT jbyteArray JNICALL
 Java_dev_peringer_limen_data_JpegXl_pack(JNIEnv* env, jobject, jbyteArray jpeg) {
-  return Array(env, Pack(Bytes(env, jpeg)));
+  try {
+    return Array(env, Pack(Bytes(env, jpeg)));
+  } catch (...) {
+    return nullptr;
+  }
 }
 
 extern "C" JNIEXPORT jbyteArray JNICALL
 Java_dev_peringer_limen_data_JpegXl_unpack(JNIEnv* env, jobject, jbyteArray jxl) {
-  return Array(env, Unpack(Bytes(env, jxl)));
+  try {
+    return Array(env, Unpack(Bytes(env, jxl)));
+  } catch (...) {
+    return nullptr;
+  }
 }

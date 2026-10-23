@@ -35,6 +35,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.peringer.limen.data.Kind
@@ -62,7 +63,8 @@ fun HomeScreen(
   onSeed: (String?) -> Unit,
 ) {
   var unlocked by remember(page) { mutableStateOf(false) }
-  if (vm.libraryProtected && page != HomePage.Landing && !unlocked) {
+  val context = LocalContext.current
+  if (vm.libraryProtected && context.hasScreenLock() && page != HomePage.Landing && !unlocked) {
     LibraryUnlock(s, onUnlocked = { unlocked = true }, onBack = { onPage(HomePage.Landing) })
     return
   }
@@ -196,6 +198,10 @@ private fun SessionsScreen(
           p.parties.joinToString(" ") { it.name + " " + it.representedBy }).any { it.contains(search, ignoreCase = true) })
     }.sortedWith(compareBy<Protocol> { it.address.lowercase() }.thenByDescending { it.createdEpochMs })
   }
+  // The originals a finalized amendment replaced. A draft amendment replaces nothing yet.
+  val amended = remember(vm.protocols) {
+    vm.protocols.filter { it.isFinalized() && it.amendedFromId.isNotBlank() }.mapTo(mutableSetOf()) { it.amendedFromId }
+  }
   Box(
     modifier.fillMaxSize().background(Limen.colors.plate),
     contentAlignment = Alignment.TopCenter,
@@ -223,6 +229,7 @@ private fun SessionsScreen(
     vm.unreadableRecords.forEach { record ->
       Text("${s.unreadableRecord}: ${record.id}", color = Limen.colors.dangerOutline)
       if (record.hasRecovery) SmallKey(s.recover) { vm.recoverRecord(record.id) }
+      if (vm.recoverFailedId == record.id) Text(s.recoverFailed, color = Limen.colors.dangerOutline)
     }
     if (vm.protocols.isEmpty()) {
       Text(s.sessionsEmpty, style = MaterialTheme.typography.bodyLarge, color = Limen.colors.inkDim)
@@ -232,7 +239,7 @@ private fun SessionsScreen(
         verticalArrangement = Arrangement.spacedBy(8.dp),
       ) {
         items(visible, key = { it.id }) { p ->
-          ProtocolCard(vm, s, p, onSeedExit)
+          ProtocolCard(vm, s, p, p.id in amended, onSeedExit)
         }
       }
     }
@@ -246,6 +253,7 @@ private fun ProtocolCard(
   vm: LimenViewModel,
   s: Str,
   p: Protocol,
+  amended: Boolean,
   onSeedExit: (Protocol) -> Unit,
 ) {
   val shape = RoundedCornerShape(14.dp)
@@ -304,11 +312,13 @@ private fun ProtocolCard(
     }
     if (p.seedId.isNotBlank()) Text("${s.atEntry}: ${SwissDate.display(p.lastProtocolDate)}", color = Limen.colors.inkDim)
     if (p.amendedFromId.isNotBlank()) Text("${s.pdfAmends}: LIMEN-${p.amendedFromFingerprint.take(16)}", color = Limen.colors.inkDim)
+    if (p.kind == Kind.Entry && p.isFinalized() && amended) Text(s.amendedEntryNote, color = Limen.colors.inkDim)
     Spacer(Modifier.height(8.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
       if (p.kind == Kind.Entry) {
-        // A draft offers its own finalization; a finalized entry offers the exit seeded from it.
-        if (p.isFinalized()) Chip(s.exitFromThis, dim = false) { onSeedExit(p) }
+        // A draft offers its own finalization; a finalized entry offers the exit seeded from it,
+        // unless an amendment replaced it: the exit would compare against the uncorrected record.
+        if (p.isFinalized()) { if (!amended) Chip(s.exitFromThis, dim = false) { onSeedExit(p) } }
         else Chip(s.finalizeEntryFirst, dim = false) { vm.openProtocol(p.id); vm.goTo(FlowStep.Sign) }
       }
       Spacer(Modifier.weight(1f))

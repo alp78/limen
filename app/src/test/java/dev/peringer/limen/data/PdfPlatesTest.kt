@@ -4,12 +4,14 @@ import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.util.Locale
 import java.util.zip.Deflater
 import javax.imageio.ImageIO
 
@@ -49,7 +51,7 @@ class PdfPlatesTest {
     val offsets = mutableMapOf<Int, Int>()
     objects.forEach { (number, bytes) -> offsets[number] = out.size(); out.write(bytes) }
     val xref = out.size()
-    out.write(("xref\n0 6\n0000000000 65535 f \n" + (1..5).joinToString("") { "%010d 00000 n \n".format(offsets.getValue(it)) } +
+    out.write(("xref\n0 6\n0000000000 65535 f \n" + (1..5).joinToString("") { "%010d 00000 n \n".format(Locale.ROOT, offsets.getValue(it)) } +
       "trailer\n<</Size 6\n/Root 5 0 R\n/Info 1 0 R>>\nstartxref\n$xref\n%%EOF\n").toByteArray(Charsets.ISO_8859_1))
     return out.toByteArray()
   }
@@ -91,6 +93,20 @@ class PdfPlatesTest {
     val unrelated = entries[3].groupValues[1].toInt()
     assertEquals(latin(image(3, ByteArray(48) { it.toByte() }, flate = true)), text.substring(unrelated, text.indexOf("endobj\n", unrelated) + 7))
     assertTrue(text.contains("trailer\n<</Size 6\n/Root 5 0 R\n/Info 1 0 R>>\nstartxref\n"))
+  }
+
+  @Test fun theCrossReferenceTableIsWrittenInAsciiDigitsWhateverTheDeviceLocale() {
+    val saved = Locale.getDefault()
+    try {
+      Locale.setDefault(Locale.forLanguageTag("ar-EG-u-nu-arab"))
+      assumeTrue("this JVM does not localize digits", String.format("%d", 5) != "5")
+      val text = latin(swapped(listOf(jpeg("a.jpg", 41, 29, 1L), jpeg("b.jpg", 300, 200, 2L))))
+      val xrefAt = Regex("""startxref\n(\d+)\n%%EOF\n$""").find(text)!!.groupValues[1].toInt()
+      assertEquals(6, Regex("""\d{10} \d{5} [nf] \n""").findAll(text, xrefAt).count())
+      assertTrue(!text.substring(xrefAt).contains('?'))
+    } finally {
+      Locale.setDefault(saved)
+    }
   }
 
   @Test fun aPlateWithoutItsStandInFailsTheExportRatherThanDropAPhotograph() {

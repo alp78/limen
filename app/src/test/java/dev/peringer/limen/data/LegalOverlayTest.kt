@@ -92,6 +92,22 @@ class LegalOverlayTest {
   }
 
   @Test
+  fun typingInTheAddressOrPlaceInvalidatesNoLegalCheck() {
+    val before = protocol(SwissCanton.VD)
+    assertTrue(before.invalidatedLegalRequirements(before.copy(address = "Rue de Bourg 1")).isEmpty())
+    assertTrue(before.invalidatedLegalRequirements(before.copy(place = "1003 Lausanne")).isEmpty())
+  }
+
+  @Test
+  fun movingTheCantonInvalidatesEveryLegalCheck() {
+    val before = protocol(SwissCanton.VD)
+    assertEquals(
+      LegalRequirement.entries.toSet(),
+      before.invalidatedLegalRequirements(before.copy(objectCanton = SwissCanton.GE)),
+    )
+  }
+
+  @Test
   fun missingAndExceptionalOutcomesStayRecordableButNeedAnExplanation() {
     val overlay = protocol(SwissCanton.AG, kind = Kind.Exit).resolvedLegalOverlay()!!
     assertFalse(overlay.isComplete(LegalOverlayRecord()))

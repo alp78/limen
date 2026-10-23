@@ -40,7 +40,10 @@ import java.time.format.DateTimeFormatter
 /** The handover record signature. Refusal is a recorded outcome, not a dead end. */
 @Composable
 internal fun SignStep(vm: LimenViewModel, s: Str, p: Protocol) {
-  var padTarget by remember { mutableStateOf<Party?>(null) }
+  val context = LocalContext.current
+  // The party's key, not the party: the pad has to reopen over its ink after the activity is
+  // recreated, and a Party cannot be saved.
+  var padTargetKey by rememberSaveable { mutableStateOf<String?>(null) }
 
   // A Box, so the pad truly overlays the step instead of queueing below the scroll.
   androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
@@ -88,7 +91,7 @@ internal fun SignStep(vm: LimenViewModel, s: Str, p: Protocol) {
           }
         }
         p.parties.filter { it.role in vm.requiredRecordRoles(p) }.forEach { party ->
-          SignRow(vm, s, p, party, Plane.Record) { padTarget = party }
+          SignRow(vm, s, p, party, Plane.Record) { padTargetKey = party.participantKey() }
         }
         Text(s.inkEvidenceNotice, style = MaterialTheme.typography.labelSmall, color = Limen.colors.inkDim)
       }
@@ -132,16 +135,21 @@ internal fun SignStep(vm: LimenViewModel, s: Str, p: Protocol) {
     Spacer(Modifier.height(12.dp))
   }
 
-  padTarget?.let { party ->
+  p.parties.firstOrNull { it.participantKey() == padTargetKey }?.let { party ->
     SignPadOverlay(
       title = "${party.signerName()} · ${s.role(party.role)} · ${party.agency}",
       meaning = s.tipRecord().lead,
       s = s,
       onKeep = { bmp ->
-        vm.keepSignature(party.role, Plane.Record, bmp, party.participantKey())
-        padTarget = null
+        // The pad stays open with its ink while evidence is being stored: keepSignature
+        // refuses then, and closing the pad on that refusal threw the drawn signature away.
+        if (vm.evidenceBusy > 0) Toast.makeText(context, s.signatureWaitsForEvidence, Toast.LENGTH_LONG).show()
+        else {
+          vm.keepSignature(party.role, Plane.Record, bmp, party.participantKey())
+          padTargetKey = null
+        }
       },
-      onCancel = { padTarget = null },
+      onCancel = { padTargetKey = null },
     )
   }
   }
@@ -241,8 +249,20 @@ internal fun ExportStep(vm: LimenViewModel, s: Str, p: Protocol) {
       )
       }
     }
+    // The name is the address and the day alone, so what tells the copies apart is said beside it.
     p.exportHistory.asReversed().forEach { copy ->
-      SmallKey(copy.name, Modifier.fillMaxWidth()) { vm.selectExport(copy) }
+      Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        SmallKey(copy.name, Modifier.fillMaxWidth()) { vm.selectExport(copy) }
+        Text(
+          listOfNotNull(
+            copy.language.uppercase(),
+            deliveryMoment(copy.epochMs),
+            s.copyBeforeDeliveryChange.takeIf { copy.deliveryRevision != p.deliveryRevision },
+          ).joinToString(" · "),
+          style = MaterialTheme.typography.labelSmall,
+          color = Limen.colors.inkDim,
+        )
+      }
     }
     vm.exported?.companionUri?.let { uri ->
       SmallKey(s.accessibleCopy, Modifier.fillMaxWidth()) {
@@ -279,8 +299,11 @@ internal fun ExportStep(vm: LimenViewModel, s: Str, p: Protocol) {
       Panel(label = s.exported, info = s.tipShareNow()) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
           Text(file.displayName, style = MaterialTheme.typography.titleMedium, color = Limen.colors.ink)
+          // Download/Limen only for the copy this export just wrote there. A record opened again,
+          // restored on another phone or picked from the history shows the app's own retained copy.
+          val where = if (file.uri.authority == "${context.packageName}.files") s.keptInApp else "${s.exportedTo} Download/Limen"
           Text(
-            "${s.exportedTo} Download/Limen · ${(file.bytes / 1024).coerceAtLeast(1)} ${if (s.lang == Lang.Fr) "ko" else "KB"}",
+            "$where · ${(file.bytes / 1024).coerceAtLeast(1)} ${if (s.lang == Lang.Fr) "ko" else "KB"}",
             style = MaterialTheme.typography.labelSmall,
             color = Limen.colors.inkDim,
           )

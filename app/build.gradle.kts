@@ -62,8 +62,8 @@ android {
         // (This comment used to say 1.1.1 was pinned by the published privacy page stating the
         // version its permission claims were checked against. None of the five published
         // notices names a version, so nothing was holding the name back.)
-        versionCode = 11
-        versionName = "1.2.6"
+        versionCode = 12
+        versionName = "1.2.7"
         // Without this the androidTest sources compile and never run: AGP falls back to
         // the deprecated platform runner, which cannot execute an @RunWith(AndroidJUnit4)
         // class, and the suite reports green having done nothing.

@@ -68,7 +68,8 @@ private fun Sheet.parties(p: Protocol): List<Block> = buildList {
     add(Fields(listOf(s.role(party.role) to party.name), 1))
     if (party.representedBy.isNotBlank()) add(Text("${s.representedBy}: ${party.representedBy}", Style.Small))
     if (party.agency.isNotBlank()) add(Text("${s.actorAgency}: ${party.agency}", Style.Small))
-    if (party.authority.isNotBlank()) add(Text("${s.authority}: ${party.authority}", Style.Small))
+    // The authority field is offered only beside a representative, and clearing the name leaves it behind.
+    if (party.representedBy.isNotBlank() && party.authority.isNotBlank()) add(Text("${s.authority}: ${party.authority}", Style.Small))
     if (party.phone.isNotBlank()) add(Text(party.phone, Style.Small))
     if (party.email.isNotBlank()) add(Text(party.email, Style.Small))
     if (party.address.isNotBlank()) add(Text("${s.newAddress}: ${party.address}", Style.Small))
@@ -86,7 +87,9 @@ private fun Sheet.parties(p: Protocol): List<Block> = buildList {
       by.fullName.takeIf { it.isNotBlank() }?.let(::add)
     }
     by.phone.takeIf { it.isNotBlank() }?.let(::add)
-    listOf(by.addressLine, by.placeLine).filter { it.isNotBlank() }.takeIf { it.isNotEmpty() }?.let { add(it.joinToString(", ")) }
+    // The country is named in the document's language, not the handset's, or one record exports as Allemagne and Deutschland.
+    val place = by.placeLine(java.util.Locale.forLanguageTag(s.lang.name.lowercase()))
+    listOf(by.addressLine, place).filter { it.isNotBlank() }.takeIf { it.isNotEmpty() }?.let { add(it.joinToString(", ")) }
   }
   if (contact.isNotEmpty()) {
     add(Gap(PdfTokens.LABEL_GAP))

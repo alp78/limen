@@ -1,6 +1,6 @@
 # Limen store listing
 
-Draft copy for Android 1.2.0, 13 October 2026. No listing has been submitted. App name is `Limen` (5/30). These revisions are model-authored; Romansh requires native review.
+Draft copy for Android 1.2.0, 13 October 2026, with the address lookup sentence of each language corrected on 23 October 2026 to the automatic lookup that 1.2.1 (6) shipped. No listing has been submitted. App name is `Limen` (5/30). These revisions are model-authored; Romansh requires native review.
 
 ## English (en-US)
 
@@ -25,12 +25,12 @@ Read the complete document before signing. Each participant has an individual re
 
 Dated Swiss guidance includes all 26 cantons, 2026 initial-rent-form duties, local conditions in Neuchâtel and Vaud, and deposit checks in Fribourg, Geneva and Ticino. Official sources are linked. The app records unresolved checks and does not provide legal certification.
 
-No account, advertising or analytics. Records stay in private app storage. Online address suggestions are optional and off by default; enabling them sends typed searches to swisstopo. Exported files are outside private storage. Backups are encrypted with a password, or explicitly chosen as readable archives.
+No account, advertising or analytics. Records stay in private app storage. Whenever the phone is online, text typed into a Swiss address field is sent to swisstopo for suggestions once it reaches three characters; manual entry works offline. Exported files are outside private storage. Backups are encrypted with a password, or explicitly chosen as readable archives.
 
 Interface and document labels are available in French, English, German, Italian and Romansh. Entered statements retain their original language.
 ```
 
-(1618/4000)
+(1676/4000)
 
 ## Français (fr-FR)
 
@@ -55,12 +55,12 @@ Relisez le document complet avant les signatures. Chaque participant dispose de 
 
 Les indications suisses datées couvrent les 26 cantons, les obligations de formule du loyer initial en 2026, les conditions locales de Neuchâtel et Vaud et les contrôles de garantie à Fribourg, Genève et au Tessin. Les sources officielles sont accessibles. Les points non résolus restent visibles, sans certification juridique.
 
-Sans compte, publicité ni analyse d’utilisation. Les constats restent dans le stockage privé. Les suggestions d’adresses sont facultatives et désactivées au départ ; leur activation transmet les recherches saisies à swisstopo. Les fichiers exportés quittent le stockage privé. Une sauvegarde est chiffrée avec un mot de passe ou créée explicitement comme archive lisible.
+Sans compte, publicité ni analyse d’utilisation. Les constats restent dans le stockage privé. Lorsque le téléphone est en ligne, le texte saisi dans un champ d’adresse suisse est transmis à swisstopo pour obtenir des suggestions dès trois caractères ; la saisie manuelle fonctionne hors ligne. Les fichiers exportés quittent le stockage privé. Une sauvegarde est chiffrée avec un mot de passe ou créée explicitement comme archive lisible.
 
 Interface et rubriques en français, anglais, allemand, italien et romanche. Les déclarations saisies gardent leur langue d’origine.
 ```
 
-(1784/4000)
+(1851/4000)
 
 ## Deutsch (de-DE)
 
@@ -85,12 +85,12 @@ Vor der Unterschrift das vollständige Dokument lesen. Jede Person erhält einen
 
 Datierte Schweizer Hinweise umfassen alle 26 Kantone, die Formularpflicht beim Anfangsmietzins 2026, örtliche Bedingungen in Neuenburg und Waadt sowie Depotprüfungen in Freiburg, Genf und Tessin. Amtliche Quellen sind verlinkt. Offene Fragen bleiben sichtbar; die App erteilt keine rechtliche Zertifizierung.
 
-Kein Konto, keine Werbung und keine Nutzungsanalyse. Protokolle bleiben im privaten Speicher. Online-Adressvorschläge sind freiwillig und zunächst ausgeschaltet; nach Aktivierung gehen eingegebene Suchtexte an swisstopo. Exportierte Dateien liegen ausserhalb des privaten Speichers. Sicherungen werden mit Passwort verschlüsselt oder ausdrücklich als lesbares Archiv erstellt.
+Kein Konto, keine Werbung und keine Nutzungsanalyse. Protokolle bleiben im privaten Speicher. Sobald das Telefon online ist, geht der in ein Schweizer Adressfeld eingegebene Text ab drei Zeichen für Adressvorschläge an swisstopo; die manuelle Eingabe funktioniert offline. Exportierte Dateien liegen ausserhalb des privaten Speichers. Sicherungen werden mit Passwort verschlüsselt oder ausdrücklich als lesbares Archiv erstellt.
 
 Oberfläche und Dokumentrubriken auf Französisch, Englisch, Deutsch, Italienisch und Rätoromanisch. Erfasste Aussagen bleiben in ihrer Originalsprache.
 ```
 
-(1760/4000)
+(1812/4000)
 
 ## Italiano (it-IT)
 
@@ -115,12 +115,12 @@ Leggete l’intero documento prima delle firme. Ogni partecipante ha una riserva
 
 Le indicazioni svizzere datate comprendono tutti i 26 cantoni, gli obblighi del modulo di pigione iniziale nel 2026, le condizioni locali di Neuchâtel e Vaud e i controlli delle garanzie a Friburgo, Ginevra e in Ticino. Le fonti ufficiali sono collegate. I punti irrisolti restano visibili, senza certificazione giuridica.
 
-Nessun account, pubblicità o analisi dell’utilizzo. I verbali restano nello spazio privato. I suggerimenti di indirizzi sono facoltativi e inizialmente disattivati; attivandoli, le ricerche digitate vengono inviate a swisstopo. I file esportati escono dallo spazio privato. Il backup è cifrato con password o creato esplicitamente come archivio leggibile.
+Nessun account, pubblicità o analisi dell’utilizzo. I verbali restano nello spazio privato. Quando il telefono è online, il testo digitato in un campo di indirizzo svizzero è inviato a swisstopo per ottenere suggerimenti dal terzo carattere; l’inserimento manuale funziona offline. I file esportati escono dallo spazio privato. Il backup è cifrato con password o creato esplicitamente come archivio leggibile.
 
 Interfaccia e rubriche in francese, inglese, tedesco, italiano e romancio. Le dichiarazioni inserite conservano la lingua originale.
 ```
 
-(1746/4000)
+(1800/4000)
 
 ## Rumantsch (rm)
 
@@ -145,9 +145,9 @@ Legiai l’entir document avant da suttascriver. Mintga participant ha in’atgn
 
 Las indicaziuns svizras datadas cumpiglian ils 26 chantuns, las obligaziuns per il formular da la fit iniziala 2026, las cundiziuns localas a Neuchâtel ed en il Vad e controllas da garanzia a Friburg, Genevra ed en il Tessin. Las funtaunas uffizialas èn colliadas. Dumondas avertas restan visiblas; l’app na dat nagina certificaziun giuridica.
 
-Nagin conto, nagina reclama e naginas analisas d’utilisaziun. Ils protocols restan en la memoria privata. Las propostas d’adressas online èn facultativas e deactivadas al cumenzament; suenter l’activaziun vegnan las tschertgas endatadas tramessas a swisstopo. Datotecas exportadas èn ordaifer la memoria privata. Segirezzas èn criptadas cun pled-clav u vegnan creadas explicitamain sco archivs legibels.
+Nagin conto, nagina reclama e naginas analisas d’utilisaziun. Ils protocols restan en la memoria privata. Uschespert che il telefon è online, vegn il text endatà en in champ d’adressa svizra tramess a swisstopo per propostas d’adressas a partir da trais segns; l’endataziun manuala funcziuna offline. Datotecas exportadas èn ordaifer la memoria privata. Segirezzas èn criptadas cun pled-clav u vegnan creadas explicitamain sco archivs legibels.
 
 Interfatscha e rubricas en franzos, englais, tudestg, talian e rumantsch. Las decleraziuns endatadas restan en lur lingua originala.
 ```
 
-(1745/4000)
+(1786/4000)

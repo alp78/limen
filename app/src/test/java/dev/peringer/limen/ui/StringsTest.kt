@@ -1,6 +1,7 @@
 package dev.peringer.limen.ui
 
 import dev.peringer.limen.data.Appliance
+import dev.peringer.limen.data.ArchiveRefused
 import dev.peringer.limen.data.CautionProvider
 import dev.peringer.limen.data.DepositKind
 import dev.peringer.limen.data.DeliveryMethod
@@ -19,6 +20,7 @@ import dev.peringer.limen.data.Role
 import dev.peringer.limen.data.RoomKind
 import dev.peringer.limen.data.SwissCanton
 import dev.peringer.limen.data.UnilateralReason
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -51,6 +53,67 @@ class StringsTest {
         assertTrue("$lang issue $it", s.finalizationIssue(it).isNotBlank())
       }
       ExportIssue.entries.forEach { assertTrue("$lang export $it", s.exportIssue(it).isNotBlank()) }
+    }
+  }
+
+  @Test
+  fun everyRemovalOfferedBackNamesWhatWasRemovedInEveryLanguage() {
+    UndoKind.entries.forEach { kind ->
+      val sentences = Lang.entries.map { Str(it).removedForUndo(kind) }
+      // The noEmDash task bans the literal character in sources, so the test names it by code point.
+      // The noEmDash task bans the literal character in sources, so the test names it by code point.
+      assertTrue("undo $kind", sentences.all { it.isNotBlank() && '\u2014' !in it && 'ß' !in it })
+      // A sentence left in English under another language would collapse into one here.
+      assertEquals("undo $kind", Lang.entries.size, sentences.distinct().size)
+    }
+    // Two kinds sharing a sentence would tell the person the wrong thing was removed.
+    Lang.entries.forEach { lang ->
+      val s = Str(lang)
+      assertEquals("$lang undo", UndoKind.entries.size, UndoKind.entries.map { s.removedForUndo(it) }.distinct().size)
+    }
+  }
+
+  @Test
+  fun everyBackupRecoveryAndPreviewMessageIsWrittenOutInEveryLanguage() {
+    val damaged = ArchiveRefused(ArchiveRefused.Reason.DamagedEvidence, "Rue du Simplon 12")
+    val unreadable = ArchiveRefused(ArchiveRefused.Reason.UnreadableRecord)
+    fun messages(s: Str) = listOf(s.recoverFailed, s.previewFailed, s.archiveFailure(damaged, true), s.archiveFailure(damaged, false), s.archiveFailure(unreadable, true))
+    val perLanguage = Lang.entries.map { messages(Str(it)) }
+    messages(Str(Lang.En)).indices.forEach { i ->
+      val sentences = perLanguage.map { it[i] }
+      assertTrue("message $i", sentences.all { it.isNotBlank() && '\u2014' !in it && 'ß' !in it })
+      assertEquals("message $i", Lang.entries.size, sentences.distinct().size)
+    }
+    // The way to keep the other records safe is named for a full backup and left out of a single record's.
+    Lang.entries.forEach { lang ->
+      val s = Str(lang)
+      val whole = s.archiveFailure(damaged, true)
+      val single = s.archiveFailure(damaged, false)
+      assertTrue("$lang remedy", whole.startsWith(single) && whole.length > single.length)
+    }
+  }
+
+  @Test
+  fun everyIntakeMessageIsWrittenOutInEveryLanguage() {
+    fun messages(s: Str) = listOf(s.photoNotAdded, s.documentNotAdded, s.evidenceAfterFinalized,
+      s.signatureNotSaved, s.signatureWaitsForEvidence, s.documentOpenFailed)
+    val perLanguage = Lang.entries.map { messages(Str(it)) }
+    messages(Str(Lang.En)).indices.forEach { i ->
+      val sentences = perLanguage.map { it[i] }
+      assertTrue("intake message $i", sentences.all { it.isNotBlank() && '\u2014' !in it && 'ß' !in it })
+      // A sentence left in English under another language would collapse into one here.
+      assertEquals("intake message $i", Lang.entries.size, sentences.distinct().size)
+    }
+  }
+
+  @Test
+  fun everySessionListAndExportLineIsWrittenOutInEveryLanguage() {
+    fun lines(s: Str) = listOf(s.amendedEntryNote, s.keptInApp, s.copyBeforeDeliveryChange)
+    val perLanguage = Lang.entries.map { lines(Str(it)) }
+    lines(Str(Lang.En)).indices.forEach { i ->
+      val sentences = perLanguage.map { it[i] }
+      assertTrue("session line $i", sentences.all { it.isNotBlank() && '\u2014' !in it && 'ß' !in it })
+      assertEquals("session line $i", Lang.entries.size, sentences.distinct().size)
     }
   }
 

@@ -123,6 +123,13 @@ class Str(val lang: Lang) {
       "Numero di chiavi azzerato",
       "Dumbers da clavs stizzads",
     )
+    UndoKind.Reading -> removedReading
+    UndoKind.AccessDevice -> removedAccessDevice
+    UndoKind.Document -> removedDocument
+    UndoKind.FollowUp -> removedFollowUp
+    UndoKind.Estimate -> removedEstimate
+    UndoKind.Party -> removedParty
+    UndoKind.KeyKind -> removedKeyKind
   }
   val add = pick("ADD", "AJOUTER", "HINZUFÜGEN", "AGGIUNGI", "AGIUNTAR")
   val decrease = pick("Decrease", "Diminuer", "Verringern", "Diminuire", "Reducir")
@@ -600,18 +607,18 @@ class Str(val lang: Lang) {
   )
   val areYouSure = pick("ARE YOU SURE?", "ÊTES-VOUS SÛR·E ?", "SIND SIE SICHER?", "SIETE SICURI?", "ESSAS VUS SEGIR?")
   val clearRoomBody = pick(
-    "This deletes every defect and photo recorded in this room. The room itself stays.",
-    "Cette action supprime tous les défauts et photos consignés dans cette pièce. La pièce reste.",
-    "Dadurch werden alle in diesem Raum erfassten Mängel und Fotos gelöscht. Der Raum bleibt.",
-    "Questa azione elimina tutti i difetti e le foto registrati in questo locale. Il locale resta.",
-    "Quai stizza tut las mancanzas e las fotos registradas en quest local. Il local resta.",
+    "This removes every defect recorded in this room from the record, with the photos attached to them. The room, its overview photographs and its notes stay. Removed photos stay in private app storage for recovery until the whole record is deleted.",
+    "Cette action retire du constat tous les défauts consignés dans cette pièce, avec les photos qui y sont jointes. La pièce, ses photos d’ensemble et ses notes restent. Les photos retirées restent dans le stockage privé de l’app, pour récupération, jusqu’à la suppression de tout le constat.",
+    "Dadurch werden alle in diesem Raum erfassten Mängel mit den zugehörigen Fotos aus dem Protokoll entfernt. Der Raum, seine Übersichtsfotos und seine Notizen bleiben. Die entfernten Fotos bleiben zur Wiederherstellung im privaten App-Speicher, bis das ganze Protokoll gelöscht wird.",
+    "Questa azione rimuove dal verbale tutti i difetti registrati in questo locale, con le foto allegate. Il locale, le sue fotografie d’insieme e le sue note restano. Le foto rimosse restano nello spazio privato dell’app per il recupero, finché l’intero verbale non viene eliminato.",
+    "Quai allontanescha dal protocol tut las mancanzas registradas en quest local, cun las fotos agiuntadas. Il local, sias fotografias generalas e sias notizias restan. Las fotos allontanadas restan en la memoria privata da l’app per la recuperaziun, fin che l’entir protocol vegn stizzà.",
   )
   val removeRoomBody = pick(
-    "This removes the room and everything recorded in it.",
-    "Cette action retire la pièce et tout ce qui y est consigné.",
-    "Dadurch werden der Raum und alles darin Erfasste entfernt.",
-    "Questa azione rimuove il locale e tutto ciò che vi è registrato.",
-    "Quai allontanescha il local e tut quai ch'è registrà en el.",
+    "This removes the room, its defects, its overview photographs and its notes from the record. Objects placed in it stay in the Objects list, without a room. Removed photos stay in private app storage for recovery until the whole record is deleted.",
+    "Cette action retire du constat la pièce, ses défauts, ses photos d’ensemble et ses notes. Les objets qui y sont placés restent dans la liste des objets, sans pièce. Les photos retirées restent dans le stockage privé de l’app, pour récupération, jusqu’à la suppression de tout le constat.",
+    "Dadurch werden der Raum, seine Mängel, seine Übersichtsfotos und seine Notizen aus dem Protokoll entfernt. Darin platzierte Gegenstände bleiben in der Liste der Gegenstände, ohne Raum. Die entfernten Fotos bleiben zur Wiederherstellung im privaten App-Speicher, bis das ganze Protokoll gelöscht wird.",
+    "Questa azione rimuove dal verbale il locale, i suoi difetti, le sue fotografie d’insieme e le sue note. Gli oggetti collocati nel locale restano nell’elenco degli oggetti, senza locale. Le foto rimosse restano nello spazio privato dell’app per il recupero, finché l’intero verbale non viene eliminato.",
+    "Quai allontanescha dal protocol il local, sias mancanzas, sias fotografias generalas e sias notizias. Ils objects mess en el restan en la glista dals objects, senza local. Las fotos allontanadas restan en la memoria privata da l’app per la recuperaziun, fin che l’entir protocol vegn stizzà.",
   )
   val yes = pick("YES", "OUI", "JA", "SÌ", "GEA")
   val no = pick("NO", "NON", "NEIN", "NO", "NA")
@@ -836,7 +843,7 @@ class Str(val lang: Lang) {
     FinalizationIssue.Place -> pick("Add the postcode and place", "Indiquez le NPA et la localité", "PLZ und Ort ergänzen", "Indicate NAP e località", "Agiuntai NPA e lieu")
     FinalizationIssue.Canton -> pick("Select the object's canton", "Choisissez le canton de l'objet", "Kanton des Mietobjekts wählen", "Scegliete il cantone dell'oggetto", "Tscherner il chantun da l'object")
     FinalizationIssue.HandoverDate -> pick("Add the handover date", "Indiquez la date de remise", "Übergabedatum ergänzen", "Indicate la data di consegna", "Agiuntai la data da surdada")
-    FinalizationIssue.HandoverTime -> pick("Add the handover time", "Indiquez l'heure de remise", "Übergabezeit ergänzen", "Indicate l'ora di consegna", "Agiuntai l'ura da surdada")
+    FinalizationIssue.HandoverTime -> pick("Add the handover time, or correct a time that is not valid", "Indiquez l'heure de remise ou corrigez une heure non valide", "Übergabezeit ergänzen oder ungültige Uhrzeit korrigieren", "Indicate l'ora di consegna o correggete un'ora non valida", "Agiuntai l'ura da surdada u midai ina ura nunvalida")
     FinalizationIssue.LegalOverlay -> pick(
       "Record every applicable canton-overlay check and explain exceptions",
       "Consignez chaque contrôle cantonal applicable et expliquez les exceptions",
@@ -969,7 +976,7 @@ class Str(val lang: Lang) {
     "Selon l'art. 257e CO, la banque peut libérer la garantie avec l'accord des deux parties, un commandement de payer non frappé d'opposition ou un jugement exécutoire. Si le bailleur n'engage aucune procédure judiciaire, poursuite ou faillite dans l'année suivant la fin du bail, le locataire peut demander la restitution à la banque.",
     "Nach Art. 257e OR darf die Bank das Depot mit Zustimmung beider Parteien, aufgrund eines rechtskräftigen Zahlungsbefehls oder eines rechtskräftigen Urteils freigeben. Leitet die Vermieterschaft innert eines Jahres nach Mietende kein Gerichts-, Betreibungs- oder Konkursverfahren ein, kann die Mieterschaft die Rückzahlung verlangen.",
     "Secondo l'art. 257e CO, la banca può liberare il deposito con l'accordo di entrambe le parti, un precetto esecutivo non opposto o una sentenza esecutiva. Se entro un anno dalla fine della locazione il locatore non avvia un'azione giudiziaria, esecutiva o fallimentare, il conduttore può chiedere la restituzione alla banca.",
-    "Tenor l'art. 257e DO po la banca liberar il deposit cun il consentiment da tuttas duas partidas, in cumond da pajament senza opposiziun u ina sentenzia executabla. Senza procedura giudiziala, d'execuziun u da concurs entaifer in onn po il locatari pretender la restituziun.",
+    "Tenor l'art. 257e DO po la banca liberar il deposit cun il consentiment da tuttas duas partidas, in cumond da pajament senza opposiziun u ina sentenzia executabla. Sche il locatur n'avra nagina procedura giudiziala, d'execuziun u da concurs entaifer in onn suenter la fin da la locaziun, po il locatari pretender la restituziun da la banca.",
   )
   val releaseInsurance = pick(
     "A guarantee insurance is not a blocked bank account. Follow the insurer's current cancellation and release procedure; provider terms govern, and premiums already paid are normally not refunded.",

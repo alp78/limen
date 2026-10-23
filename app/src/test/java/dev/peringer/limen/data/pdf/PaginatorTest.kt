@@ -1,6 +1,8 @@
 package dev.peringer.limen.data.pdf
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PaginatorTest {
@@ -61,6 +63,24 @@ class PaginatorTest {
     )
   }
 
+  @Test fun aKeptGroupTallerThanAPageFillsEachPageInsteadOfLeavingOneRowOnEach() {
+    val list = List(6) { Slot(30f, keepWithNext = true) } + Slot(10f)
+    val segments = Paginator.segments(list, available = 100f, full = 100f)
+    assertEquals(
+      listOf(Segment(0, 3, newPageBefore = false, continued = false), Segment(3, 7, newPageBefore = true, continued = true)),
+      segments,
+    )
+  }
+
+  @Test fun aKeptGroupTallerThanAFreshPageOpensOnAFreshPageAndThenFillsThem() {
+    val list = List(6) { Slot(30f, keepWithNext = true) } + Slot(10f)
+    val segments = Paginator.segments(list, available = 50f, full = 100f)
+    assertEquals(
+      listOf(Segment(0, 3, newPageBefore = true, continued = false), Segment(3, 7, newPageBefore = true, continued = true)),
+      segments,
+    )
+  }
+
   @Test fun aPanelTallerThanTwoPagesGivesThreeSegmentsTheLaterOnesContinued() {
     val segments = Paginator.segments(rows(200f, 200f, 200f, 200f, 200f), available = 500f, full = 500f)
     assertEquals(
@@ -84,6 +104,18 @@ class PaginatorTest {
       ),
       segments,
     )
+  }
+
+  @Test fun anOpeningIsTheSmallestSpaceWhereThePanelStartsOnTheCurrentPage() {
+    val list = listOf(Slot(38f, keepWithNext = true), Slot(67f, keepWithNext = true), Slot(44f, keepWithNext = true), Slot(13f), Slot(33f))
+    val need = Paginator.opening(list, full = 1000f)
+    assertEquals(162f, need, 0f)
+    assertFalse(Paginator.segments(list, need, 1000f).first().newPageBefore)
+    assertTrue(Paginator.segments(list, need - 1f, 1000f).first().newPageBefore)
+  }
+
+  @Test fun anOpeningForARowTallerThanAPageIsAtLeastAPage() {
+    assertTrue(Paginator.opening(listOf(Slot(900f)), full = 500f) >= 500f)
   }
 
   @Test fun noRowsStillGivesOneSegmentSoAnEmptyPanelDraws() {

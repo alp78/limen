@@ -12,6 +12,7 @@ import androidx.lifecycle.viewModelScope
 import dev.peringer.limen.data.Contract
 import dev.peringer.limen.data.ControllerIdentity
 import dev.peringer.limen.data.ArchiveImportResult
+import dev.peringer.limen.data.ArchiveRefused
 import dev.peringer.limen.data.Defect
 import dev.peringer.limen.data.isUntouched
 import dev.peringer.limen.data.Deposit
@@ -123,7 +124,7 @@ enum class FinalizationIssue {
 /** Why an export is withheld, rather than silently producing a misleading document. */
 enum class ExportIssue { NotFinalized, IntegrityMismatch, Failed }
 
-enum class UndoKind { Defect, Photo, Object, KeyCounts }
+enum class UndoKind { Defect, Photo, Object, KeyCounts, Reading, AccessDevice, Document, FollowUp, Estimate, Party, KeyKind }
 
 data class UndoNotice(val token: Long, val kind: UndoKind)
 
@@ -237,6 +238,12 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     private set
   var legalChecksReset by mutableStateOf(false)
     private set
+  /**
+   * The whole sentence the operator reads, not a detail to hang under the Evidence issue. It
+   * was printed after "Restore every referenced photo and signature file", which is right for
+   * a list of unreadable files and read as nonsense after a failed attach or a signature that
+   * could not be written.
+   */
   var evidenceError by mutableStateOf("")
     private set
   var evidenceBusy by mutableIntStateOf(0)
@@ -272,10 +279,17 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     }
   }
 
+  /** The unreadable record whose last recovery failed, so the list says so instead of looking like a dead key. */
+  var recoverFailedId by mutableStateOf<String?>(null)
+    private set
+
   fun recoverRecord(id: String) {
+    recoverFailedId = null
     viewModelScope.launch {
       val result = withContext(Dispatchers.IO) { runCatching { store.recover(id) } }
-      saveState = if (result.getOrDefault(false)) "saved" else "failed"
+      val recovered = result.getOrDefault(false)
+      saveState = if (recovered) "saved" else "failed"
+      if (!recovered) recoverFailedId = id
       refreshLibrary()
     }
   }
@@ -295,6 +309,17 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
   var archiveFailed by mutableStateOf(false)
     private set
 
+  /** Why the last backup was refused, when it was refused and did not merely fail; null otherwise. */
+  var archiveRefused by mutableStateOf<ArchiveRefused?>(null)
+    private set
+
+  /**
+   * The record the last backup was made for, null for the whole library or a restore. This state
+   * is shared by every screen, so a record's own screen shows the outcome only when it is its own.
+   */
+  var archiveRecordId by mutableStateOf<String?>(null)
+    private set
+
   fun exportArchive(password: String, recordId: String? = null) {
     if (archiveBusy) return
     flush()
@@ -304,6 +329,8 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     archiveExported = null
     archiveImported = null
     archiveFailed = false
+    archiveRefused = null
+    archiveRecordId = recordId
     viewModelScope.launch {
       val result = withContext(Dispatchers.IO) {
         runCatching {
@@ -320,7 +347,10 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
         }
       }
       archiveBusy = false
-      result.onSuccess { archiveExported = it }.onFailure { archiveFailed = true }
+      result.onSuccess { archiveExported = it }.onFailure {
+        archiveFailed = true
+        archiveRefused = it as? ArchiveRefused
+      }
     }
   }
 
@@ -332,6 +362,8 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     archiveExported = null
     archiveImported = null
     archiveFailed = false
+    archiveRefused = null
+    archiveRecordId = null
     viewModelScope.launch {
       val result = withContext(Dispatchers.IO) {
         runCatching {
@@ -371,8 +403,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
   fun navigateIssue(issue: FinalizationIssue) {
     val p = working ?: return
     if (issue == FinalizationIssue.Dossier) {
-      val defect = p.defects.firstOrNull { it.fixDeadline.isNotBlank() && SwissDate.parse(it.fixDeadline) == null ||
-        p.details.estimates[it.id]?.let { e -> nonNegativeNumber(e.replacementChf) == null || nonNegativeNumber(e.ageYears) == null || (nonNegativeNumber(e.lifeYears) ?: 0.0) <= 0 } == true }
+      val defect = p.defects.firstOrNull { invalidDate(it.fixDeadline) || p.details.estimates[it.id]?.let(::estimateFaulty) == true }
       if (defect != null) { editDefect(defect.id); return }
     }
     when (issue) {
@@ -387,8 +418,8 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
           FinalizationIssue.Parties -> "parties"
           FinalizationIssue.Keys -> if (DossierCard.Keys in p.dossierCards()) "card-Keys" else "transfer"
           FinalizationIssue.Dossier -> incompleteDossierTarget(p)
-          FinalizationIssue.HandoverTime -> if (runCatching { java.time.LocalTime.parse(p.handoverTime) }.isSuccess) {
-            if (p.details.actualTransferTime.isNotBlank() && runCatching { java.time.LocalTime.parse(p.details.actualTransferTime) }.isFailure) "transfer" else "card-Meters"
+          FinalizationIssue.HandoverTime -> if (p.handoverTime.isNotBlank() && !invalidTime(p.handoverTime)) {
+            if (invalidTime(p.details.actualTransferTime)) "transfer" else "card-Meters"
           } else "object"
           else -> "object"
         }
@@ -454,6 +485,17 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     pdfLang = null
     defectShell = null
     flowTrail = emptyList()
+    // Status lines that describe an action on the record being left. They were printed on the
+    // next record's screens: a failed photograph, a failed amendment, or a backup file name
+    // that read as the new record having been backed up.
+    evidenceError = ""
+    amendmentError = false
+    if (!archiveBusy && archiveRecordId != protocol?.id) {
+      archiveExported = null
+      archiveFailed = false
+      archiveRefused = null
+      archiveRecordId = null
+    }
     working = protocol
     if (protocol != null) saveState = "saved"
     legalChecksReset = false
@@ -516,6 +558,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     undoNotice = UndoNotice(token, kind)
     finalizationIssues = emptyList()
     finalizationError = false
+    evidenceError = ""
     scheduleSave()
     undoJob = viewModelScope.launch {
       val accessibility = getApplication<Application>().getSystemService(android.view.accessibility.AccessibilityManager::class.java)
@@ -536,6 +579,9 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
   }
 
   fun undo(token: Long) {
+    // Not while the record freezes: finalizing works from the record as it stood, so restoring an
+    // earlier one now would show an item the finalized record does not hold.
+    if (contentLocked()) return
     val pending = pendingUndo?.takeIf { it.token == token } ?: return
     val current = working
     if (current?.id == pending.before.id && current.contentRevision == pending.afterRevision) {
@@ -800,6 +846,11 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
       parties = entry.partiesForExit(sessionRole, resolvedIdentity),
       rooms = entry.rooms.map(::freshRoom),
       roomSetupComplete = true,
+      // The kinds stay as the rows to count; the numbers and the copies declaration are what
+      // was handed over at entry, and an exit that opened with them let a forgotten stepper
+      // put an uncounted figure into the signed record.
+      keys = entry.keys.map { it.copy(count = 0) },
+      selfMadeKeys = false,
       objects = entry.objects.map(::freshObject),
       defects = emptyList(),
       remarks = "",
@@ -814,6 +865,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
       signatures = emptyList(),
       seedId = entry.id,
       amendedFromId = "",
+      amendedFromFingerprint = "",
       contentRevision = 0,
       finalizedEpochMs = 0,
       evidenceFingerprint = "",
@@ -824,6 +876,9 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
       details = entry.details.copy(legalSnapshot = null, roomPhotos = emptyMap(), readings = emptyList(),
         reservations = emptyMap(), scopeNotes = emptyMap(), attachments = emptyList(), followUps = emptyList(),
         estimates = emptyMap(), actualTransferDate = "", actualTransferTime = "", reviewRevision = -1,
+        // The clause is the entry's: only an entry edits it, and it printed under the exit's
+        // key transfer with nothing on screen to show or remove it.
+        notificationClause = "", notificationDays = "",
         participantNoticeShown = false, accessDevices = entry.details.accessDevices.map { it.copy(expected = it.transferred, transferred = 0, note = "") }),
       exportHistory = emptyList(),
       deliveryRevision = 0,
@@ -921,6 +976,8 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     finalizationError = false
     if (issues.isNotEmpty()) return
 
+    // The bar offers a removal that this record, about to freeze, can no longer take back.
+    commitUndo()
     // Locks the content first: checking means hashing and decoding every photograph, which
     // takes seconds on a large record and froze the screen when it ran on the main thread.
     finalizing = true
@@ -929,7 +986,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
         dev.peringer.limen.photo.EvidenceValidation.unreadable(p, store.photoDir(p.id), store.signatureDir(p.id))
       }
       if (unreadable.isNotEmpty()) {
-        evidenceError = unreadable.joinToString()
+        evidenceError = "${Str(lang).finalizationIssue(FinalizationIssue.Evidence)}: ${unreadable.joinToString()}"
         finalizationIssues = listOf(FinalizationIssue.Evidence)
         finalizing = false
         return@launch
@@ -969,7 +1026,10 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     }
   }
 
-  /** Starts a new draft and copies the original photos; the finalized record stays intact. */
+  /**
+   * Starts a new draft and copies the photographs and documents it refers to; the finalized
+   * record stays intact. A failed copy leaves nothing behind.
+   */
   fun createAmendment() {
     val p = working ?: return
     if (!p.isFinalized() || amendmentInProgress) return
@@ -999,15 +1059,12 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
             saveSequence = nextSequence(),
             details = p.details.copy(legalSnapshot = null, reviewRevision = -1),
           )
-          store.photoDir(p.id).listFiles()?.forEach { source ->
-            source.copyTo(File(store.photoDir(draft.id), source.name), overwrite = false)
-          }
-          store.save(draft)
+          store.saveAmendment(p, draft)
           draft
         }
       }
       amendmentInProgress = false
-      result.onFailure { amendmentError = true }
+      result.onFailure { if (working?.id == p.id) amendmentError = true }
       result.onSuccess { draft ->
         if (working?.id == p.id) {
           setActiveProtocol(draft)
@@ -1210,15 +1267,10 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
           keyTransferNote = "",
           details = p.details.copy(accessDevices = emptyList()),
         )
-        // oneSided goes with it: it is edited on this card, it derives this card back at
-        // Protocol.dossierCards, and a record with no notes cannot state why it is one-sided.
-        DossierCard.Notes -> p.copy(
-          remarks = "",
-          chargesStatementBy = "",
-          oneSided = false,
-          unilateralReason = null,
-          unilateralNote = "",
-        )
+        // The one-sided status stays: it is edited on the Sign step and printed with the
+        // signatures, so it has nothing to do with this card, and clearing it turned a record
+        // the other party never attended into a bilateral one.
+        DossierCard.Notes -> p.copy(remarks = "", chargesStatementBy = "")
       }
     }
   }
@@ -1250,8 +1302,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
         itemLabel = itemLabel.trim(),
       ))
     }
-    defectShell = base?.let { id to it }
-    editingDefectId = id
+    openWhenAdded(id, base)
   }
 
   /** A finding about a supplied object rather than a surface of the flat. */
@@ -1260,8 +1311,18 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     val id = "d${System.currentTimeMillis()}"
     val base = working
     edit { p -> p.copy(defects = p.defects + Defect(id = id, objectId = objectId)) }
-    defectShell = base?.let { id to it }
-    editingDefectId = id
+    openWhenAdded(id, base)
+  }
+
+  /**
+   * Opens the editor on the shell just added. On a record with current signatures the add waits
+   * behind the confirmation, so the editor waits with it: opening at once left an empty dialog
+   * over a finding that answering No never created.
+   */
+  private fun openWhenAdded(id: String, base: Protocol?) {
+    val open = { defectShell = base?.let { id to it }; editingDefectId = id }
+    if (working?.defects?.any { it.id == id } == true) open()
+    else pendingSignedEdit = pendingSignedEdit?.let { queued -> { queued(); open() } }
   }
 
   /** Opens a finding. On a finalized record the editor is the reader; nothing it shows moves. */
@@ -1281,16 +1342,25 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
    * When nothing else moved in between, the record is put back exactly as it stood before the
    * shell was written: [Protocol.isCurrent] reads contentRevision, so a pair of edits that
    * cancel used to turn both parties' signatures stale on a record whose content never moved.
+   *
+   * A shell whose first photograph is still being stored stays: it only looks empty because the
+   * photograph is not recorded until the copy ends, and discarding it then left that file
+   * unreferenced with nothing said.
    */
   fun closeDefect() {
     val id = editingDefectId ?: return
     editingDefectId = null
+    discardEmptyShell(id)
+  }
+
+  /** What [closeDefect] does with the finding it closes; the shell stays known while its photograph is on its way. */
+  private fun discardEmptyShell(id: String) {
     val base = defectShell?.takeIf { it.first == id }?.second
-    defectShell = null
+    if (defectShell?.first == id && id !in photosInFlight) defectShell = null
     val p = working ?: return
     if (p.isFinalized() || finalizing) return
     val d = p.defects.firstOrNull { it.id == id } ?: return
-    if (!d.isUntouched()) return
+    if (!d.isUntouched() || id in photosInFlight) return
     val without = p.copy(defects = p.defects.filterNot { it.id == id })
     val unchanged = base != null &&
       without.copy(
@@ -1360,6 +1430,61 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
   }
 
   /**
+   * The gallery half of an intake: the picked Uri is copied into [slot] here, not in the
+   * picker's composable, whose coroutine ends the moment the editor closes and took the picked
+   * photograph with it. It counts as busy like the stages after it, so finalizing cannot slip
+   * in while a large or cloud-backed pick is still arriving. [owner] is the defect the pick is
+   * for, held in [photosInFlight] like the attach after it. [onCopied] runs on the main thread
+   * straight after both drop, so the attach that follows raises them again unseen.
+   */
+  fun copyPicked(uri: Uri, slot: File, owner: String, onCopied: (File) -> Unit) {
+    val recordId = working?.id ?: return
+    evidenceBusy++
+    photosInFlight.add(owner)
+    viewModelScope.launch {
+      val copied = withContext(Dispatchers.IO) { runCatching {
+        getApplication<Application>().contentResolver.openInputStream(uri)?.use { input ->
+          slot.outputStream().use { output ->
+            // No size limit: a photograph is kept as it was taken, however large.
+            input.copyTo(output, 32 * 1024)
+          }
+        } != null
+      }.getOrDefault(false) }
+      evidenceBusy--
+      photosInFlight.remove(owner)
+      // Handed on only while the record is still the one the pick was made on: the attach that
+      // follows reads the open record when it runs, and by now the person may have left it for
+      // another, which would take the file or drop it without a word.
+      if (copied && slot.length() > 0L && working?.id == recordId) onCopied(slot) else {
+        slot.delete()
+        photoFailed(recordId, owner)
+      }
+    }
+  }
+
+  /**
+   * Defects whose photograph is still arriving, from the picker's copy to the hash, once per
+   * photograph. [closeDefect] reads it so a finding opened for its first photograph is not
+   * discarded as empty while that photograph is on its way. Touched on the main thread only.
+   */
+  private val photosInFlight = mutableListOf<String>()
+
+  /**
+   * A photograph that did not arrive. Said on the record it was for; once the person has moved
+   * on it is a toast, because [evidenceError] belongs to whichever record is open and would
+   * print on that one. A finding opened for the photograph and closed since is left empty by the
+   * failure, so it goes where [closeDefect] would have sent it.
+   */
+  private fun photoFailed(recordId: String, defectId: String = "") {
+    if (working?.id != recordId) {
+      android.widget.Toast.makeText(getApplication<Application>(), Str(lang).photoNotAdded, android.widget.Toast.LENGTH_LONG).show()
+      return
+    }
+    evidenceError = Str(lang).photoNotAdded
+    if (defectId.isNotEmpty() && editingDefectId != defectId) discardEmptyShell(defectId)
+  }
+
+  /**
    * The copy and the SHA-256 run off this thread: both walk the whole JPEG, and a gallery
    * pick of a twelve-megapixel photograph froze the frame for as long as three passes take,
    * right after the picker closed and the hand is waiting to see the thumbnail.
@@ -1369,12 +1494,14 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     val recordId = working?.id ?: return
     val had = working?.defects?.firstOrNull { it.id == defectId }?.photos?.size ?: 0
     evidenceBusy++
+    photosInFlight.add(defectId)
     viewModelScope.launch {
       val evidence = withContext(Dispatchers.IO) {
         copyPhoto(recordId, defectId, had, source, photoSource)
       }
       evidenceBusy--
-      if (evidence == null) { evidenceError = source.name; return@launch }
+      photosInFlight.remove(defectId)
+      if (evidence == null) { photoFailed(recordId, defectId); return@launch }
       completeEvidence(recordId) { p -> p.copy(defects = p.defects.map {
         if (it.id == defectId) it.copy(photos = it.photos + evidence.file, photoEvidence = it.photoEvidence + evidence) else it
       })
@@ -1404,7 +1531,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
         copyPhoto(recordId, objectId, had, source, photoSource)
       }
       evidenceBusy--
-      if (evidence == null) { evidenceError = source.name; return@launch }
+      if (evidence == null) { photoFailed(recordId); return@launch }
       completeEvidence(recordId) { p -> p.copy(objects = p.objects.map {
         if (it.id == objectId) it.copy(photos = it.photos + evidence.file, photoEvidence = it.photoEvidence + evidence) else it
       })
@@ -1424,6 +1551,75 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     }
   }
 
+  fun removeOverviewPhoto(roomId: String, name: String) {
+    if (contentLocked()) return
+    reversibleEdit(UndoKind.Photo, listOf(name)) { p ->
+      p.copy(details = p.details.copy(roomPhotos = p.details.roomPhotos +
+        (roomId to p.details.roomPhotos[roomId].orEmpty().filterNot { photo -> photo.file == name })))
+    }
+  }
+
+  fun removeReadingPhoto(readingId: String, name: String) {
+    if (contentLocked()) return
+    reversibleEdit(UndoKind.Photo, listOf(name)) { p ->
+      p.copy(details = p.details.copy(readings = p.details.readings.map { reading ->
+        if (reading.id != readingId) reading else reading.copy(photos = reading.photos.filterNot { photo -> photo.file == name })
+      }))
+    }
+  }
+
+  // ── Entries of the dossier ───────────────────────────────────────────────────────────
+  // Each is offered back through the undo bar, as a finding is: it holds text typed by hand
+  // and its DELETE key sits among the photograph keys. The files stay in the record's folder,
+  // so undoing needs nothing but the reference.
+
+  fun removeReading(id: String) {
+    if (contentLocked()) return
+    val gone = working?.details?.readings?.firstOrNull { it.id == id }
+    reversibleEdit(UndoKind.Reading, gone?.photos.orEmpty().map { it.file }) { p ->
+      p.copy(details = p.details.copy(readings = p.details.readings.filterNot { it.id == id }))
+    }
+  }
+
+  fun removeAccessDevice(id: String) {
+    if (contentLocked()) return
+    reversibleEdit(UndoKind.AccessDevice) { p ->
+      p.copy(details = p.details.copy(accessDevices = p.details.accessDevices.filterNot { it.id == id }))
+    }
+  }
+
+  fun removeAttachment(id: String) {
+    if (contentLocked()) return
+    val gone = working?.details?.attachments?.firstOrNull { it.id == id }
+    reversibleEdit(UndoKind.Document, listOfNotNull(gone?.file?.takeIf(String::isNotBlank))) { p ->
+      p.copy(details = p.details.copy(attachments = p.details.attachments.filterNot { it.id == id }))
+    }
+  }
+
+  fun removeFollowUp(id: String) {
+    if (contentLocked()) return
+    reversibleEdit(UndoKind.FollowUp) { p ->
+      p.copy(details = p.details.copy(followUps = p.details.followUps.filterNot { it.id == id }))
+    }
+  }
+
+  fun removeEstimate(defectId: String) {
+    if (contentLocked()) return
+    reversibleEdit(UndoKind.Estimate) { p ->
+      p.copy(details = p.details.copy(estimates = p.details.estimates - defectId))
+    }
+  }
+
+  fun removeParty(index: Int) {
+    if (contentLocked()) return
+    reversibleEdit(UndoKind.Party) { p -> p.copy(parties = p.parties.filterIndexed { j, _ -> j != index }) }
+  }
+
+  fun removeKeyKind(index: Int) {
+    if (contentLocked()) return
+    reversibleEdit(UndoKind.KeyKind) { p -> p.copy(keys = p.keys.filterIndexed { j, _ -> j != index }) }
+  }
+
   fun attachOverview(owner: String, source: File, photoSource: PhotoSource, meter: Boolean = false) {
     val p = working ?: return
     if (contentLocked()) return
@@ -1431,7 +1627,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     viewModelScope.launch {
       val evidence = withContext(Dispatchers.IO) { copyPhoto(p.id, owner, 0, source, photoSource) }
       evidenceBusy--
-      if (evidence == null) { evidenceError = source.name; return@launch }
+      if (evidence == null) { photoFailed(p.id); return@launch }
       completeEvidence(p.id) { it.copy(details = if (meter) it.details.copy(readings = it.details.readings.map { reading ->
         if (reading.id == owner) reading.copy(photos = reading.photos + evidence) else reading
       }) else it.details.copy(roomPhotos = it.details.roomPhotos + (owner to (it.details.roomPhotos[owner].orEmpty() + evidence)))) }
@@ -1441,7 +1637,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
   fun recordPhotoDir(id: String): File = store.photoDir(id)
   private fun completeEvidence(recordId: String, transform: (Protocol) -> Protocol) {
     val p = working?.takeIf { it.id == recordId } ?: store.load(recordId) ?: return
-    if (p.isFinalized()) { evidenceError = Str(lang).lockedRecord; return }
+    if (p.isFinalized()) { evidenceError = Str(lang).evidenceAfterFinalized; return }
     if (working?.id == recordId) edit(transform) else {
       val updated = transform(p).copy(contentRevision = p.contentRevision + 1, saveSequence = nextSequence())
       if (runCatching { store.save(updated) }.isFailure) saveState = "failed"
@@ -1476,7 +1672,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
             if (old.id == documentId) old.copy(file = doc.file, mime = doc.mime, sha256 = doc.sha256, bytes = doc.bytes, importedEpochMs = doc.importedEpochMs) else old
           }))
         }
-      }.onFailure { evidenceError = Str(lang).attachments }
+      }.onFailure { evidenceError = Str(lang).documentNotAdded }
     }
   }
 
@@ -1484,11 +1680,14 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     val p = working ?: return
     if (!safeEvidenceName(document.file) || document.mime !in setOf("application/pdf", "image/jpeg", "image/png")) return
     val file = File(store.photoDir(p.id), document.file)
+    // A toast, as the export step does for the same failure: evidenceError only clears on an
+    // edit, which a finalized record refuses, so a missing viewer app left a false evidence
+    // alarm over the frozen record for as long as it stayed open.
     runCatching {
       val uri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.files", file)
       context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW).setDataAndType(uri, document.mime)
         .addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION))
-    }.onFailure { evidenceError = document.file }
+    }.onFailure { android.widget.Toast.makeText(context, Str(lang).documentOpenFailed, android.widget.Toast.LENGTH_LONG).show() }
   }
 
   // ── Signatures ───────────────────────────────────────────────────────────────────────
@@ -1505,7 +1704,12 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
    * evidence check and printed as an empty rule under a full signature caption.
    */
   fun keepSignature(role: Role, plane: Plane, bitmap: android.graphics.Bitmap, participantId: String = "") {
+    // Not while evidence is being stored: it edits the record when it finishes, and the ink
+    // would be stale before it dried. The sign step checks evidenceBusy before it closes the
+    // pad, so a refusal here no longer throws the drawn ink away.
     if (contentLocked() || evidenceBusy > 0) return
+    // This attempt supersedes an earlier failure, as an edit does for every other intake path.
+    evidenceError = ""
     val dir = signatureDir() ?: return
     val signerToken = participantId.ifBlank { role.name.lowercase() }.let {
       if (it.matches(Regex("[A-Za-z0-9_-]{1,100}"))) it else "signer-${it.hashCode().toUInt()}"
@@ -1520,7 +1724,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     }.getOrDefault(false)
     if (!wrote || staged.length() == 0L) {
       staged.delete()
-      evidenceError = Str(lang).signRecordTitle
+      evidenceError = Str(lang).signatureNotSaved
       return
     }
     target.delete()
@@ -1529,7 +1733,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
       staged.delete()
       if (!copied || target.length() == 0L) {
         target.delete()
-        evidenceError = Str(lang).signRecordTitle
+        evidenceError = Str(lang).signatureNotSaved
         return
       }
     }
@@ -1617,6 +1821,13 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
   var exporting by mutableStateOf(false)
     private set
 
+  /**
+   * Not viewModelScope: Back from the home screen finishes the activity on Android 10 and
+   * 11, which clears the model, and a cancelled scope would discard the finished export's
+   * result, leaving the files in Downloads with no history entry and the record unmarked.
+   */
+  private val exportScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + Dispatchers.Main.immediate)
+
   var exported by mutableStateOf<dev.peringer.limen.data.ExportedFile?>(null)
     private set
 
@@ -1659,7 +1870,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     exportIssue = null
     exported = null
     val docLang = pdfLang ?: lang
-    viewModelScope.launch {
+    exportScope.launch {
       val result = withContext(Dispatchers.IO) {
         if (!ProtocolIntegrity.matches(p, store.photoDir(p.id), store.signatureDir(p.id))) null
         else runCatching {
@@ -1699,7 +1910,7 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
           onFailure = { failure ->
             if (stillOpen) {
               exportIssue = ExportIssue.Failed
-              (failure as? dev.peringer.limen.photo.UnrenderableEvidence)?.let { evidenceError = it.files.joinToString() }
+              (failure as? dev.peringer.limen.photo.UnrenderableEvidence)?.let { evidenceError = "${Str(lang).finalizationIssue(FinalizationIssue.Evidence)}: ${it.files.joinToString()}" }
             }
           },
         )
@@ -1724,6 +1935,15 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
     prefs.edit().putString(KEY_LANG, l.name).apply()
   }
 
+  /**
+   * With no language chosen in the app, [lang] is whatever the system spoke when this ViewModel
+   * was built, and a system language change relaunches the activity without replacing it. The
+   * stale value made every new instance see the resources disagree with it and recreate again.
+   */
+  fun followSystemLang() {
+    if (prefs.getString(KEY_LANG, null) == null) lang = Lang.default()
+  }
+
   fun toggleTheme() {
     darkTheme = !darkTheme
     prefs.edit().putBoolean(KEY_DARK, darkTheme).apply()
@@ -1737,6 +1957,13 @@ class LimenViewModel(app: Application) : AndroidViewModel(app) {
    * order. Run from the top, it touched delegates that did not exist yet.
    */
   init {
+    // Held busy until it returns, so a restore tapped meanwhile cannot start a stage that the
+    // sweep then deletes. Off the main thread: after a killed restore it unlinks gigabytes.
+    archiveBusy = true
+    viewModelScope.launch {
+      withContext(Dispatchers.IO) { store.sweepStale() }
+      archiveBusy = false
+    }
     refreshLibrary()
     val openId = prefs.getString(KEY_OPEN, null)
     if (!openId.isNullOrBlank()) {

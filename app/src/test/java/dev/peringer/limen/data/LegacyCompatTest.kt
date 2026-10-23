@@ -22,6 +22,8 @@ class LegacyCompatTest {
   private companion object {
     const val GOLDEN_FINGERPRINT =
       "9BCDDF82B00F72B599EF5188085D846CC69820F8DEFC7AE7CC35860246C28275"
+    const val GOLDEN_FINALIZED_FINGERPRINT =
+      "2853CCC553B79B76EAFF7B416E4D5F2C4222297682606D9615F38EEBFB9D50B7"
   }
 
   @get:Rule
@@ -69,6 +71,141 @@ class LegacyCompatTest {
     deposit = Deposit(kind = DepositKind.BankAccount, amountChf = "5550"),
     meters = Meters(electricity1 = "48214.7"),
     signatures = listOf(Signature(role = Role.Tenant, plane = Plane.Record, file = "tenant-record.png")),
+  )
+
+  /**
+   * What every record finalized since 1.2.0 carries on top of that: the starter's identity, the
+   * controller block and the details, with the legal snapshot that finalization always freezes
+   * into them, and the canton, the legal overlay and a tenant's position on a finding, which every
+   * such record also carries. All of them are NEVER-encoded at their defaults, so a fixture that
+   * leaves them out never invokes their serializers, and a field added to any of them without
+   * NEVER would move the fingerprint of every such record while the pin on everyNestedType
+   * stayed green.
+   *
+   * reviewRevision, participantNoticeShown, addressCountry, usesSwissAddress and phoneRegion are
+   * left at their declared defaults on purpose: the pin only notices a changed literal default
+   * when the fixture takes it. The strings carry accents, quotes, a newline and a surrogate pair,
+   * because every real French, German or Italian record does.
+   */
+  private fun finalizedRecord() = everyNestedType().copy(
+    objectCanton = SwissCanton.VD,
+    romandFrameworkInLease = true,
+    legalOverlay = LegalOverlayRecord(
+      checks = mapOf(
+        LegalRequirement.InitialRentForm to LegalCheckStatus.Confirmed,
+        LegalRequirement.VaudExitReadiness to LegalCheckStatus.MissingOrDisputed,
+      ),
+      note = "Formule officielle remise avec le bail",
+      ruleSetId = "ch-tenancy-2026.2",
+      notes = mapOf(LegalRequirement.VaudExitReadiness to "Convocation en attente, voir \\ le dossier"),
+    ),
+    defects = listOf(
+      Defect(
+        id = "d1",
+        roomId = "r1",
+        text = "Stain",
+        participantPositions = mapOf("tenant-1" to TenantPosition(TenantResponse.Disputes, "Existait à l’entrée")),
+      )
+    ),
+    sessionIdentity = SessionIdentity(
+      firstName = "Hélène",
+      lastName = "Müller-Rochat",
+      company = "Régie du Léman SA",
+      street = "Rue du Simplon",
+      flatNumber = "12 b",
+      postalCode = "1006",
+      city = "Lausanne",
+      phone = "+41 21 555 01 23",
+    ),
+    controllerIdentity = ControllerIdentity(
+      organisation = "Régie du Léman SA",
+      contactName = "Hélène Müller-Rochat",
+      street = "Rue du Simplon 12 b",
+      postalCode = "1006",
+      city = "Lausanne",
+      email = "helene@regie.example",
+      phone = "+41 21 555 01 23",
+    ),
+    details = RecordDetails(
+      municipality = "Lausanne",
+      district = "Lausanne",
+      habitableRooms = "3.5",
+      actualTransferDate = "2026-10-01",
+      actualTransferTime = "14:30",
+      notificationDays = "30",
+      notificationClause = "Art. 12 du bail",
+      scopeNotes = mapOf("r1" to "Armoire fermée à clé,\nnon inspectée"),
+      roomPhotos = mapOf(
+        "r1" to listOf(
+          PhotoEvidence(
+            file = "kitchen-overview.jpg",
+            sha256 = "ab12cd34",
+            capturedEpochMs = 1_760_000_000_000L,
+            source = PhotoSource.Camera,
+            importedEpochMs = 1_760_000_100_000L,
+          )
+        )
+      ),
+      readings = listOf(
+        MeterReading(
+          id = "m1",
+          label = "Électricité",
+          identifier = "CH-1234",
+          value = "48214.7",
+          unit = "kWh",
+          date = "2026-10-01",
+          time = "14:40",
+          note = "Compteur au sous-sol 🔑",
+          photos = listOf(PhotoEvidence(file = "meter-electricity.jpg", source = PhotoSource.Gallery)),
+        )
+      ),
+      accessDevices = listOf(
+        AccessDevice(id = "a1", label = "Badge", identifier = "B-77", expected = 2, transferred = 2, note = "Remis en main propre")
+      ),
+      attachments = listOf(
+        SupportingDocument(
+          id = "doc1",
+          kind = DocumentKind.Lease,
+          title = "Bail à loyer",
+          file = "lease.pdf",
+          sha256 = "ef56ab78",
+          bytes = 2048,
+          importedEpochMs = 1_760_000_200_000L,
+          externalReference = "Réf. 2026\\17",
+        )
+      ),
+      followUps = listOf(
+        FollowUp(
+          id = "f1",
+          description = "Remplacer le joint",
+          discoveredDate = "2026-10-01",
+          notifiedDate = "2026-10-02",
+          recipient = "Régie",
+          method = "Courriel",
+          deadline = "2026-11-01",
+          done = true,
+        )
+      ),
+      estimates = mapOf(
+        "d1" to ReplacementEstimate(
+          replacementChf = "1200",
+          ageYears = "6",
+          lifeYears = "15",
+          basis = "Table de durée de vie",
+          date = "2026-10-01",
+        )
+      ),
+      reservations = mapOf("tenant-1" to "Je conteste l’état du \"sol\""),
+      legalSnapshot = LegalSnapshot(
+        // The literal, not the app's constant: that moves with every legal catalogue release, and a pin that fails for it teaches the habit of pasting a new value.
+        ruleSetId = "ch-tenancy-2026.2",
+        profile = "VD",
+        initialRentFormRule = "Formule officielle exigée",
+        requirements = listOf(LegalRequirement.InitialRentForm, LegalRequirement.VaudExitReadiness),
+        sources = listOf("https://www.vd.ch/exemple"),
+      ),
+      understoodLanguage = "fr",
+    ),
   )
 
   @Test
@@ -164,6 +301,39 @@ class LegacyCompatTest {
     val ink = File(tmp.root, "ink").apply { mkdirs() }
     File(ink, "tenant-record.png").writeText("fixed ink bytes")
     assertEquals(GOLDEN_FINGERPRINT, ProtocolIntegrity.fingerprint(everyNestedType(), photos, ink))
+  }
+
+  @Test
+  fun theFinalizedFixtureReachesTheSerializersOfTheTypesThatFinalizationFills() {
+    // The guard on the pin below: a fixture that drops one of these goes vacuous without failing.
+    val json = canonical.encodeToString(Protocol.serializer(), finalizedRecord())
+    listOf(
+      "\"sessionIdentity\"", "\"addressCountry\"", "\"phoneRegion\"", "\"company\"",
+      "\"controllerIdentity\"", "\"organisation\"",
+      "\"details\"", "\"reviewRevision\"", "\"participantNoticeShown\"", "\"roomPhotos\"",
+      "\"importedEpochMs\"", "\"readings\"", "\"accessDevices\"", "\"attachments\"",
+      "\"followUps\"", "\"estimates\"", "\"legalSnapshot\"", "\"checkedOn\"",
+      "\"objectCanton\"", "\"romandFrameworkInLease\"", "\"legalOverlay\"", "\"notes\"", "\"participantPositions\"",
+    ).forEach { key ->
+      assertTrue("the finalized fixture must instantiate $key", json.contains(key))
+    }
+    // A backslash is escaped in the canonical form, and the strings of a real record carry one.
+    assertTrue(json.contains("\\\\"))
+  }
+
+  /**
+   * The same pin for a record as 1.2.0 and later finalize it. The pin above covers a record whose
+   * three NEVER-encoded blocks sit at their defaults, so it cannot see them; this one can.
+   */
+  @Test
+  fun theCanonicalFingerprintOfAFixedFinalizedRecordHasNotMoved() {
+    val photos = File(tmp.root, "photos").apply { mkdirs() }
+    val ink = File(tmp.root, "ink").apply { mkdirs() }
+    File(ink, "tenant-record.png").writeText("fixed ink bytes")
+    listOf("kitchen-overview.jpg", "meter-electricity.jpg", "lease.pdf").forEach { name ->
+      File(photos, name).writeText("fixed bytes of $name")
+    }
+    assertEquals(GOLDEN_FINALIZED_FINGERPRINT, ProtocolIntegrity.fingerprint(finalizedRecord(), photos, ink))
   }
 
   @Test

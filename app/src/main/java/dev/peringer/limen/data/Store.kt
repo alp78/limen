@@ -31,6 +31,18 @@ class Store(private val root: File) {
 
   private val dir = File(root, "protocols").apply { mkdirs() }
 
+  /**
+   * What a process killed part way leaves in [root]: the stage and the decrypted copy of a
+   * restore, which only the next restore ever removed, and the half-copied folder of an amendment.
+   * Gigabytes of it, so the caller runs this off the main thread. Once per root and process: a
+   * restore that is running must never find its stage deleted by a second sweep.
+   */
+  fun sweepStale() {
+    if (!swept.add(root.absolutePath)) return
+    ArchiveCrypto.sweep(root)
+    File(root, "photos").listFiles()?.filter { it.isDirectory && it.name.startsWith(AMEND_STAGE) }?.forEach { it.deleteRecursively() }
+  }
+
   fun photoDir(id: String): File = File(File(root, "photos"), id).apply { mkdirs() }
   fun signatureDir(id: String): File = File(File(root, "signatures"), id).apply { mkdirs() }
 
@@ -56,10 +68,10 @@ class Store(private val root: File) {
   @Synchronized
   fun recover(id: String): Boolean {
     require(safeId(id))
-    val target = File(dir, "$id.json")
     val recovered = read(File(dir, "$id.json.last-good")) ?: return false
-    if (target.exists()) target.copyTo(File(dir, "$id.${System.nanoTime()}.quarantine"))
-    target.delete()
+    // No delete first: save quarantines an unreadable target itself and then replaces it in
+    // one move, so a write that fails leaves the unreadable record listed to try again instead
+    // of a record that no catalogue entry points at.
     save(recovered)
     return true
   }
@@ -114,6 +126,36 @@ class Store(private val root: File) {
       it.name.removePrefix("$id-").matches(Regex("[0-9]+")) }?.forEach { it.deleteRecursively() }
   }
 
+  /**
+   * Saves the draft of an amendment with the photographs and documents it refers to, copied from
+   * [parent]'s folder. What was removed from the parent since stays there for recovery and is not
+   * carried forward. The draft's folder is not a record until its JSON exists, so no list shows
+   * it and no [delete] would ever be asked for it: a failure removes it again here.
+   */
+  fun saveAmendment(parent: Protocol, draft: Protocol) {
+    val photos = File(root, "photos")
+    // Copied under a name no record has, then renamed into place: a process killed part way
+    // leaves a folder that [sweepStale] knows to remove, where the draft's own folder would sit
+    // in no list for good.
+    val stage = File(photos, "$AMEND_STAGE${draft.id}")
+    try {
+      val from = photoDir(parent.id)
+      stage.mkdirs()
+      (parent.allPhotoFiles() + parent.details.attachments.map { it.file })
+        .filter { it.isNotBlank() && it == File(it).name && it !in setOf(".", "..") }
+        .distinct()
+        .map { File(from, it) }
+        .filter(File::isFile)
+        .forEach { source -> source.copyTo(File(stage, source.name), overwrite = false) }
+      Files.move(stage.toPath(), File(photos, draft.id).toPath())
+      save(draft)
+    } catch (failure: Exception) {
+      stage.deleteRecursively()
+      delete(draft.id)
+      throw failure
+    }
+  }
+
   /** Writes referenced evidence and retained exports; a password enables authenticated encryption. */
   fun exportArchive(password: CharArray, output: OutputStream, protocolIds: Set<String>? = null) =
     ArchiveCrypto.export(root, password, output, protocolIds)
@@ -121,4 +163,9 @@ class Store(private val root: File) {
   /** Validates before restore. Healthy IDs are preserved; explicit repair retains corrupt originals. */
   fun importArchive(password: CharArray, input: InputStream, repairCorrupt: Boolean = false): ArchiveImportResult =
     ArchiveCrypto.import(root, password, input, repairCorrupt)
+
+  private companion object {
+    val swept: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
+    const val AMEND_STAGE = ".amend-"
+  }
 }

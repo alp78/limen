@@ -58,6 +58,7 @@ class MainActivity : ComponentActivity() {
     setContent {
       val vm: LimenViewModel = viewModel()
       LaunchedEffect(vm.lang) {
+        vm.followSystemLang()
         if (resources.configuration.locales[0].language != vm.lang.name.lowercase()) recreate()
       }
 

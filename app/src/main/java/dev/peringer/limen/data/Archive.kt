@@ -22,6 +22,15 @@ data class ArchiveImportResult(
 )
 
 /**
+ * An export that refused to write, instead of reporting a backup that leaves a record out or
+ * holds one a restore would reject. [reason] is what the screen tells the person, and [record]
+ * names the record when one is to blame.
+ */
+class ArchiveRefused(val reason: Reason, val record: String = "") : IllegalArgumentException("Backup refused: $reason $record") {
+  enum class Reason { UnreadableRecord, DamagedEvidence }
+}
+
+/**
  * The one bound a restore keeps: the disk it writes to. Asked once per megabyte rather than
  * per read, because the zip reader hands back about 512 bytes at a time and a 66 MB restore
  * asked the file system 135,000 times. Each check leaves room for the next megabyte and one
@@ -76,10 +85,14 @@ internal object ArchiveIO {
       var packedAny = false
       fun putChecked(name: String, file: File) = put(zip, name, file)
       val catalogue = Store(root).catalogue()
-      require(catalogue.unreadable.none { protocolIds == null || it.id in protocolIds }) { "Recover unreadable records before exporting" }
+      if (catalogue.unreadable.any { protocolIds == null || it.id in protocolIds }) throw ArchiveRefused(ArchiveRefused.Reason.UnreadableRecord)
       catalogue.records.filter { protocolIds == null || it.id in protocolIds }.forEach { p ->
         require(safe(p.id))
-        require(ProtocolIntegrity.missingEvidence(p, File(root, "photos/${p.id}"), File(root, "signatures/${p.id}")).isEmpty())
+        // The test a restore applies, so a backup is refused while the original can still be
+        // looked at, not found unrestorable on the new phone.
+        if (!validEvidence(p, File(root, "photos/${p.id}"), File(root, "signatures/${p.id}"))) {
+          throw ArchiveRefused(ArchiveRefused.Reason.DamagedEvidence, p.address.ifBlank { p.id })
+        }
         putChecked("protocols/${p.id}.json", File(root, "protocols/${p.id}.json"))
         val photos = (p.allPhotoFiles() + p.details.attachments.map { it.file }).filter(String::isNotBlank).distinct()
         photos.forEach { name ->
@@ -105,12 +118,7 @@ internal object ArchiveIO {
 
   fun import(root: File, input: InputStream, repairCorrupt: Boolean = false, packer: JpegPacker? = JpegXl.loaded): ArchiveImportResult {
     root.mkdirs()
-    // A restore killed part way through leaves its stage behind, and nothing else ever swept
-    // them: on a phone that has lost the app mid-import twice, two unpacked copies of the
-    // whole archive sat in filesDir for good.
-    root.listFiles()
-      ?.filter { it.isDirectory && it.name.startsWith(STAGE_PREFIX) }
-      ?.forEach { it.deleteRecursively() }
+    sweepStages(root)
     val stage = File(root, "$STAGE_PREFIX${System.nanoTime()}").apply { mkdirs() }
     try {
       unpack(stage, input, packer)
@@ -119,6 +127,17 @@ internal object ArchiveIO {
     } finally {
       stage.deleteRecursively()
     }
+  }
+
+  /**
+   * A restore killed part way through leaves its stage behind. On a phone that lost the app
+   * mid-import twice, two unpacked copies of the whole archive sat in filesDir for good, so the
+   * start of the app sweeps them as well as the next restore.
+   */
+  fun sweepStages(root: File) {
+    root.listFiles()
+      ?.filter { it.isDirectory && it.name.startsWith(STAGE_PREFIX) }
+      ?.forEach { it.deleteRecursively() }
   }
 
   private fun put(zip: ZipOutputStream, name: String, bytes: ByteArray) {
@@ -156,9 +175,16 @@ internal object ArchiveIO {
     // The first bytes alone, so a large supporting PDF is never read into memory to be skipped.
     val isJpeg = java.io.RandomAccessFile(file, "r").use { f -> f.length() >= 3 && ByteArray(3).also(f::readFully).contentEquals(JPEG_START) }
     if (!isJpeg) return null
-    val jpeg = file.readBytes()
-    val packed = packer.pack(jpeg) ?: return null
-    return packed.takeIf { it.size < jpeg.size && packer.unpack(it)?.contentEquals(jpeg) == true }
+    // Repacking only saves room, so it never fails a backup. The file, its packed form and the
+    // unpacked check are held at once, about three times its size: a JPEG too large for the
+    // heap goes in as it is, which the zip entry then streams from disk.
+    return try {
+      val jpeg = file.readBytes()
+      val packed = packer.pack(jpeg) ?: return null
+      packed.takeIf { it.size < jpeg.size && packer.unpack(it)?.contentEquals(jpeg) == true }
+    } catch (_: OutOfMemoryError) {
+      null
+    }
   }
 
   private fun unpack(stage: File, input: InputStream, packer: JpegPacker?) {
@@ -249,7 +275,12 @@ internal object ArchiveIO {
       val targetPhotos = File(File(root, "photos"), protocol.id)
       val targetInk = File(File(root, "signatures"), protocol.id)
       var quarantine: File? = null
-      if (targetJson.exists()) {
+      val replacing = targetJson.exists()
+      // Evidence folders with no record file are what a restore killed during its install leaves,
+      // since the JSON is written last. No record owns them and every retry was refused for
+      // them, so they are moved into recovery with the rest, never deleted.
+      val orphaned = !replacing && (targetPhotos.exists() || targetInk.exists() || File(root, "exports/${protocol.id}").exists())
+      if (replacing) {
         val old = runCatching { json.decodeFromString<Protocol>(targetJson.readText()) }.getOrNull()
         val healthy = old?.let { validEvidence(it, targetPhotos, targetInk) } == true
         if (healthy || !repairCorrupt) {
@@ -257,6 +288,8 @@ internal object ArchiveIO {
           skipped++
           return@forEach
         }
+      }
+      if (replacing || orphaned) {
         quarantine = File(root, "recovery/${protocol.id}-${System.nanoTime()}").apply { mkdirs() }
         val moved = mutableListOf<Pair<File, File>>()
         val preserved = runCatching {
@@ -272,9 +305,6 @@ internal object ArchiveIO {
           rejected++
           return@forEach
         }
-      } else if (targetPhotos.exists() || targetInk.exists() || File(root, "exports/${protocol.id}").exists()) {
-        rejected++
-        return@forEach
       }
 
       val installed = runCatching {
@@ -285,7 +315,7 @@ internal object ArchiveIO {
       }
       if (installed.isSuccess) {
         imported++
-        if (quarantine != null) repaired++
+        if (replacing) repaired++
       } else {
         targetJson.delete()
         targetPhotos.deleteRecursively()
@@ -318,10 +348,16 @@ internal object ArchiveIO {
     }
   }
 
+  /**
+   * Moved out of the stage, not copied. The stage sits in the same root, so this is a rename:
+   * copying wrote every record a second time and ran out of room at an install that FreeSpace
+   * never checks, which then counted valid records as rejected.
+   */
   private fun installDirectory(source: File, target: File) {
     if (!source.exists()) return
     require(!target.exists()) { "Evidence destination already exists" }
-    source.copyRecursively(target, overwrite = false)
+    target.parentFile?.mkdirs()
+    Files.move(source.toPath(), target.toPath())
   }
 
   private fun atomicCopy(source: File, target: File) {

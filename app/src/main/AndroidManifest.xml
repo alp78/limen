@@ -24,11 +24,14 @@
         android:theme="@style/Theme.Limen">
         <!-- Rotation is handled rather than survived. Compose keeps its state across a
              configuration change declared here, and without it the activity is recreated: the
-             signature pad closed and discarded its ink, the backup password box emptied, and
-             every half-typed room, key and object name held in a plain remember was lost. -->
+             backup password box emptied, and every half-typed room, key and object name held in
+             a plain remember was lost. The system dark schedule, a font or display size change
+             and a keyboard attached to the tablet are declared for the same reason, since they
+             arrive mid-handover. The language is left out on purpose: the relaunch is how the
+             activity picks it up, and the signature pad keeps its ink through that. -->
         <activity
             android:name=".MainActivity"
-            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|keyboard|uiMode|fontScale|density"
             android:exported="true"
             android:launchMode="singleTask">
             <intent-filter>

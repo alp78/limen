@@ -72,8 +72,11 @@ private fun Sheet.compose(cards: List<CardLayout>, photoDir: File, measuring: Bo
   var i = 0
   var underTitle = true
   while (i < cards.size) {
-    if (!cards[i].fits) {
-      if (!underTitle) newPage()
+    // A card that fits a page but not the room under the section's title runs on there too,
+    // since a page of its own would leave the title alone above an empty one.
+    if (!cards[i].fits || (underTitle && y + cards[i].height > BOTTOM)) {
+      // The page opened after the last batch is still empty and takes the card as it is.
+      if (!underTitle && y > HEADER_BOTTOM) newPage()
       drawRunOn(cards[i], photoDir, measuring)
       underTitle = false
       i++
@@ -104,8 +107,8 @@ private fun Sheet.compose(cards: List<CardLayout>, photoDir: File, measuring: Bo
 /** A legend line: its text, paint, offset from the legend's left edge, and baseline from its top. */
 private class LegendLine(val text: String, val paint: Paint, val x: Float, val baseline: Float)
 
-/** A card's legend laid out at a width: its lines, the finding's badge if any, and its height. */
-private class Legend(val lines: List<LegendLine>, val badge: RectF?, val number: String?, val height: Float)
+/** A card's legend laid out at a width: its lines, the finding's badge if any beside line [titleTop], and its height. */
+private class Legend(val lines: List<LegendLine>, val badge: RectF?, val number: String?, val titleTop: Int, val height: Float)
 
 /**
  * The legend. Wide, under a photograph, it has two columns: where and what on the left,
@@ -143,17 +146,22 @@ private fun Sheet.legend(card: AnnexContent.Card, width: Float): Legend {
   val main = y
   y = if (split) 0f else y + 10f
   card.meta.forEach { add(it, paints.small, 0f, metaWidth, flushRight = split) }
-  return Legend(lines, badge, number, maxOf(main, y) - 8f)
+  return Legend(lines, badge, number, titleTop, maxOf(main, y) - 8f)
 }
 
-/** Draws [legend] with its top left corner at [left], [top]. */
-private fun Sheet.drawLegend(legend: Legend, left: Float, top: Float) {
+/** Draws [legend]'s badge, if it has one, as if the legend had its top left corner at [left], [top]. */
+private fun Sheet.drawBadge(legend: Legend, left: Float, top: Float) {
   legend.badge?.let { badge ->
     val box = RectF(left + badge.left, top + badge.top, left + badge.right, top + badge.bottom)
     canvas.drawRoundRect(box, BADGE_RADIUS, BADGE_RADIUS, paints.navyFill)
     val number = legend.number.orEmpty()
     canvas.drawText(number, box.centerX() - paints.badge.measureText(number) / 2f, box.top + paints.badge.baseline(BADGE), paints.badge)
   }
+}
+
+/** Draws [legend] with its top left corner at [left], [top]. */
+private fun Sheet.drawLegend(legend: Legend, left: Float, top: Float) {
+  drawBadge(legend, left, top)
   legend.lines.forEach { canvas.drawText(it.text, left + it.x, top + it.baseline, it.paint) }
 }
 
@@ -196,7 +204,7 @@ private fun Sheet.drawCard(layout: CardLayout, top: Float, photoDir: File, measu
   }
 }
 
-/** A card whose legend is longer than a page: the framed photograph, then the legend running on. */
+/** A card laid out as the photograph framed, then the legend running on: for a legend longer than a page, and for a card that fits a page but not the room under its section title. */
 private fun Sheet.drawRunOn(layout: CardLayout, photoDir: File, measuring: Boolean) {
   val inner = W - 2 * MARGIN - 2 * FRAME_PAD
   val fit = layout.fit
@@ -208,8 +216,10 @@ private fun Sheet.drawRunOn(layout: CardLayout, photoDir: File, measuring: Boole
   plate(layout.card, File(photoDir, layout.card.file), fit, photo, measuring)
   y = photo.bottom + FRAME_PAD + 16f
   val flowing = legend(layout.card, 600f)
-  flowing.lines.forEach { line ->
+  flowing.lines.forEachIndexed { n, line ->
     ensure(line.paint.textSize + 10f)
+    // The badge stands by the title's first line, on whichever page the flow has reached.
+    if (n == flowing.titleTop) drawBadge(flowing, MARGIN + FRAME_PAD, y + line.paint.textSize - line.baseline)
     canvas.drawText(line.text, MARGIN + FRAME_PAD + line.x, y + line.paint.textSize, line.paint)
     y += line.paint.textSize + 8f
   }
@@ -258,9 +268,14 @@ private fun Sheet.photo(card: AnnexContent.Card, file: File, fit: AnnexPlate.Fit
  * The plate as paper shows it: a picture with transparency, a screenshot picked from the
  * gallery, is laid on white. A JPEG carries three colour channels and no alpha, and
  * Android would encode a transparent pixel as black.
+ *
+ * A picture in a wider colour space than sRGB, a Display P3 capture, is redrawn in sRGB
+ * for the same reason. The PDF declares every plate as sRGB and a reader ignores the
+ * profile inside the JPEG, while a browser honours it, so a P3 plate would print flatter
+ * than the HTML copy shows it. Written in sRGB, both copies show the same colours.
  */
 private fun onPaper(bitmap: Bitmap): Bitmap {
-  if (!bitmap.hasAlpha()) return bitmap
+  if (!bitmap.hasAlpha() && bitmap.colorSpace?.isSrgb != false) return bitmap
   val paper = Bitmap.createBitmap(bitmap.width, bitmap.height, Bitmap.Config.ARGB_8888)
   paper.eraseColor(Color.WHITE)
   Canvas(paper).drawBitmap(bitmap, 0f, 0f, null)

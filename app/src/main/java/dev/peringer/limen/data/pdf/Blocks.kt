@@ -137,7 +137,8 @@ internal class Fields(val pairs: List<Pair<String, String>>, val columns: Int = 
   override fun html(h: HtmlCompanion) = h.fields(pairs)
 }
 
-internal class Chip(val text: String, val active: Boolean = false)
+/** [html] is what the accessible copy says when the page's wording means nothing there, such as a page number. */
+internal class Chip(val text: String, val active: Boolean = false, val html: String = text)
 
 /** A wrapping row of chips, the app's pill row: one row per wrapped line. */
 internal class Chips(val chips: List<Chip>, val indent: Float = 0f, val keepWithNext: Boolean = false) : Block {
@@ -175,7 +176,7 @@ internal class Chips(val chips: List<Chip>, val indent: Float = 0f, val keepWith
     c.drawText(chip.text, x + PAD, top + paint.baseline(HEIGHT), paint)
   }
 
-  override fun html(h: HtmlCompanion) = h.chips(chips.map { it.text to it.active })
+  override fun html(h: HtmlCompanion) = h.chips(chips.map { it.html to it.active })
 
   companion object {
     const val HEIGHT = 34f

@@ -260,12 +260,14 @@ data class SessionIdentity(
 ) {
   val fullName: String get() = listOf(firstName, lastName).filter { it.isNotBlank() }.joinToString(" ")
   val addressLine: String get() = listOf(street, flatNumber).filter { it.isNotBlank() }.joinToString(" ")
-  val placeLine: String
-    get() = listOf(
-      postalCode,
-      city,
-      CountryDirectory.name(addressCountry).takeIf { !usesSwissAddress },
-    ).filterNotNull().filter { it.isNotBlank() }.joinToString(" ")
+  val placeLine: String get() = placeLine(java.util.Locale.getDefault())
+
+  /** The country is named in [locale], so a document can use its own language rather than the handset's. */
+  fun placeLine(locale: java.util.Locale): String = listOf(
+    postalCode,
+    city,
+    CountryDirectory.name(addressCountry, locale).takeIf { !usesSwissAddress },
+  ).filterNotNull().filter { it.isNotBlank() }.joinToString(" ")
 }
 
 /** Responsible controller details configured on this device and frozen into a new record. */

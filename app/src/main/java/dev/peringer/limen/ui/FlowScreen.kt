@@ -57,6 +57,7 @@ import dev.peringer.limen.data.Protocol
 import dev.peringer.limen.data.SwissDate
 import dev.peringer.limen.data.TenantResponse
 import dev.peringer.limen.data.carries
+import dev.peringer.limen.data.extraContent
 import dev.peringer.limen.data.legalProfile
 import dev.peringer.limen.data.resolvedLegalOverlay
 import dev.peringer.limen.theme.Limen
@@ -110,7 +111,7 @@ fun FlowScreen(
           Text(s.saveFailed, color = Limen.colors.dangerOutline, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
           SmallKey(s.retry) { vm.flush() }
         }
-        if (vm.evidenceError.isNotBlank()) Text("${s.finalizationIssue(FinalizationIssue.Evidence)}: ${vm.evidenceError}", color = Limen.colors.dangerOutline)
+        if (vm.evidenceError.isNotBlank()) Text(vm.evidenceError, color = Limen.colors.dangerOutline)
         Spacer(Modifier.height(8.dp))
         // Export carries the amendment door in full, with the sentence that explains it.
         if (locked && vm.flowStep != FlowStep.Export) {
@@ -143,7 +144,16 @@ fun FlowScreen(
       if (vm.editingDefectId != null) {
         androidx.compose.ui.window.Dialog(onDismissRequest = vm::closeDefect,
           properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
-          DefectEditor(vm, s, p, vm.editingDefectId!!)
+          // A dialog is a window of its own and the editor fills it with an opaque plate, so
+          // anything composed in the flow beneath is covered. The photograph removed here
+          // would otherwise have its UNDO, and a failing save its RETRY, out of sight.
+          Box(Modifier.fillMaxSize()) {
+            DefectEditor(vm, s, p, vm.editingDefectId!!)
+            Column(Modifier.align(Alignment.BottomCenter).readable()) {
+              if (vm.saveState == "failed") NoticeBar(s.saveFailed, Limen.colors.dangerOutline, s.retry, Tick.Key) { vm.flush() }
+              UndoBar(vm, s)
+            }
+          }
         }
       }
       if (vm.showDepositCompare) {
@@ -152,32 +162,39 @@ fun FlowScreen(
           DepositCompareOverlay(vm, s)
         }
       }
-      vm.undoNotice?.let { notice ->
-        Row(
-          Modifier
-            .align(Alignment.BottomCenter)
-            .semantics { liveRegion = LiveRegionMode.Polite }
-            .readable()
-            .padding(horizontal = 20.dp, vertical = 10.dp)
-            .background(Limen.colors.plateRaised, RoundedCornerShape(12.dp))
-            .padding(start = 16.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
-          verticalAlignment = Alignment.CenterVertically,
-          horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-          Text(
-            s.removedForUndo(notice.kind),
-            style = MaterialTheme.typography.bodyMedium,
-            color = Limen.colors.ink,
-            modifier = Modifier.weight(1f),
-          )
-          SmallKey(s.undo, tick = Tick.Confirm) { vm.undo(notice.token) }
-        }
-      }
+      // One bar at a time: the editor shows its own, and a second one under it would be
+      // announced twice by a screen reader.
+      if (vm.editingDefectId == null) UndoBar(vm, s, Modifier.align(Alignment.BottomCenter))
     }
   }
   if (vm.affectedSigners.isNotEmpty()) ConfirmDialog(s,
     body = s.signatureEditWarning + "\n" + vm.affectedSigners.joinToString("\n"),
     onConfirm = { vm.confirmSignedEdit(true) }, onDismiss = { vm.confirmSignedEdit(false) })
+}
+
+/** A removal is offered back for a few seconds, wherever on the flow it was made. */
+@Composable
+private fun UndoBar(vm: LimenViewModel, s: Str, modifier: Modifier = Modifier) {
+  vm.undoNotice?.let { notice ->
+    NoticeBar(s.removedForUndo(notice.kind), Limen.colors.ink, s.undo, Tick.Confirm, modifier) { vm.undo(notice.token) }
+  }
+}
+
+@Composable
+private fun NoticeBar(text: String, textColor: Color, action: String, tick: Tick, modifier: Modifier = Modifier, onPress: () -> Unit) {
+  Row(
+    modifier
+      .semantics { liveRegion = LiveRegionMode.Polite }
+      .readable()
+      .padding(horizontal = 20.dp, vertical = 10.dp)
+      .background(Limen.colors.plateRaised, RoundedCornerShape(12.dp))
+      .padding(start = 16.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.spacedBy(8.dp),
+  ) {
+    Text(text, style = MaterialTheme.typography.bodyMedium, color = textColor, modifier = Modifier.weight(1f))
+    SmallKey(action, tick = tick, onPress = onPress)
+  }
 }
 
 /**
@@ -547,19 +564,21 @@ private fun ReviewDossier(s: Str, p: Protocol) {
       }
       if (p.carries(DossierCard.Deposit)) {
         val deposit = p.deposit
+        // Switching the kind pill leaves the other kind's fields in the record. The printed
+        // deposit shows only the chosen kind's, so this line must too.
         ReviewLine(
           s.deposit,
           listOf(
             s.depositKind(deposit.kind),
-            deposit.amountChf.takeIf { it.isNotBlank() }?.let { "CHF $it" },
+            depositAmountShown(p).takeIf { it.isNotBlank() }?.let { "CHF $it" },
             when (deposit.kind) {
               DepositKind.BankAccount -> deposit.bank
               DepositKind.Insurance -> deposit.provider
               DepositKind.None -> ""
               DepositKind.Unknown -> s.toVerify
             }.takeIf { it.isNotBlank() },
-            deposit.policyNo.takeIf { it.isNotBlank() },
-            deposit.account.takeIf { it.isNotBlank() },
+            deposit.policyNo.takeIf { deposit.kind == DepositKind.Insurance && it.isNotBlank() },
+            deposit.account.takeIf { deposit.kind == DepositKind.BankAccount && it.isNotBlank() },
           ).filterNotNull().joinToString(" · "),
         )
       }
@@ -614,6 +633,30 @@ private fun ReviewKeys(s: Str, p: Protocol) {
   )
 }
 
+/**
+ * What the printed record carries after the dossier: meter readings, reasons, access devices,
+ * the actual transfer, attachments and follow-ups. Read from the builder the PDF, its HTML
+ * copy and the preview share, because a list kept here fell behind it each time a rubric was
+ * added, and both parties signed a screen that showed less than the paper.
+ */
+@Composable
+private fun ReviewExtras(s: Str, p: Protocol) {
+  // The understood language is the editable field at the top of this step.
+  extraContent(p, s).filter { (heading, _) -> heading != s.understoodLanguage }.forEach { (heading, lines) ->
+    Panel(label = heading) {
+      Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        lines.forEach { line ->
+          Text(
+            line.lines().filter { it.isNotBlank() }.joinToString("\n"),
+            style = MaterialTheme.typography.bodyMedium,
+            color = Limen.colors.ink,
+          )
+        }
+      }
+    }
+  }
+}
+
 @Composable
 private fun ReviewStep(vm: LimenViewModel, s: Str, p: Protocol) {
   Column(
@@ -628,6 +671,7 @@ private fun ReviewStep(vm: LimenViewModel, s: Str, p: Protocol) {
     ReviewLegalOverlay(s, p)
     ReviewInspection(s, p)
     ReviewDossier(s, p)
+    ReviewExtras(s, p)
     Panel(
       label = "${s.defects} (${p.defects.size})",
       info = s.tipCharged(),

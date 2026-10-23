@@ -40,8 +40,15 @@ internal fun DocumentPreview(vm: LimenViewModel, s: Str, record: Protocol, onClo
       val result = html
       when {
         result == null -> Text("…", color = Limen.colors.ink)
-        result.isFailure -> Text(s.finalizationIssue(FinalizationIssue.Evidence) + "\n" +
-          ((result.exceptionOrNull() as? dev.peringer.limen.photo.UnrenderableEvidence)?.files?.joinToString("\n").orEmpty()), color = Limen.colors.dangerOutline)
+        result.isFailure -> {
+          // Only evidence that cannot be rendered is a file to restore; a preview that ran out of memory says nothing about the photographs.
+          val unrenderable = result.exceptionOrNull() as? dev.peringer.limen.photo.UnrenderableEvidence
+          Text(
+            if (unrenderable == null) s.previewFailed
+            else s.finalizationIssue(FinalizationIssue.Evidence) + "\n" + unrenderable.files.joinToString("\n"),
+            color = Limen.colors.dangerOutline,
+          )
+        }
         else -> AndroidView(
           modifier = Modifier.fillMaxWidth().weight(1f),
           factory = { WebView(it).apply {

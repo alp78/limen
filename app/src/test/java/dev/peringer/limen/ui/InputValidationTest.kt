@@ -19,6 +19,13 @@ class InputValidationTest {
     assertFalse(FinalizationIssue.HandoverDate in issues(base))
   }
 
+  @Test fun aHalfTypedPreviousProtocolDateCannotPassTheGate() {
+    // The field keeps unfinished text verbatim and the cover prints it, so it is gated like every other date.
+    assertTrue(FinalizationIssue.Dossier in issues(base.copy(lastProtocolDate = "31/02/2026")))
+    assertEquals("object", incompleteDossierTarget(base.copy(lastProtocolDate = "12/0")))
+    assertFalse(FinalizationIssue.Dossier in issues(base.copy(lastProtocolDate = "2026-09-01")))
+  }
+
   @Test fun partialInspectionAndNoDepositAreHonestOutcomes() {
     val p = base.copy(rooms = listOf(Room("cellar", RoomKind.Cellar)),
       dossier = listOf(DossierCard.Deposit), dossierChosen = true)

@@ -4,6 +4,7 @@ import java.io.InputStream
 import java.io.OutputStream
 import java.io.PushbackInputStream
 import java.security.SecureRandom
+import javax.crypto.AEADBadTagException
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
 import javax.crypto.spec.SecretKeySpec
@@ -17,6 +18,7 @@ internal object ArchiveCrypto {
   private const val TAG_BYTES = 16
   private const val KEY_BITS = 256
   private const val ITERATIONS = 210_000
+  private val ZIP_START = byteArrayOf(0x50, 0x4B, 0x03, 0x04)
 
   private val random = SecureRandom()
 
@@ -44,6 +46,16 @@ internal object ArchiveCrypto {
     output.flush()
   }
 
+  /**
+   * What a restore killed part way leaves in [root]: the decrypted copy of an encrypted backup
+   * and the unpacked stage. Each is a whole extra copy of the evidence that nothing else reads,
+   * so it sits in private storage until something removes it.
+   */
+  fun sweep(root: java.io.File) {
+    root.listFiles()?.filter { it.isFile && it.name.startsWith("archive-decrypt-") }?.forEach { it.delete() }
+    ArchiveIO.sweepStages(root)
+  }
+
   /** Encrypted archives are preferred; version-1 plain ZIP files remain importable. */
   fun import(
     root: java.io.File,
@@ -52,7 +64,7 @@ internal object ArchiveCrypto {
     repairCorrupt: Boolean = false,
   ): ArchiveImportResult {
     root.mkdirs()
-    root.listFiles()?.filter { it.isFile && it.name.startsWith("archive-decrypt-") }?.forEach { it.delete() }
+    sweep(root)
     val probe = PushbackInputStream(input.buffered(), magic.size)
     val prefix = probe.readUpTo(magic.size)
     if (!prefix.contentEquals(magic)) {
@@ -83,6 +95,11 @@ internal object ArchiveCrypto {
         var held = 0
         // No size limit: the decrypted copy needs room on disk, and nothing else bounds it.
         val space = FreeSpace(root)
+        // A wrong password decrypts to noise, but the tag that says so is the last thing in the
+        // file. Every archive ArchiveIO.import accepts opens with a zip local header, since it
+        // needs the manifest entry, so noise there is refused after the first chunk instead of
+        // after the whole backup has been written to disk.
+        var opening = ByteArray(0)
         while (true) {
           val read = probe.read(buffer, held, buffer.size - held)
           if (read < 0) break
@@ -90,7 +107,14 @@ internal object ArchiveCrypto {
           val ready = total - TAG_BYTES
           if (ready > 0) {
             space.before(ready)
-            out.write(gcm.update(buffer, 0, ready))
+            val plain = gcm.update(buffer, 0, ready)
+            if (opening.size < ZIP_START.size) {
+              opening += plain.copyOf(minOf(plain.size, ZIP_START.size - opening.size))
+              if (opening.size == ZIP_START.size && !opening.contentEquals(ZIP_START)) {
+                throw AEADBadTagException("Wrong password or not a Limen backup")
+              }
+            }
+            out.write(plain)
             buffer.copyInto(buffer, 0, ready, total)
             held = TAG_BYTES
           } else {

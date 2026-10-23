@@ -3,6 +3,7 @@ package dev.peringer.limen.data
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.OutputStream
+import java.util.Locale
 import java.util.zip.Inflater
 
 /**
@@ -97,7 +98,8 @@ internal object PdfPlates {
     val table = StringBuilder("xref\n0 $count\n")
     entries.forEachIndexed { number, entry ->
       val at = if (entry.kind == 'n') moved.getValue(number) else entry.offset
-      table.append("%010d %s %s \n".format(at, entry.generation, entry.kind))
+      // Locale.ROOT: the default locale's own digits would not survive ISO-8859-1 and the table would read "?".
+      table.append("%010d %s %s \n".format(Locale.ROOT, at, entry.generation, entry.kind))
     }
     table.append(trailer).append("startxref\n").append(xref).append("\n%%EOF\n")
     counted.write(table.toString().toByteArray(Charsets.ISO_8859_1))
@@ -135,7 +137,9 @@ internal object PdfPlates {
 
   private fun replace(out: OutputStream, number: Int, dictionary: String, plate: Plate) {
     // The stand-in's colour space is the one PdfDocument gave an opaque bitmap, an sRGB
-    // profile with three components, which is what a JPEG of the same bitmap holds.
+    // profile with three components. A reader takes a DCT image's colour space from this
+    // dictionary and ignores any profile inside the JPEG, so the annex writes every plate in
+    // sRGB: the PDF and the HTML copy, which a browser colours from the JPEG, then agree.
     val colorSpace = Regex("""/ColorSpace\s*(\[[^\]]*]|/\w+|\d+ \d+ R)""").find(dictionary)?.groupValues?.get(1) ?: "/DeviceRGB"
     val head = "$number 0 obj\n<</Type /XObject\n/Subtype /Image\n/Width ${plate.width}\n/Height ${plate.height}\n" +
       "/ColorSpace $colorSpace\n/BitsPerComponent 8\n/Filter /DCTDecode\n/Length ${plate.jpeg.length()}>> stream\n"

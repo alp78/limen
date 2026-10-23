@@ -5,7 +5,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import dev.peringer.limen.data.*
 import dev.peringer.limen.theme.Limen
@@ -58,9 +60,9 @@ internal fun MeterReadings(vm: LimenViewModel, s: Str, p: Protocol) {
             SmallKey(s.gallery, onPress = intake.pickPhoto)
           }
           FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) { r.photos.forEach { photo ->
-            PhotoThumb(vm, s, photo.file) { update { it.copy(photos = it.photos.filterNot { old -> old.file == photo.file }) } }
+            PhotoThumb(vm, s, photo.file) { vm.removeReadingPhoto(r.id, photo.file) }
           } }
-          if (!LocalRecordLocked.current) SmallKey(s.delete) { vm.edit { it.copy(details = it.details.copy(readings = it.details.readings.filterNot { old -> old.id == r.id })) } }
+          if (!LocalRecordLocked.current) SmallKey(s.delete) { vm.removeReading(r.id) }
         }
       }
     }
@@ -68,6 +70,25 @@ internal fun MeterReadings(vm: LimenViewModel, s: Str, p: Protocol) {
       vm.edit { it.copy(details = it.details.copy(readings = it.details.readings + MeterReading(UUID.randomUUID().toString(), date = it.handoverDate, time = it.handoverTime))) }
     }
     ScopeReason(vm, s, p, DossierCard.Meters.name)
+  }
+}
+
+/**
+ * A count typed with the keyboard. The typed text is held here because an empty field has no
+ * count to show: rebuilt from the number, it snapped back to the old digit on backspace and a
+ * retyped number came out as "35". The record holds 0 until a number is typed.
+ */
+@Composable
+private fun CountField(label: String, id: String, count: Int, onChange: (Int) -> Unit) {
+  var text by remember(id) { mutableStateOf(count.toString()) }
+  // Follows the record when something else moved the count, an undo for one.
+  val shown = if ((text.toIntOrNull() ?: 0) == count) text else count.toString()
+  Field(label, shown, keyboardType = KeyboardType.Number) { typed ->
+    val n = if (typed.isEmpty()) 0 else typed.toIntOrNull()?.takeIf { it >= 0 }
+    if (n != null) {
+      text = if (typed.isEmpty()) typed else n.toString()
+      onChange(n)
+    }
   }
 }
 
@@ -80,10 +101,10 @@ internal fun AccessDevices(vm: LimenViewModel, s: Str, p: Protocol) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
           Field(s.keyLabel, a.label) { v -> update { it.copy(label = v) } }
           Field(s.identifier, a.identifier) { v -> update { it.copy(identifier = v) } }
-          Field(s.expected, a.expected.toString()) { v -> v.toIntOrNull()?.takeIf { it >= 0 }?.let { n -> update { it.copy(expected = n) } } }
-          Field(s.transferred, a.transferred.toString()) { v -> v.toIntOrNull()?.takeIf { it >= 0 }?.let { n -> update { it.copy(transferred = n) } } }
+          CountField(s.expected, a.id, a.expected) { n -> update { it.copy(expected = n) } }
+          CountField(s.transferred, a.id, a.transferred) { n -> update { it.copy(transferred = n) } }
           Field(s.keyTransferNote, a.note, singleLine = false) { v -> update { it.copy(note = v) } }
-          if (!LocalRecordLocked.current) SmallKey(s.delete) { vm.edit { it.copy(details = it.details.copy(accessDevices = it.details.accessDevices.filterNot { old -> old.id == a.id })) } }
+          if (!LocalRecordLocked.current) SmallKey(s.delete) { vm.removeAccessDevice(a.id) }
         }
       }
     }
@@ -95,7 +116,10 @@ internal fun AccessDevices(vm: LimenViewModel, s: Str, p: Protocol) {
 
 @Composable
 internal fun DocumentsPanel(vm: LimenViewModel, s: Str, p: Protocol) {
-  var target by remember { mutableStateOf<String?>(null) }
+  // Saveable, like the camera slot: the picker puts this activity in the background, and when
+  // the system recreates it the result still arrives, to a callback that lost the slot it was
+  // opened for and dropped the document without a word.
+  var target by rememberSaveable { mutableStateOf<String?>(null) }
   val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
     val id = target
     if (uri != null && id != null) vm.attachDocument(id, uri)
@@ -114,7 +138,7 @@ internal fun DocumentsPanel(vm: LimenViewModel, s: Str, p: Protocol) {
         }
         if (!LocalRecordLocked.current) {
           SmallKey(s.addDocument) { target = a.id; picker.launch(arrayOf("application/pdf", "image/jpeg", "image/png")) }
-          SmallKey(s.delete) { vm.edit { it.copy(details = it.details.copy(attachments = it.details.attachments.filterNot { old -> old.id == a.id })) } }
+          SmallKey(s.delete) { vm.removeAttachment(a.id) }
         }
       }
       if (!LocalRecordLocked.current) IconKey(ButtonGlyph.Add, "${s.add} · ${s.attachments}") {
@@ -137,7 +161,7 @@ internal fun FollowUpPanel(vm: LimenViewModel, s: Str, p: Protocol) {
         Field(s.deliveryDetail, f.method) { v -> update { it.copy(method = v) } }
         DateField(s.fixDeadline, f.deadline, s) { v -> update { it.copy(deadline = v) } }
         Toggle(s.done, f.done, enabled = !LocalRecordLocked.current) { update { it.copy(done = !it.done) } }
-        if (!LocalRecordLocked.current) SmallKey(s.delete) { vm.edit { it.copy(details = it.details.copy(followUps = it.details.followUps.filterNot { old -> old.id == f.id })) } }
+        if (!LocalRecordLocked.current) SmallKey(s.delete) { vm.removeFollowUp(f.id) }
       }
       if (!LocalRecordLocked.current) IconKey(ButtonGlyph.Add, "${s.add} · ${s.followUps}") {
         vm.edit { it.copy(details = it.details.copy(followUps = it.details.followUps + FollowUp(UUID.randomUUID().toString()))) }
@@ -150,8 +174,14 @@ internal fun FollowUpPanel(vm: LimenViewModel, s: Str, p: Protocol) {
 internal fun RecordBackupButton(vm: LimenViewModel, s: Str, p: Protocol) {
   var open by remember { mutableStateOf(false) }
   SmallKey(s.createBackup, Modifier.fillMaxWidth(), enabled = !vm.archiveBusy) { open = true }
-  if (vm.archiveFailed) Text(s.saveFailed, color = Limen.colors.dangerOutline)
-  vm.archiveExported?.let { Text(it.displayName, color = Limen.colors.ink) }
+  // The backup state is shared by every screen: only this record's own backup is reported here,
+  // and in the backup's own words, not the sentence for a record that failed to save.
+  if (vm.archiveRecordId == p.id) {
+    if (vm.archiveFailed) Text(s.archiveFailure(vm.archiveRefused, false), color = Limen.colors.dangerOutline)
+    vm.archiveExported?.let {
+      Text(if (vm.archiveProtected) s.archiveSaved(it.displayName) else s.archiveSavedOpen(it.displayName), color = Limen.colors.ink)
+    }
+  }
   if (open) ArchivePasswordDialog(ArchiveAction.Export, s, onDismiss = { open = false }) { password ->
     vm.exportArchive(password, p.id)
     open = false

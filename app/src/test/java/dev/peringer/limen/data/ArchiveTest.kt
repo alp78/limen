@@ -150,6 +150,26 @@ class ArchiveTest {
     assertTrue(restored.list().isEmpty())
   }
 
+  /** The tag that refuses a wrong password is the last thing in the file, so the opening bytes have to speak for it. */
+  @Test
+  fun aWrongPasswordIsRefusedAfterTheFirstChunkNotAfterTheWholeBackup() {
+    val source = Store(tmp.newFolder("source-early-wrong"))
+    source.save(Protocol(id = "big", kind = Kind.Entry, createdEpochMs = 5L, defects = listOf(Defect(id = "d1", photos = listOf("wall.jpg")))))
+    File(source.photoDir("big"), "wall.jpg").writeBytes(ByteArray(3 shl 20).also { java.util.Random(5L).nextBytes(it) })
+    val bytes = ByteArrayOutputStream().also { source.exportArchive(password, it) }.toByteArray()
+    var consumed = 0
+    val counting = object : java.io.InputStream() {
+      private val inner = ByteArrayInputStream(bytes)
+      override fun read() = inner.read().also { if (it >= 0) consumed++ }
+      override fun read(buffer: ByteArray, offset: Int, length: Int) = inner.read(buffer, offset, length).also { if (it > 0) consumed += it }
+    }
+    val root = tmp.newFolder("restored-early-wrong")
+
+    assertThrows(javax.crypto.AEADBadTagException::class.java) { Store(root).importArchive("wrong password".toCharArray(), counting) }
+    assertTrue("read $consumed of ${bytes.size} bytes", consumed < 1 shl 20)
+    assertTrue(root.listFiles().orEmpty().none { it.name.startsWith("archive-decrypt-") })
+  }
+
   @Test
   fun aTamperedOrTruncatedEncryptedBackupInstallsNothing() {
     val source = Store(tmp.newFolder("source-tampered"))
@@ -275,5 +295,64 @@ class ArchiveTest {
     assertTrue(zip.getValue("photos/photos/wall.jpg").contentEquals(jpeg))
     // Version 1 is what 1.2.4 and earlier restore, with no packer at all.
     assertEquals(1, ArchiveIO.import(tmp.newFolder("restored-unfaithful"), ByteArrayInputStream(bytes), packer = null).imported)
+  }
+
+  @Test
+  fun aJpegThatRunsThePackerOutOfMemoryGoesInAsItIsAndTheBackupStaysVersionOne() {
+    val exhausted = object : JpegPacker {
+      override fun pack(jpeg: ByteArray): ByteArray = throw OutOfMemoryError()
+      override fun unpack(packed: ByteArray): ByteArray? = null
+    }
+    val bytes = ByteArrayOutputStream().also { ArchiveIO.export(withPhotographs("source-exhausted"), it, packer = exhausted) }.toByteArray()
+    val zip = entries(bytes)
+    assertEquals("LIMEN_ARCHIVE\nversion=1\n", String(zip.getValue("limen-archive.txt")))
+    assertTrue(zip.getValue("photos/photos/wall.jpg").contentEquals(jpeg))
+  }
+
+  @Test
+  fun aRestoreKilledDuringItsInstallDoesNotBlockTheNextRestoreOfThatRecord() {
+    val source = Store(tmp.newFolder("source-killed"))
+    source.save(Protocol(id = "p6", kind = Kind.Entry, createdEpochMs = 10L, defects = listOf(Defect(id = "d1", photos = listOf("wall.jpg")))))
+    File(source.photoDir("p6"), "wall.jpg").writeText("original evidence")
+    val bytes = ByteArrayOutputStream().also { source.exportArchive(CharArray(0), it) }.toByteArray()
+
+    // What the killed restore left: evidence folders written, the record file, which goes last, not.
+    val root = tmp.newFolder("restored-killed")
+    File(root, "photos/p6").mkdirs()
+    File(root, "photos/p6/wall.jpg").writeText("half written")
+    File(root, "exports/p6").mkdirs()
+    File(root, "exports/p6/old.pdf").writeText("old export")
+    val restored = Store(root)
+
+    assertEquals(ArchiveImportResult(imported = 1, skippedExisting = 0, rejected = 0), restored.importArchive(CharArray(0), ByteArrayInputStream(bytes)))
+    assertEquals("original evidence", File(restored.photoDir("p6"), "wall.jpg").readText())
+    assertTrue(!File(root, "exports/p6").exists())
+    // Moved aside, not deleted: nothing here is known to be worthless.
+    val kept = File(root, "recovery").walkTopDown().filter { it.isFile }.map { it.readText() }.toSet()
+    assertEquals(setOf("half written", "old export"), kept)
+  }
+
+  @Test
+  fun aBackupIsRefusedWhileAPhotographNoLongerMatchesItsRecordedHash() {
+    val root = withPhotographs("source-damaged")
+    File(Store(root).photoDir("photos"), "wall.jpg").writeBytes(jpeg.copyOf().also { it[10] = 1 })
+
+    val refused = assertThrows(ArchiveRefused::class.java) { ArchiveIO.export(root, ByteArrayOutputStream(), packer = null) }
+
+    assertEquals(ArchiveRefused.Reason.DamagedEvidence, refused.reason)
+    assertEquals("photos", refused.record)
+  }
+
+  @Test
+  fun anUnreadableRecordRefusesAFullBackupButNotTheBackupOfAnotherRecord() {
+    val root = tmp.newFolder("source-unreadable")
+    val store = Store(root)
+    store.save(Protocol(id = "good", kind = Kind.Entry, createdEpochMs = 11L))
+    File(root, "protocols/bad.json").writeText("{ not json")
+
+    val refused = assertThrows(ArchiveRefused::class.java) { store.exportArchive(CharArray(0), ByteArrayOutputStream()) }
+
+    assertEquals(ArchiveRefused.Reason.UnreadableRecord, refused.reason)
+    assertTrue(ByteArrayOutputStream().also { store.exportArchive(CharArray(0), it, setOf("good")) }.size() > 0)
   }
 }

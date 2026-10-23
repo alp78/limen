@@ -51,19 +51,20 @@ internal fun writeToDownloads(
   }
   val uri = resolver.insert(collection, values)
     ?: throw IllegalStateException("MediaStore refused the export row")
+  var bytes = 0L
   try {
     resolver.openOutputStream(uri)?.use(write)
       ?: throw IllegalStateException("MediaStore returned no stream")
     values.clear()
     values.put(MediaStore.Downloads.IS_PENDING, 0)
     resolver.update(uri, values, null, null)
+    // Inside the try: the file is already visible here, and a failure must not leave it in Downloads.
+    resolver.query(uri, arrayOf(MediaStore.Downloads.SIZE), null, null, null)?.use { c ->
+      if (c.moveToFirst()) bytes = c.getLong(0)
+    }
   } catch (t: Throwable) {
     resolver.delete(uri, null, null)
     throw t
-  }
-  var bytes = 0L
-  resolver.query(uri, arrayOf(MediaStore.Downloads.SIZE), null, null, null)?.use { c ->
-    if (c.moveToFirst()) bytes = c.getLong(0)
   }
   return ExportedFile(uri, name, bytes)
 }

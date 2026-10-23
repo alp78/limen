@@ -5,7 +5,7 @@ Limen is a local Android application for Swiss residential handovers. It records
 ## At the property
 
 1. Start an entry or exit draft with your name. Contact details are optional and reused on the next handover. Enter the property independently from your own address.
-2. Record the contractual landlord, each tenant and any representative with their authority. Review the participant privacy notice before collecting their information.
+2. Record the contractual landlord, each tenant and any representative with their authority.
 3. Select the canton and check the dated legal guidance. Unresolved checks can be recorded with an explanation. These are recorded checks, not legal certification.
 4. Inspect rooms in the order that suits the visit. Rename and reorder rooms, photograph their general condition, record defects and competing positions, and explain any inaccessible or untested areas. An exit can show the saved entry record.
 5. Record key and device transfers, meter identifiers and units, and the actual transfer date. Attach the lease, official form or other supporting documents, or record an external reference.
@@ -14,11 +14,11 @@ Limen is a local Android application for Swiss residential handovers. It records
 
 ## Privacy and recovery
 
-Address lookup is off by default. Enabling it shows a disclosure before typed address searches are sent to swisstopo. Manual entry works offline. Optional device-credential protection restricts access to the saved-record library and settings; it does not encrypt files or prevent access to the current handover being reviewed.
+Address lookup is automatic: whenever the phone is online, the text typed into a Swiss address field is sent to the federal swisstopo service for suggestions once it reaches three characters, with no setting and no prompt. No record, photograph or signature is sent. Manual entry works offline, and the field stays free to type when nothing matches. Optional device-credential protection restricts access to the saved-record library and settings while the phone has a screen lock; it does not encrypt files or prevent access to the current handover being reviewed.
 
-Records and evidence remain in private app storage. Removed evidence can remain for recovery until the entire record is deleted. Public exports and copies shared with other apps must be managed separately. Backups contain the selected records and their referenced evidence and retained exports. Passwords enable authenticated encryption; a plain archive requires an explicit choice. Backups, photographs and supporting documents have no size limit; a restore needs free storage for the archive it unpacks. Inside a backup, JPEG photographs are repacked losslessly as JPEG XL, about a fifth smaller, and rebuilt byte for byte on restore; a backup holding repacked photographs restores in Limen 1.2.5 or later.
+Records and evidence remain in private app storage. Removed evidence can remain for recovery until the entire record is deleted. Public exports and copies shared with other apps must be managed separately. Backups contain the selected records and their referenced evidence and retained exports. Passwords enable authenticated encryption; a plain archive requires an explicit choice. Backups, photographs and supporting documents have no size limit; a restore needs free storage for the archive it unpacks, about the size of the backup for a plain one and about twice that for a password-protected one, which is decrypted to a copy first. Inside a backup, JPEG photographs are repacked losslessly as JPEG XL, about a fifth smaller, and rebuilt byte for byte on restore; a backup holding repacked photographs restores in Limen 1.2.5 or later.
 
-Save failures remain visible. Unreadable records are listed, and a last-good copy can be recovered. Restore skips healthy existing records. Its optional repair mode preserves corrupt originals in a recovery directory before installing validated replacements.
+Save failures remain visible. Unreadable records are listed, and a last-good copy can be recovered; a recovery that fails says so. A backup is refused, with the reason named, when a record cannot be read or its evidence no longer matches, and the other records can be backed up one at a time from their Export step. Restore skips healthy existing records. Its optional repair mode preserves corrupt originals in a recovery directory before installing validated replacements.
 
 ## Legal and language coverage
 

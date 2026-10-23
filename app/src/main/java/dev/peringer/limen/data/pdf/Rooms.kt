@@ -11,9 +11,10 @@ import dev.peringer.limen.ui.*
  */
 internal fun Sheet.rooms(p: Protocol) {
   if (p.rooms.isEmpty()) return
-  heading(s.stepInspection)
   val sections = AnnexContent.sections(p, s)
-  p.rooms.forEach { room -> panel(roomPanel(p, room, sections.firstOrNull { it.key == room.id })) }
+  val panels = p.rooms.map { room -> roomPanel(p, room, sections.firstOrNull { it.key == room.id }) }
+  heading(s.stepInspection, first = panels.first())
+  panels.forEach { panel(it) }
 }
 
 private fun Sheet.roomPanel(p: Protocol, room: Room, section: AnnexContent.Section?): Panel {
@@ -26,7 +27,8 @@ private fun Sheet.roomPanel(p: Protocol, room: Room, section: AnnexContent.Secti
   val blocks = buildList<Block> {
     // The room's readout first, as the hub door carries its own: how many photographs the
     // annex holds for it and on which page. A closing row would be stranded by a page break.
-    section?.let { add(Chips(listOf(Chip("${s.photos}: ${it.cards.size}"), Chip(annexPointer(it))), keepWithNext = true)) }
+    // The HTML has no pages, so its chip names the annex without the page the PDF's chip gives.
+    section?.let { add(Chips(listOf(Chip("${s.photos}: ${it.cards.size}"), Chip(annexPointer(it), html = s.pdfDefectAnnex)), keepWithNext = true)) }
     if (room.hasLegacyGrid()) add(ItemGrid(legacyGrid(p, room)))
     // A room explicitly confirmed as inspected says so even with no finding. Legacy seeded
     // rooms stay labelled not inspected by their pill, so the paper never turns their

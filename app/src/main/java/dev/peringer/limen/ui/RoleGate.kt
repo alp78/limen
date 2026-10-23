@@ -91,8 +91,10 @@ fun NewSessionScreen(
   var lookupFailed by remember { mutableStateOf(false) }
   var addressMatches by remember { mutableStateOf(emptyList<SwissAddressCandidate>()) }
   var focusedAddressFields by remember { mutableStateOf(emptySet<String>()) }
-  val phoneCountries = remember(s.lang) { InternationalPhone.countries.sortedBy { it.label(java.util.Locale.forLanguageTag(s.lang.name.lowercase())) } }
-  val addressCountries = remember(s.lang) { CountryDirectory.addressCountries.sortedBy { it.label(java.util.Locale.forLanguageTag(s.lang.name.lowercase())) } }
+  // By the name, not the label: the flag leads the label, so sorting it gave the ISO code order.
+  val countryOrder = remember(s.lang) { CountryDirectory.nameOrder(java.util.Locale.forLanguageTag(s.lang.name.lowercase())) }
+  val phoneCountries = remember(countryOrder) { InternationalPhone.countries.sortedWith(compareBy(countryOrder) { it.regionCode }) }
+  val addressCountries = remember(countryOrder) { CountryDirectory.addressCountries.sortedWith(compareBy(countryOrder) { it.regionCode }) }
   val phoneCountry = phoneCountries.firstOrNull { it.regionCode == phoneRegionCode }
     ?: phoneCountries.first { it.regionCode == "CH" }
   val addressCountry = addressCountries.firstOrNull { it.regionCode == addressCountryCode }
@@ -326,18 +328,26 @@ fun NewSessionScreen(
         }
       }
       Spacer(Modifier.height(4.dp))
+      // True once the record exists. A record that could not be written leaves the form where it
+      // is, with the failure it shows, instead of moving on as though a draft had been kept.
       val start = {
         entryToSeed?.let { vm.seedExitFrom(it, role, identity) }
           ?: vm.startNewSession(role, identity, sessionKind)
+        vm.working != null
       }
-      // Save keeps the draft in the library and returns to it; Validate opens the record.
+      // Save keeps the draft in the library and returns to it; Validate opens the record. Both
+      // leave the form behind, so the way back out of the handover is the list and a seeded
+      // exit does not stay seeded to offer a second exit from the same entry.
       Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         ActionKey(ButtonGlyph.Save, s.draft, active = false, Modifier.weight(1f), enabled = canStart) {
-          start()
-          vm.closeFlow()
-          onSaved()
+          if (start()) {
+            vm.closeFlow()
+            onSaved()
+          }
         }
-        ActionKey(ButtonGlyph.Confirm, s.validate, active = true, Modifier.weight(1f), enabled = canStart, onPress = start)
+        ActionKey(ButtonGlyph.Confirm, s.validate, active = true, Modifier.weight(1f), enabled = canStart) {
+          if (start()) onSaved()
+        }
       }
       Spacer(Modifier.height(20.dp))
     }

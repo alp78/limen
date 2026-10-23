@@ -1,8 +1,11 @@
 package dev.peringer.limen.ui
 
+import dev.peringer.limen.data.Contract
+import dev.peringer.limen.data.Defect
 import dev.peringer.limen.data.DossierCard
 import dev.peringer.limen.data.Deposit
 import dev.peringer.limen.data.DepositKind
+import dev.peringer.limen.data.FollowUp
 import dev.peringer.limen.data.KeyCount
 import dev.peringer.limen.data.KeyKind
 import dev.peringer.limen.data.KeyTransferStatus
@@ -11,15 +14,19 @@ import dev.peringer.limen.data.LegalCheckStatus
 import dev.peringer.limen.data.LegalOverlayRecord
 import dev.peringer.limen.data.LegalRequirement
 import dev.peringer.limen.data.LEGAL_RULE_SET_ID
+import dev.peringer.limen.data.MeterReading
 import dev.peringer.limen.data.ObjectEntry
 import dev.peringer.limen.data.ObjectGroup
 import dev.peringer.limen.data.Party
 import dev.peringer.limen.data.Plane
 import dev.peringer.limen.data.Protocol
+import dev.peringer.limen.data.RecordDetails
+import dev.peringer.limen.data.ReplacementEstimate
 import dev.peringer.limen.data.Role
 import dev.peringer.limen.data.Room
 import dev.peringer.limen.data.RoomKind
 import dev.peringer.limen.data.Signature
+import dev.peringer.limen.data.SupportingDocument
 import dev.peringer.limen.data.SwissCanton
 import dev.peringer.limen.data.UnilateralReason
 import org.junit.Assert.assertEquals
@@ -202,5 +209,118 @@ class CompletionRulesTest {
       requiredRecordRoles(sideless, null),
     )
     assertTrue(issues(sideless).isEmpty())
+  }
+
+  /** Every section the dossier chips cover, answered and accepted by the gate. */
+  private fun everySectionAnswered(): Protocol {
+    val base = complete(Kind.Entry, Role.Tenant)
+    return base.copy(
+      dossier = DossierCard.entries.toList(),
+      dossierChosen = true,
+      contract = Contract(monthlyRentChf = "1850", conclusionDate = "2026-08-01"),
+      deposit = Deposit(DepositKind.BankAccount, amountChf = "3700", bank = "BCV", account = "CH93 0076 2011 6238 5295 7"),
+      remarks = "Keys handed over at the door",
+      legalOverlay = base.legalOverlay.withStatus(LegalRequirement.DepositProof, LegalCheckStatus.Confirmed),
+      details = RecordDetails(
+        actualTransferDate = "2026-08-18",
+        actualTransferTime = "10:30",
+        readings = listOf(MeterReading("m1", label = "Electricity", identifier = "E-1", value = "4821", unit = "kWh", date = "2026-08-18", time = "10:05")),
+        attachments = listOf(SupportingDocument("a1", title = "Lease", externalReference = "Folder 3")),
+        followUps = listOf(FollowUp("f1", description = "Stain returns after cleaning")),
+      ),
+    )
+  }
+
+  private fun chips(p: Protocol): Map<String, Boolean> = mapOf(
+    "object" to objectRecorded(p),
+    "parties" to partiesRecorded(p),
+    "transfer" to transferRecorded(p),
+    "attachments" to attachmentsRecorded(p),
+    "followUps" to followUpsRecorded(p),
+  ) + DossierCard.entries.associate { it.name to dossierCardRecorded(p, it) }
+
+  @Test
+  fun everySectionChipTicksOnARecordTheGateAccepts() {
+    // Meters here are readings only, and the legacy six dials stay empty: the card's only way in.
+    val full = everySectionAnswered()
+    assertTrue(issues(full).isEmpty())
+    assertTrue(chips(full).toString(), chips(full).values.all { it })
+  }
+
+  @Test
+  fun aChipDoesNotTickWhereTheGateRejectsItsSection() {
+    val full = everySectionAnswered()
+    listOf(
+      "parties" to full.copy(parties = full.parties + Party(Role.Witness, id = "w1")),
+      "parties" to full.copy(parties = listOf(Party(Role.Tenant, "Tenant", representedBy = "Agent"), full.parties[1])),
+      "object" to full.copy(handoverTime = "14:3"),
+      "object" to full.copy(lastProtocolDate = "31/02/2026"),
+      "Contract" to full.copy(contract = full.contract.copy(monthlyRentChf = "abc")),
+      "Deposit" to full.copy(deposit = full.deposit.copy(amountChf = "3k")),
+      "Meters" to full.copy(details = full.details.copy(readings = full.details.readings.map { it.copy(time = "25:99") })),
+      "Notes" to full.copy(chargesStatementBy = "31/02/2026"),
+      "transfer" to full.copy(details = full.details.copy(actualTransferTime = "25:99")),
+      "attachments" to full.copy(details = full.details.copy(attachments = listOf(SupportingDocument("a2")))),
+      "followUps" to full.copy(details = full.details.copy(followUps = listOf(FollowUp("f2")))),
+    ).forEach { (section, broken) ->
+      assertEquals(section, false, chips(broken)[section])
+      assertTrue(section, issues(broken).isNotEmpty())
+    }
+  }
+
+  @Test
+  fun aContractAnsweredOnlyByItsReasonTicksAndPasses() {
+    val full = everySectionAnswered()
+    val reasonOnly = full.copy(
+      contract = Contract(),
+      details = full.details.copy(scopeNotes = mapOf("Contract" to "Lease not available at the handover")),
+    )
+    assertTrue(dossierCardRecorded(reasonOnly, DossierCard.Contract))
+    assertTrue(issues(reasonOnly).isEmpty())
+    assertEquals(false, dossierCardRecorded(full.copy(contract = Contract()), DossierCard.Contract))
+  }
+
+  @Test
+  fun aDepositAmountLeftBehindByTheKindPillDoesNotBlockFinalization() {
+    // The amount field exists only for a bank account and an insurance, so text kept after the
+    // pill moved to None is a value nobody can reach to correct.
+    val full = everySectionAnswered()
+    val none = full.copy(deposit = Deposit(DepositKind.None, amountChf = "two months"))
+    assertTrue(issues(none).isEmpty())
+    assertEquals("", depositAmountShown(none))
+    val bank = none.copy(deposit = none.deposit.copy(kind = DepositKind.BankAccount, bank = "BCV", account = "CH93 0076 2011 6238 5295 7"))
+    assertTrue(FinalizationIssue.Dossier in issues(bank))
+    assertEquals("card-Deposit", incompleteDossierTarget(bank))
+  }
+
+  @Test
+  fun theDossierMessageNamesOnlyWhatTheGateRejected() {
+    val s = Str(Lang.En)
+    val full = everySectionAnswered()
+    assertEquals(emptyList<String>(), dossierCauses(full, s))
+    assertEquals(listOf(s.monthlyRent), dossierCauses(full.copy(contract = full.contract.copy(monthlyRentChf = "1.200,50")), s))
+    assertEquals(listOf(s.depositAmount), dossierCauses(full.copy(deposit = full.deposit.copy(amountChf = "3k")), s))
+    assertEquals(listOf(s.lastProtocol), dossierCauses(full.copy(lastProtocolDate = "12/0"), s))
+    assertEquals(listOf(s.contract), dossierCauses(full.copy(contract = Contract()), s))
+    assertEquals(listOf(s.meters), dossierCauses(full.copy(details = full.details.copy(readings = listOf(MeterReading("m2")))), s))
+    // A wear estimate with its cost left blank is the case the editor itself does not flag.
+    val worn = full.copy(
+      defects = listOf(Defect("d1", roomId = "r1", text = "Scratched floor", chargedToTenant = true)),
+      details = full.details.copy(estimates = mapOf("d1" to ReplacementEstimate(ageYears = "3", lifeYears = "8"))),
+    )
+    assertEquals(listOf("${s.faceValue}: Scratched floor"), dossierCauses(worn, s))
+  }
+
+  @Test
+  fun aTimeThatIsNotValidIsNamedBesideTheHandoverTimeMessage() {
+    val s = Str(Lang.En)
+    val full = everySectionAnswered()
+    assertTrue(timeCauses(full, s).isEmpty())
+    val bad = full.copy(details = full.details.copy(
+      actualTransferTime = "25:99",
+      readings = full.details.readings.map { it.copy(time = "9") },
+    ))
+    assertTrue(FinalizationIssue.HandoverTime in issues(bad))
+    assertEquals(listOf(s.actualTransfer, "${s.meters}: Electricity"), timeCauses(bad, s))
   }
 }

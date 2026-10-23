@@ -16,8 +16,7 @@ internal fun OverviewPhotos(vm: LimenViewModel, s: Str, p: Protocol, room: Room)
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
       FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         p.details.roomPhotos[room.id].orEmpty().forEach { photo ->
-          PhotoThumb(vm, s, photo.file) { vm.edit { it.copy(details = it.details.copy(roomPhotos = it.details.roomPhotos +
-            (room.id to it.details.roomPhotos[room.id].orEmpty().filterNot { old -> old.file == photo.file }))) } }
+          PhotoThumb(vm, s, photo.file) { vm.removeOverviewPhoto(room.id, photo.file) }
         }
       }
       if (!LocalRecordLocked.current) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

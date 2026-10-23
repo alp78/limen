@@ -54,6 +54,8 @@ internal fun HubStep(vm: LimenViewModel, s: Str, p: Protocol) {
     Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
     verticalArrangement = Arrangement.spacedBy(10.dp),
   ) {
+    // The time issue also stands for a transfer or meter-reading time; only the handover time
+    // itself belongs to the object, so the warning does not send anyone to a field that is fine.
     val objectIssues = issues.filter { it in setOf(
       FinalizationIssue.Address,
       FinalizationIssue.Place,
@@ -61,7 +63,7 @@ internal fun HubStep(vm: LimenViewModel, s: Str, p: Protocol) {
       FinalizationIssue.HandoverDate,
       FinalizationIssue.HandoverTime,
       FinalizationIssue.LegalOverlay,
-    ) }
+    ) && (it != FinalizationIssue.HandoverTime || p.handoverTime.isBlank() || invalidTime(p.handoverTime)) }
     if (objectIssues.isNotEmpty() && !p.isFinalized()) {
       Panel(label = s.objectPreflight, warning = true) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

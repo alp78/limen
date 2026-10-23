@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.pdf.PdfDocument
+import android.net.Uri
 import dev.peringer.limen.data.pdf.Mark
 import dev.peringer.limen.data.pdf.Outline
 import dev.peringer.limen.data.pdf.Sheet
@@ -88,6 +89,7 @@ object PdfExport {
       val companion = File(retained, "$name.html")
       // The plates go through files, never memory: a record holds any number of photographs.
       val spool = File(context.cacheDir, "annex-${System.nanoTime()}").apply { mkdirs() }
+      val downloaded = mutableListOf<Uri>()
       try {
         val drawn = companion.outputStream().buffered().use { html ->
           build(context, p, s, photoDir, signatureDir, reference, planned, total, html, spool, pages, annexPages, logo)
@@ -97,12 +99,15 @@ object PdfExport {
         check(drawn.marks == counted.marks) { "The drawing pass paginated differently from the counting pass" }
         val written = try { java.io.ByteArrayOutputStream().also { drawn.doc.writeTo(it) }.toByteArray() } finally { drawn.doc.close() }
         original.outputStream().buffered().use { PdfPlates.swap(written, drawn.plates, it) }
-        val out = writeToDownloads(context, original.name, "application/pdf") { out -> original.inputStream().use { it.copyTo(out) } }
-        val html = writeToDownloads(context, companion.name, "text/html") { out -> companion.inputStream().use { it.copyTo(out) } }
+        val out = writeToDownloads(context, original.name, "application/pdf") { out -> original.inputStream().use { it.copyTo(out) } }.also { downloaded += it.uri }
+        val html = writeToDownloads(context, companion.name, "text/html") { out -> companion.inputStream().use { it.copyTo(out) } }.also { downloaded += it.uri }
         return out.copy(companionUri = html.uri, sha256 = ProtocolIntegrity.fileHash(original))
       } catch (failure: Throwable) {
         original.delete()
         companion.delete()
+        // The PDF reaches Downloads before the HTML does. A copy left there by an export that
+        // reported failure is not in the history, and the retry would take the next number.
+        downloaded.forEach { uri -> runCatching { context.contentResolver.delete(uri, null, null) } }
         throw failure
       } finally {
         spool.deleteRecursively()

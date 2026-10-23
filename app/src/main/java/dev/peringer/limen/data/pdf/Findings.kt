@@ -21,7 +21,7 @@ internal fun Sheet.findingBlock(p: Protocol, numbered: Report.Numbered): Finding
       FixBy.Landlord -> add(Chip("${s.fixByLabel}: ${s.role(Role.Landlord)}"))
       FixBy.Open -> Unit
     }
-    if (d.fixDeadline.isNotBlank()) add(Chip("${s.fixDeadline} ${SwissDate.display(d.fixDeadline)}"))
+    if (d.fixDeadline.isNotBlank()) add(Chip("${s.repairDeadline}: ${SwissDate.display(d.fixDeadline)}"))
     if (d.photos.isNotEmpty()) add(Chip("${s.photos}: ${d.photos.size}"))
     if (d.tenantResponse != TenantResponse.NotStated) add(Chip("${s.tenantResponse}: ${s.tenantResponse(d.tenantResponse)}"))
   }
@@ -30,11 +30,19 @@ internal fun Sheet.findingBlock(p: Protocol, numbered: Report.Numbered): Finding
     if (d.reservation.isNotBlank()) add("${s.reservationLabel}: ${d.reservation}")
     if (d.tenantComment.isNotBlank()) add("${s.tenantComment}: ${d.tenantComment}")
   }
-  val positions = d.participantPositions.map { (id, position) ->
-    val name = p.parties.firstOrNull { it.participantKey() == id }?.name ?: id
-    "$name: ${s.tenantResponse(position.response)}\n${position.comment}"
+  return Finding(numbered.number, where, d.text, chips, notes, participantPositionLines(p, d, s))
+}
+
+/**
+ * Per-tenant positions are edited only while several tenants share the record, and a removed
+ * tenant's entry stays in the map, so a position prints for a tenant still on the record or not at all.
+ */
+internal fun participantPositionLines(p: Protocol, d: Defect, s: Str): List<String> {
+  val tenants = p.parties.filter { it.role == Role.Tenant }
+  if (tenants.size < 2) return emptyList()
+  return d.participantPositions.mapNotNull { (id, position) ->
+    tenants.firstOrNull { it.participantKey() == id }?.let { "${it.name}: ${s.tenantResponse(position.response)}\n${position.comment}" }
   }
-  return Finding(numbered.number, where, d.text, chips, notes, positions)
 }
 
 /**

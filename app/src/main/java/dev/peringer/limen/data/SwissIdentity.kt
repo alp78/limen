@@ -77,6 +77,16 @@ object CountryDirectory {
   fun name(regionCode: String, locale: Locale = Locale.getDefault()): String =
     Locale.Builder().setRegion(regionCode).build().getDisplayCountry(locale).ifBlank { regionCode }
 
+  /**
+   * Region codes in the alphabetical order of their names in [locale]. The collator places
+   * Ägypten, Émirats and Österreich with the A, E and O, where a plain string comparison puts
+   * every accented initial after Z.
+   */
+  fun nameOrder(locale: Locale): Comparator<String> {
+    val collator = java.text.Collator.getInstance(locale)
+    return Comparator { a, b -> collator.compare(name(a, locale), name(b, locale)) }
+  }
+
   fun flag(regionCode: String): String {
     val region = regionCode.uppercase(Locale.ROOT)
     if (region.length != 2 || region.any { it !in 'A'..'Z' }) return "🌐"

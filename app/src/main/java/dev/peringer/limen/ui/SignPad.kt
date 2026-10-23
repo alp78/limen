@@ -26,7 +26,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -56,6 +59,20 @@ import dev.peringer.limen.theme.Limen
  */
 private data class InkStroke(val points: List<Offset>, val width: Float)
 
+/**
+ * Each stroke as one float array, the width then x and y per point: the arrays are what a
+ * saved instance state accepts, and the ink drawn so far has to come back after the activity
+ * is recreated by a language change, the one configuration change the manifest leaves to a relaunch.
+ */
+private val InkSaver = listSaver<SnapshotStateList<InkStroke>, FloatArray>(
+  save = { strokes -> strokes.map { stroke -> floatArrayOf(stroke.width) + stroke.points.flatMap { listOf(it.x, it.y) } } },
+  restore = { saved ->
+    mutableStateListOf<InkStroke>().apply {
+      saved.forEach { array -> add(InkStroke(array.drop(1).chunked(2) { (x, y) -> Offset(x, y) }, array[0])) }
+    }
+  },
+)
+
 private const val INK_WIDTH = 9f
 private val INK_COLOR = Color(0xFF15181D)
 
@@ -67,7 +84,7 @@ fun SignPadOverlay(
   onKeep: (Bitmap) -> Unit,
   onCancel: () -> Unit,
 ) {
-  val strokes = remember { mutableStateListOf<InkStroke>() }
+  val strokes = rememberSaveable(saver = InkSaver) { mutableStateListOf<InkStroke>() }
   var live by remember { mutableStateOf<List<Offset>>(emptyList()) }
   var padSize by remember { mutableStateOf(IntSize.Zero) }
 

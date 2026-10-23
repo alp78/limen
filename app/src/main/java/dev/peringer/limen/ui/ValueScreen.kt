@@ -53,9 +53,7 @@ fun WearAssessment(s: Str, vm: LimenViewModel, defectId: String, modifier: Modif
   }
 
   Column(modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-      if (!locked && saved != null) SmallKey(s.delete) {
-        vm.edit { it.copy(details = it.details.copy(estimates = it.details.estimates - defectId)) }
-      }
+      if (!locked && saved != null) SmallKey(s.delete) { vm.removeEstimate(defectId) }
       Text(s.estimateNotice, color = Limen.colors.ink)
       Panel(label = s.faceValue, info = s.tipZeitwert()) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
