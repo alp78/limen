@@ -28,6 +28,8 @@ Dated Swiss guidance includes all 26 cantons, 2026 initial-rent-form duties, loc
 No account, advertising or analytics. Records stay in private app storage. Whenever the phone is online, text typed into a Swiss address field is sent to swisstopo for suggestions once it reaches three characters; manual entry works offline. Exported files are outside private storage. Backups are encrypted with a password, or explicitly chosen as readable archives.
 
 Interface and document labels are available in French, English, German, Italian and Romansh. Entered statements retain their original language.
+
+Photograph of the wall stain in the screenshots: Lukas Beck, CC BY 4.0.
 ```
 
 (1676/4000)
@@ -58,6 +60,8 @@ Les indications suisses datées couvrent les 26 cantons, les obligations de form
 Sans compte, publicité ni analyse d’utilisation. Les constats restent dans le stockage privé. Lorsque le téléphone est en ligne, le texte saisi dans un champ d’adresse suisse est transmis à swisstopo pour obtenir des suggestions dès trois caractères ; la saisie manuelle fonctionne hors ligne. Les fichiers exportés quittent le stockage privé. Une sauvegarde est chiffrée avec un mot de passe ou créée explicitement comme archive lisible.
 
 Interface et rubriques en français, anglais, allemand, italien et romanche. Les déclarations saisies gardent leur langue d’origine.
+
+Photo de la tache murale dans les captures d’écran : Lukas Beck, CC BY 4.0.
 ```
 
 (1851/4000)
@@ -88,6 +92,8 @@ Datierte Schweizer Hinweise umfassen alle 26 Kantone, die Formularpflicht beim A
 Kein Konto, keine Werbung und keine Nutzungsanalyse. Protokolle bleiben im privaten Speicher. Sobald das Telefon online ist, geht der in ein Schweizer Adressfeld eingegebene Text ab drei Zeichen für Adressvorschläge an swisstopo; die manuelle Eingabe funktioniert offline. Exportierte Dateien liegen ausserhalb des privaten Speichers. Sicherungen werden mit Passwort verschlüsselt oder ausdrücklich als lesbares Archiv erstellt.
 
 Oberfläche und Dokumentrubriken auf Französisch, Englisch, Deutsch, Italienisch und Rätoromanisch. Erfasste Aussagen bleiben in ihrer Originalsprache.
+
+Foto des Wandflecks in den Screenshots: Lukas Beck, CC BY 4.0.
 ```
 
 (1812/4000)
@@ -118,6 +124,8 @@ Le indicazioni svizzere datate comprendono tutti i 26 cantoni, gli obblighi del 
 Nessun account, pubblicità o analisi dell’utilizzo. I verbali restano nello spazio privato. Quando il telefono è online, il testo digitato in un campo di indirizzo svizzero è inviato a swisstopo per ottenere suggerimenti dal terzo carattere; l’inserimento manuale funziona offline. I file esportati escono dallo spazio privato. Il backup è cifrato con password o creato esplicitamente come archivio leggibile.
 
 Interfaccia e rubriche in francese, inglese, tedesco, italiano e romancio. Le dichiarazioni inserite conservano la lingua originale.
+
+Foto della macchia sulla parete negli screenshot: Lukas Beck, CC BY 4.0.
 ```
 
 (1800/4000)
@@ -148,6 +156,59 @@ Las indicaziuns svizras datadas cumpiglian ils 26 chantuns, las obligaziuns per 
 Nagin conto, nagina reclama e naginas analisas d’utilisaziun. Ils protocols restan en la memoria privata. Uschespert che il telefon è online, vegn il text endatà en in champ d’adressa svizra tramess a swisstopo per propostas d’adressas a partir da trais segns; l’endataziun manuala funcziuna offline. Datotecas exportadas èn ordaifer la memoria privata. Segirezzas èn criptadas cun pled-clav u vegnan creadas explicitamain sco archivs legibels.
 
 Interfatscha e rubricas en franzos, englais, tudestg, talian e rumantsch. Las decleraziuns endatadas restan en lur lingua originala.
+
+Foto da la macla sin la paraid en las copias dal visur: Lukas Beck, CC BY 4.0.
 ```
 
 (1786/4000)
+
+## Graphics
+
+The listing's images live under `docs/listing/graphics/`: the icon, five feature graphics, and three screenshot sets of eight images per language, `phone/` for the phone slot, `tablet/` for the 7-inch slot and `tablet10/` for the 10-inch slot. `tools/store-shots.ps1` captures a set on the device it is given by running `StoreShotsTest`, which seeds the record `StoreScene` describes in each test's language and walks it, then `tools/store_shots_check.py` files the images and writes a contact sheet. `C:\Users\aperi\DEV\ANDROID\_scratch\play_images.py` replaces the slots on Play in upload order, which is the order Play shows.
+
+**The eight shots, in upload order**
+
+1. `01-home`: the landing with the seal and the three keys
+2. `02-rooms`: the five rooms, three of them carrying one defect
+3. `03-defect-editor`: the kitchen's water stain with its photograph and the tenant's position
+4. `04-canton-overlay`: the cantonal rules panel with the flag, the legal basis and the dated rule set
+5. `05-review`: the record before signature, the object and the parties first
+6. `06-signature`: the agency's representative signing on the pad
+7. `07-record-cover`: the finalized document's cover in the preview, the navy banner over the object panel
+8. `08-photo-annex`: the annex's first room section with its photograph and its legend
+
+**The scene**
+
+One exit handover per language, the five the iPhone's `StoreScene.swift` carries, each with its own tenant, agency and representative:
+
+- English: Alpenstrasse 9, Zug
+- French: Rue de Bourg 12, Lausanne
+- German: Effingerstrasse 42, Bern
+- Italian: Via Nassa 18, Lugano
+- Romansh: Via Centrala 12, Ilanz
+
+Three defects, one photograph each:
+
+- the kitchen wall's water stain, which the tenant disputes
+- a hole in a bathroom wall tile, which the tenant pays for
+- scratches in the living room's parquet, normal wear
+
+**The photographs and their licences**
+
+The owner chose free-licence photographs on 25 October 2026, since neither the devices nor the disks held a photograph of a defect. They live in `app/src/androidTest/assets/store/`, resized to 2048 px on the long edge with their metadata stripped, and never in the shipped app.
+
+| File | Source | Author | Licence |
+|---|---|---|---|
+| kitchen-wall-water-stain.jpg | Wikimedia Commons, Berlin Wasserschaden lub 2025-01-19.jpg | Lukas Beck | CC BY 4.0 |
+| bathroom-tile-hole.jpg | Unsplash KnZhqTdIZTA | Elias | Unsplash licence |
+| living-room-parquet-scratches.jpg | Pexels 28101637 | Askara Svarga | Pexels licence |
+
+CC BY 4.0 asks for a credit, which the last line of every full description above carries. The Unsplash and Pexels licences allow commercial use without one.
+
+**The sizes, 25 October 2026**
+
+| Set | Device | Pixels |
+|---|---|---|
+| phone | Codex_limen AVD, sized like the Pixel 10 | 1080 × 2424 |
+| tablet | Tablet7_API36 AVD at its native density | 1200 × 1920 |
+| tablet10 | Tablet7_API36 AVD at density 240 | 1200 × 1920 |

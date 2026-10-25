@@ -137,7 +137,7 @@ internal fun SignStep(vm: LimenViewModel, s: Str, p: Protocol) {
 
   p.parties.firstOrNull { it.participantKey() == padTargetKey }?.let { party ->
     SignPadOverlay(
-      title = "${party.signerName()} · ${s.role(party.role)} · ${party.agency}",
+      title = listOf(party.signerName(), s.role(party.role), party.agency).filter { it.isNotBlank() }.joinToString(" · "),
       meaning = s.tipRecord().lead,
       s = s,
       onKeep = { bmp ->
